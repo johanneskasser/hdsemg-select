@@ -1,0 +1,242 @@
+[
+    {
+        "url": "https://otbioelettronica.it/en/product/ad1x64sp/",
+        "product": "AD1x64SP",
+        "electrodes": 64
+    },
+    {
+        "url": "https://otbioelettronica.it/en/product/ad16/",
+        "product": "AD16",
+        "electrodes": 16
+    },
+    {
+        "url": "https://otbioelettronica.it/en/product/ad2x32sp/",
+        "product": "AD2x32SP",
+        "electrodes": 32
+    },
+    {
+        "url": "https://otbioelettronica.it/en/product/ad64f/",
+        "product": "AD64F",
+        "electrodes": 64
+    },
+    {
+        "url": "https://otbioelettronica.it/en/product/elsch004/",
+        "product": "ELSCH004",
+        "electrodes": 4
+    },
+    {
+        "url": "https://otbioelettronica.it/en/product/elsch008/",
+        "product": "ELSCH008",
+        "electrodes": 8
+    },
+    {
+        "url": "https://otbioelettronica.it/en/product/elsch016/",
+        "product": "ELSCH016",
+        "electrodes": 16
+    },
+    {
+        "url": "https://otbioelettronica.it/en/product/gr10mm0804/",
+        "product": "GR10MM0804",
+        "electrodes": 32
+    },
+    {
+        "url": "https://otbioelettronica.it/en/product/gr08mm1305/",
+        "product": "GR08MM1305",
+        "electrodes": 64
+    },
+    {
+        "url": "https://otbioelettronica.it/en/product/gr10mm0808/",
+        "product": "GR10MM0808",
+        "electrodes": 64
+    },
+    {
+        "url": "https://otbioelettronica.it/en/product/gr04mm1305/",
+        "product": "GR04MM1305",
+        "electrodes": 64
+    },
+    {
+        "url": "https://otbioelettronica.it/en/product/gr100ml1305/",
+        "product": "GR100ML1305",
+        "electrodes": 64
+    },
+    {
+        "url": "https://otbioelettronica.it/en/product/hd04mm1305/",
+        "product": "HD04MM1305",
+        "electrodes": 64
+    },
+    {
+        "url": "https://otbioelettronica.it/en/product/hd08mm1305/",
+        "product": "HD08MM1305",
+        "electrodes": 64
+    },
+    {
+        "url": "https://otbioelettronica.it/en/product/hd20mm1602/",
+        "product": "HD20MM1602",
+        "electrodes": 32
+    },
+    {
+        "url": "https://otbioelettronica.it/en/product/hd10mm0808/",
+        "product": "HD10MM0808",
+        "electrodes": 64
+    },
+    {
+        "url": "https://otbioelettronica.it/en/product/hd10mm0804/",
+        "product": "HD10MM0804",
+        "electrodes": 32
+    },
+    {
+        "url": "https://otbioelettronica.it/en/product/sa-16-10/",
+        "product": "SA 16/10",
+        "electrodes": 16
+    },
+    {
+        "url": "https://otbioelettronica.it/en/product/sa-16-2-5/",
+        "product": "SA 16/2.5",
+        "electrodes": 16
+    },
+    {
+        "url": "https://otbioelettronica.it/en/product/sa-16-5/",
+        "product": "SA 16/5",
+        "electrodes": 16
+    },
+    {
+        "url": "https://otbioelettronica.it/en/product/el10mm1007/",
+        "product": "EL10MM1007",
+        "electrodes": 64
+    },
+    {
+        "url": "https://otbioelettronica.it/en/product/gr20mm1604/",
+        "product": "GR20MM1604",
+        "electrodes": 64
+    },
+    {
+        "url": "https://otbioelettronica.it/en/product/gr20mm1604b/",
+        "product": "GR20MM1604B",
+        "electrodes": 64
+    },
+    {
+        "url": "https://otbioelettronica.it/en/product/gr04mm2206/",
+        "product": "GR04MM2206",
+        "electrodes": 128
+    },
+    {
+        "url": "https://otbioelettronica.it/en/product/hd08mm1106/",
+        "product": "HD08MM1106",
+        "electrodes": 64
+    },
+    {
+        "url": "https://otbioelettronica.it/en/product/gr10mm1604/",
+        "product": "GR10MM1604",
+        "electrodes": 64
+    },
+    {
+        "url": "https://otbioelettronica.it/en/product/hd10mm1103/",
+        "product": "HD10MM1103",
+        "electrodes": 32
+    },
+    {
+        "url": "https://otbioelettronica.it/en/product/gr30mm1305/",
+        "product": "GR30MM1305",
+        "electrodes": 64
+    },
+    {
+        "url": "https://otbioelettronica.it/en/product/gr20mm1305/",
+        "product": "GR20MM1305",
+        "electrodes": 64
+    },
+    {
+        "url": "https://otbioelettronica.it/en/product/dam05mm1601/",
+        "product": "DAM05MM1601",
+        "electrodes": 16
+    },
+    {
+        "url": "https://otbioelettronica.it/en/product/hd05mm0804/",
+        "product": "HD05MM0804",
+        "electrodes": 32
+    },
+    {
+        "url": "https://otbioelettronica.it/en/product/gr04mm2610/",
+        "product": "GR04MM2610",
+        "electrodes": 256
+    },
+    {
+        "url": "https://otbioelettronica.it/en/product/hd05mm3201/",
+        "product": "HD05MM3201",
+        "electrodes": 32
+    },
+    {
+        "url": "https://otbioelettronica.it/en/product/gr05mm3805/",
+        "product": "GR05MM3805",
+        "electrodes": 190
+    },
+    {
+        "url": "https://otbioelettronica.it/en/product/gr02mm2610/",
+        "product": "GR02MM2610",
+        "electrodes": 256
+    },
+    {
+        "url": "https://otbioelettronica.it/en/product/el10mm1305/",
+        "product": "EL10MM1305",
+        "electrodes": 64
+    },
+    {
+        "url": "https://otbioelettronica.it/en/product/gr04mm2605/",
+        "product": "GR04MM2605",
+        "electrodes": 128
+    },
+    {
+        "url": "https://otbioelettronica.it/en/product/gr03mm1807/",
+        "product": "GR03MM1807",
+        "electrodes": 96
+    },
+    {
+        "url": "https://otbioelettronica.it/en/product/gr08mm1305n15/",
+        "product": "GR08MM1305N15",
+        "electrodes": 64
+    },
+    {
+        "url": "https://otbioelettronica.it/en/product/gr08mm1305n25/",
+        "product": "GR08MM1305N25",
+        "electrodes": 64
+    },
+    {
+        "url": "https://otbioelettronica.it/en/product/gr04mm3208/",
+        "product": "GR04MM3208",
+        "electrodes": 256
+    },
+    {
+        "url": "https://otbioelettronica.it/en/product/dap05mm1501/",
+        "product": "DAP05MM1501",
+        "electrodes": 15
+    },
+    {
+        "url": "https://otbioelettronica.it/en/product/hd08mm1606/",
+        "product": "HD08MM1606",
+        "electrodes": 96
+    },
+    {
+        "url": "https://otbioelettronica.it/en/product/hd20mm1602-2/",
+        "product": "HD20MM1602B",
+        "electrodes": 32
+    },
+    {
+        "url": "https://otbioelettronica.it/en/product/hd02mm0808/",
+        "product": "HD02MM0808",
+        "electrodes": 64
+    },
+    {
+        "url": "https://otbioelettronica.it/en/product/hd04mm0808/",
+        "product": "HD04MM0808",
+        "electrodes": 64
+    },
+    {
+        "url": "https://otbioelettronica.it/en/product/hd15mm1604b/",
+        "product": "HD15MM1604B",
+        "electrodes": 64
+    },
+    {
+        "url": "https://otbioelettronica.it/en/product/hd04mm1606/",
+        "product": "HD04MM1606",
+        "electrodes": 96
+    }
+]
