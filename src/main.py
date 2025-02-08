@@ -1,3 +1,4 @@
+import argparse
 import logging
 import sys
 from functools import partial
@@ -29,11 +30,15 @@ from ui.electrode_widget import ElectrodeWidget
 
 
 class ChannelSelector(QMainWindow):
-    def __init__(self):
+    def __init__(self, input_file=None, output_file=None):
         super().__init__()
         self.setWindowTitle("HDsEMG Channel Selector")
         self.setWindowIcon(QIcon("resources/icon.png"))
         self.setGeometry(100, 100, 1200, 800)
+
+        # Save startup parameters (if any)
+        self.input_file = input_file
+        self.output_file = output_file
 
         # State variables
         self.current_page = 0
@@ -117,7 +122,6 @@ class ChannelSelector(QMainWindow):
         self.automatic_selection = AutomaticSelection(self)
         self.create_menus()
 
-
         self.grid_label = QLabel("")
         self.grid_label.setAlignment(Qt.AlignCenter)
         self.grid_label.setHidden(True)
@@ -146,7 +150,7 @@ class ChannelSelector(QMainWindow):
 
         save_action = QAction("Save Selection", self)
         save_action.setShortcut(QKeySequence("Ctrl+S"))
-        save_action.setStatusTip("Save current channel selection to JSON")
+        save_action.setStatusTip("Save current channel selection")
         save_action.triggered.connect(self.save_selection)
         save_action.setEnabled(False)
         file_menu.addAction(save_action)
@@ -168,11 +172,10 @@ class ChannelSelector(QMainWindow):
         # Automatic Selection Menu
         auto_select_menu = menubar.addMenu("Automatic Selection")
 
-
         amplitude_menu = auto_select_menu.addMenu("Amplitude Based")
         amplitude_menu.setEnabled(False)
 
-        self.amplidude_menu = amplitude_menu # store reference
+        self.amplidude_menu = amplitude_menu  # store reference
 
         start_action = QAction("Start", self)
         start_action.setStatusTip("Start automatic channel selection based on thresholds")
@@ -188,10 +191,17 @@ class ChannelSelector(QMainWindow):
         options = QFileDialog.Options()
         file_path, _ = QFileDialog.getOpenFileName(self, "Open File", "", "MAT Files (*.mat)", options=options)
         if file_path:
+            self.load_file_path(file_path)
+
+    def load_file_path(self, file_path):
+        """
+        Loads a file from the provided path (bypassing the file dialog).
+        """
+        if file_path:
             self.file_path = file_path
             logger.info(f"Loading file {self.file_path}")
-            self.data, self.time, self.description, self.sampling_frequency, self.file_name, self.file_size = load_mat_file(
-                file_path)
+            (self.data, self.time, self.description,
+             self.sampling_frequency, self.file_name, self.file_size) = load_mat_file(file_path)
 
             logger.debug(f"Original Data Min: {np.min(self.data)}")
             logger.debug(f"Original Data Max: {np.max(self.data)}")
@@ -200,7 +210,7 @@ class ChannelSelector(QMainWindow):
             self.upper_quartile = compute_upper_quartile(self.data)
             self.scaled_data = scale_data(self.data, self.upper_quartile)
 
-            logger.debug(f"Scaled Data Min:{np.min(self.scaled_data)}")
+            logger.debug(f"Scaled Data Min: {np.min(self.scaled_data)}")
             logger.debug(f"Scaled Data Max: {np.max(self.scaled_data)}")
 
             # Initialize channel status
@@ -215,8 +225,6 @@ class ChannelSelector(QMainWindow):
                     "Automatic grid extraction failed. Please provide grid sizes manually."
                 )
                 self.grid_info = manual_grid_input(self.channel_count, self.time, self.scaled_data)
-
-                # Check if manual grid entry failed
                 if not self.grid_info:
                     QMessageBox.information(
                         self, "Returning to Start State",
@@ -293,10 +301,8 @@ class ChannelSelector(QMainWindow):
         grid_channels = self.grid_info[self.selected_grid]["electrodes"]
         if grid_channels < max_channels:
             logger.debug(f"Grid {self.selected_grid} has {grid_channels} channels but {self.selected_grid} is {max_channels}. So I am filling the last with None.")
-            # Fill missing spots with placeholders (e.g., None)
             indices = indices + [None] * (max_channels - len(indices))
 
-        # Construct current_grid_indices based on orientation
         full_grid_array = np.array(indices).reshape(self.rows, self.cols)
         if self.orientation == "perpendicular":
             self.current_grid_indices = full_grid_array.flatten(order='C').tolist()
@@ -316,7 +322,6 @@ class ChannelSelector(QMainWindow):
         self.current_page = 0
         dialog.accept()
 
-        # Update the electrode widget and display the initial page
         self.electrode_widget.set_grid_shape((self.rows, self.cols))
         self.electrode_widget.label_electrodes()
         self.electrode_widget.set_orientation_highlight(self.orientation, self.current_page)
@@ -349,7 +354,6 @@ class ChannelSelector(QMainWindow):
         self.next_button.setEnabled(self.current_page < self.total_pages - 1)
 
         self.clear_grid_display()
-
         self.checkboxes = []
 
         start_idx = self.current_page * self.items_per_page
@@ -363,7 +367,6 @@ class ChannelSelector(QMainWindow):
         self.global_min = np.min(data_for_grid)
         self.global_max = np.max(data_for_grid)
 
-        # Add a buffer for better visualization
         self.ylim = (self.global_min - 0.1 * abs(self.global_min),
                      self.global_max + 0.1 * abs(self.global_max))
 
@@ -480,7 +483,7 @@ class ChannelSelector(QMainWindow):
         ax.set_title(f"Channel {channel_idx + 1} Frequency Spectrum")
         ax.set_xlabel("Frequency (Hz)")
         ax.set_ylabel("Power")
-        ax.set_xlim(0,600)
+        ax.set_xlim(0, 600)
 
         canvas = FigureCanvas(fig)
         toolbar = NavigationToolbar(canvas, self.spectrum_window)
@@ -496,29 +499,40 @@ class ChannelSelector(QMainWindow):
         self.spectrum_window.show()
 
     def save_selection(self):
-        options = QFileDialog.Options()
-        # Offer both JSON and MATLAB as options.
-        file_path, selected_filter = QFileDialog.getSaveFileName(
-            self,
-            "Save File",
-            "",
-            "JSON Files (*.json);;MATLAB Files (*.mat)",
-            options=options
-        )
-        if file_path:
-            # Check which filter was selected or look at the file extension.
-            if selected_filter.startswith("JSON") or file_path.endswith(".json"):
-                save_selection_to_json(file_path, self.file_name, self.grid_info, self.channel_status)
-            elif selected_filter.startswith("MATLAB") or file_path.endswith(".mat"):
-                # Make sure your class has these attributes available (data, time, description, sampling_frequency)
-                save_selection_to_mat(file_path, self.data, self.time, self.description, self.sampling_frequency,
-                                      self.channel_status)
+        # If output_file was provided at startup, bypass the file dialog.
+        if self.output_file:
+            file_path = self.output_file
+            # In this example we assume outputFile is a .mat file.
+            save_selection_to_mat(file_path, self.data, self.time, self.description, self.sampling_frequency,
+                                    self.channel_status)
             QMessageBox.information(
                 self,
                 "Success",
                 f"Selection saved successfully to {Path(file_path).name}.",
                 QMessageBox.Ok
             )
+            self.close()  # Close the application after saving.
+        else:
+            options = QFileDialog.Options()
+            file_path, selected_filter = QFileDialog.getSaveFileName(
+                self,
+                "Save File",
+                "",
+                "JSON Files (*.json);;MATLAB Files (*.mat)",
+                options=options
+            )
+            if file_path:
+                if selected_filter.startswith("JSON") or file_path.endswith(".json"):
+                    save_selection_to_json(file_path, self.file_name, self.grid_info, self.channel_status)
+                elif selected_filter.startswith("MATLAB") or file_path.endswith(".mat"):
+                    save_selection_to_mat(file_path, self.data, self.time, self.description, self.sampling_frequency,
+                                          self.channel_status)
+                QMessageBox.information(
+                    self,
+                    "Success",
+                    f"Selection saved successfully to {Path(file_path).name}.",
+                    QMessageBox.Ok
+                )
 
     def reset_to_start_state(self):
         self.file_path = None
@@ -556,7 +570,19 @@ class ChannelSelector(QMainWindow):
 if __name__ == "__main__":
     setup_logging()
     logger = logging.getLogger("hdsemg")
+
+    # Parse command-line arguments for inputFile and outputFile.
+    parser = argparse.ArgumentParser(description="HDsEMG Channel Selector")
+    parser.add_argument("--inputFile", type=str, help="File to be opened upon startup")
+    parser.add_argument("--outputFile", type=str, help="Destination .mat file for saving the selection")
+    args = parser.parse_args()
+
     app = QApplication(sys.argv)
-    window = ChannelSelector()
+    window = ChannelSelector(input_file=args.inputFile, output_file=args.outputFile)
     window.showMaximized()
+
+    # If an input file was specified, load it automatically.
+    if args.inputFile:
+        window.load_file_path(args.inputFile)
+
     sys.exit(app.exec_())

@@ -12,7 +12,7 @@ def grid_json_setup():
     Initialize the global grid_data variable by loading data from a JSON file.
     """
     global grid_data
-    filename = "logic/otbioelettronica_products.json"
+    filename = "actions/otbioelettronica_products.json"
     grid_data = load_grid_data(filename)
 
 def load_grid_data(file_path):
