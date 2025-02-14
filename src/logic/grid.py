@@ -1,8 +1,8 @@
 import json
-import logging
+from log.log_config import logger
 import re
+import requests
 
-logger = logging.getLogger("hdsemg")
 
 grid_data = None
 
@@ -12,24 +12,25 @@ def grid_json_setup():
     Initialize the global grid_data variable by loading data from a JSON file.
     """
     global grid_data
-    filename = "actions/otbioelettronica_products.json"
-    grid_data = load_grid_data(filename)
+    url = "https://drive.google.com/uc?export=download&id=1FqR6-ZlT1U74PluFEjCSeIS7NXJQUT-v"
+    grid_data = load_grid_data(url)
 
-def load_grid_data(file_path):
+def load_grid_data(url):
     """
-    Load grid data from a JSON file.
+    Load grid data from a JSON file on the internet.
 
     Args:
-        file_path (str): Path to the JSON file containing grid data.
+        url (str): URL to the JSON file containing grid data.
 
     Returns:
         list: A list of grid data from the file.
     """
     try:
-        with open(file_path, 'r') as f:
-            return json.load(f)
-    except Exception as e:
-        logger.error(f"Failed to load grid data: {e}")
+        response = requests.get(url, timeout=10)  # Set timeout to 10s
+        response.raise_for_status()  # Raise an error for bad responses (4xx, 5xx)
+        return response.json()  # Convert response to JSON
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Failed to load grid data from {url}: {e}")
         return []
 
 
