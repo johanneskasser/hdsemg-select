@@ -46,8 +46,7 @@ def get_electrodes_from_grid_name(grid_name):
     """
     global grid_data
     if grid_data is None:
-        logger.error("Grid data is not initialized. Call grid_json_setup() first.")
-        return None
+        grid_json_setup()
 
     for grid in grid_data:
         if grid_name.upper() == grid["product"].upper():
@@ -68,8 +67,7 @@ def extract_grid_info(description):
     """
     global grid_data
     if grid_data is None:
-        logger.error("Grid data is not initialized. Call grid_json_setup() first.")
-        return {}
+        grid_json_setup()
 
     grid_info = {}
     current_grid_key = None

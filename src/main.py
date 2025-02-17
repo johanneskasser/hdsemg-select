@@ -291,7 +291,7 @@ class ChannelSelector(QMainWindow):
             QMessageBox.critical(
                 self, "Grid Error",
                 f"Grid shape mismatch: Cannot reshape {len(indices)} indices into "
-                f"({self.rows}, {self.cols}). Please check the grid configuration."
+                f"({self.rows}, {self.cols}). Please check the grid configuration. If this file has already been through the channel selection process it cannot be opened again (future implementation)."
             )
             dialog.reject()
             return
