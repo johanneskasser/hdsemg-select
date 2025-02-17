@@ -504,7 +504,7 @@ class ChannelSelector(QMainWindow):
             file_path = self.output_file
             # In this example we assume outputFile is a .mat file.
             save_selection_to_mat(file_path, self.data, self.time, self.description, self.sampling_frequency,
-                                    self.channel_status)
+                                    self.channel_status, self.file_name, self.grid_info)
             QMessageBox.information(
                 self,
                 "Success",
@@ -523,10 +523,10 @@ class ChannelSelector(QMainWindow):
             )
             if file_path:
                 if selected_filter.startswith("JSON") or file_path.endswith(".json"):
-                    save_selection_to_json(file_path, self.file_name, self.grid_info, self.channel_status)
+                    save_selection_to_json(file_path, self.file_name, self.grid_info, self.channel_status, self.description)
                 elif selected_filter.startswith("MATLAB") or file_path.endswith(".mat"):
                     save_selection_to_mat(file_path, self.data, self.time, self.description, self.sampling_frequency,
-                                          self.channel_status)
+                                          self.channel_status, self.file_name, self.grid_info)
                 QMessageBox.information(
                     self,
                     "Success",
