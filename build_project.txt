@@ -1,0 +1,1 @@
+(decomp_agne_jk) PS C:\Users\johan\PycharmProjects\Neuromechanics_FHCW\HDsEMG\pipeline\channelselection\src> pyinstaller --onefile --windowed --paths . --add-data "log;log" --distpath "C:\Users\johan\Tools\channelselection" main.py 
