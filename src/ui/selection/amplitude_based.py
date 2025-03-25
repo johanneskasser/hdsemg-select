@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QLineEdit, QPushButton
 from PyQt5.QtGui import QIntValidator
 from log.log_config import logger
 
-class AutomaticSelection:
+class AutomaticAmplitudeSelection:
     def __init__(self, parent):
         self.parent = parent
         self.lower_threshold = 0  # Default lower threshold (in μV)
@@ -25,7 +25,7 @@ class AutomaticSelection:
         avg_min = sum(min_values) / len(min_values)
         lower = int(avg_min * 0.8)
         upper = int(avg_max * 0.8)
-        logger.info(f"Computed thresholds: lower={lower}, upper={upper}")
+        logger.info(f"Computed thresholds: lower={lower}μV, upper={upper}μV")
         return lower, upper
 
     def open_settings_dialog(self):
@@ -35,7 +35,7 @@ class AutomaticSelection:
         layout = QVBoxLayout()
 
         # Checkbox to trigger automatic computation
-        auto_checkbox = QCheckBox("Compute thresholds automatically from data")
+        auto_checkbox = QCheckBox("Automatically compute thresholds")
         layout.addWidget(auto_checkbox)
 
         # Label to clarify the scale

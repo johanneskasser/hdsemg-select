@@ -20,7 +20,7 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigatio
 
 from logic.data_processing import welchPS
 from ui.manual_grid_input import manual_grid_input
-from ui.selection.amplitude_based import AutomaticSelection
+from ui.selection.amplitude_based import AutomaticAmplitudeSelection
 from logic.channel_management import update_channel_status_single, select_all_channels, count_selected_channels
 from logic.data_processing import compute_upper_quartile, scale_data
 from logic.file_io import load_mat_file, save_selection_to_json, save_selection_to_mat
@@ -28,12 +28,14 @@ from logic.grid import extract_grid_info, grid_json_setup
 from logic.plotting import create_channel_figure
 from ui.electrode_widget import ElectrodeWidget
 
+import resources_rc
+
 
 class ChannelSelector(QMainWindow):
     def __init__(self, input_file=None, output_file=None):
         super().__init__()
         self.setWindowTitle("HDsEMG Channel Selector")
-        self.setWindowIcon(QIcon("resources/icon.png"))
+        self.setWindowIcon(QIcon(":/resources/icon.png"))
         self.setGeometry(100, 100, 1200, 800)
 
         # Save startup parameters (if any)
@@ -119,7 +121,7 @@ class ChannelSelector(QMainWindow):
         self.pagination_layout.addWidget(self.next_button)
 
         # Create the menu bar
-        self.automatic_selection = AutomaticSelection(self)
+        self.automatic_selection = AutomaticAmplitudeSelection(self)
         self.create_menus()
 
         self.grid_label = QLabel("")
@@ -388,14 +390,14 @@ class ChannelSelector(QMainWindow):
             self.checkboxes.append(checkbox)
 
             view_button = QPushButton()
-            view_button.setIcon(QIcon("resources/extend.png"))
+            view_button.setIcon(QIcon(":/resources/extend.png"))
             view_button.setToolTip("View Time Series")
             view_button.setFixedSize(30, 30)
             view_button.clicked.connect(partial(self.view_channel_in_detail, channel_idx))
             control_layout.addWidget(view_button)
 
             spectrum_button = QPushButton()
-            spectrum_button.setIcon(QIcon("resources/frequency.png"))
+            spectrum_button.setIcon(QIcon(":/resources/frequency.png"))
             spectrum_button.setToolTip("View Frequency Spectrum")
             spectrum_button.setFixedSize(30, 30)
             spectrum_button.clicked.connect(partial(self.view_channel_spectrum, channel_idx))

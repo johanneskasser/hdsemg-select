@@ -1,93 +1,153 @@
-# HDsEMG Channel Selector
+<div align="center">
+<br>
+  <img src="src/resources/icon.png" alt="App Icon" width="100" height="100"><br>
+    <h2 align="center">HDsEMG Channel Selection</h2>
+</div>
 
-A graphical user interface (GUI) application for selecting and analyzing HDsEMG channels from `.mat` files. The application allows for visualizing channel data, selecting channels as "good," toggling all channels, and saving the results in a `.json` format.
+---
+
+A graphical user interface (GUI) application for selecting and analyzing HDsEMG channels from `.mat` files. This tool
+helps identify and exclude faulty channels (e.g., due to electrode misplacement or corrosion) from HDsEMG recordings,
+enabling more accurate and efficient analysis.
+
+---
+
+## Table of Contents
+
+- [Features](#features)
+- [Screenshots](#screenshots)
+- [Installation](#installation)
+- [Usage](#usage)
+- [File Format](#file-format)
+- [Requirements](#requirements)
+- [Contributing](#contributing)
 
 ---
 
 ## Features
 
-- Load `.mat` files and visualize channel data.
-- Pagination for improved performance with large datasets.
-- Detailed view for individual channels with interactive plots.
-- Select or deselect all channels using a "Select All" checkbox.
-- Save the selected channel information in a `.json` file, including:
-  - File name
-  - Grid layout
-  - Selection status for each channel.
+- ✅ Load `.mat` files and visualize multi-channel HDsEMG signals.
+- 🧠 Automatic detection of grid size via inter-electrode distance.
+- ✏️ Manual grid configuration when automatic detection fails.
+- 🔄 Switch between grid orientations (parallel/perpendicular to muscle fibers).
+- 🖼 Grid and signal visualization:
+    - Electrode Widget with numbered and selectable channels.
+    - Overview with page navigation and signal thumbnails.
+    - Detailed viewer with time-domain and frequency spectrum plots.
+- ✅ Manual and automatic channel selection.
+    - Amplitude-based selection with configurable thresholds.
+    - Frequency-based analysis (planned).
+- 💾 Save selections in structured `.json` files and automatically generate cleaned `.mat` files.
+- 🖥 Dashboard with file metadata: filename, number of channels, sampling rate, size, selection count.
+- ⏱ Efficient loading with warnings and abort option for large data.
+
+---
+
+## Screenshots
+
+| Dashboard                                 | Electrode Widget                                        |
+|-------------------------------------------|---------------------------------------------------------|
+| ![Dashboard](doc/resources/dashboard.png) | ![Electrode Widget](doc/resources/electrode_widget.png) |
+
+| Detail Viewer                                           | Frequency Spectrum                                               | Raw Data Viewer                                                     |
+|---------------------------------------------------------|------------------------------------------------------------------|---------------------------------------------------------------------|
+| ![Detail Viewer](doc/resources/channel_detail_view.png) | ![Frequency Spectrum](doc/resources/frequency_spectrum_plot.png) | ![Raw Data Viewer](doc/resources/manual_grid_raw_channels_view.png) |
 
 ---
 
 ## Installation
 
-1. Clone the repository or download the script.
-2. Install the required dependencies:
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/haripen/Neuromechanics_FHCW.git
+   cd Neuromechanics_FHCW/pipeline/channelselection
+   ```
+
+2. **Create a virtual environment (optional but recommended):**
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows use venv\Scripts\activate
+   ```
+
+3. **Install dependencies:**
    ```bash
    pip install -r requirements.txt
    ```
 
-3. Run the application:
+4. **Run the application:**
    ```bash
-   python main.py
+   python src/main.py
    ```
 
 ---
 
 ## Usage
 
-### Loading a File
-- Click the **Load File** button and select a `.mat` file to visualize the data.
+### Load a File
 
-### Visualizing Channels
-- Channels are displayed as small plots in a grid format.
-- Use the **Previous** and **Next** buttons to navigate through pages.
+- Click **"Load File"** and select a `.mat` file.
+- The app attempts to auto-detect the grid based on inter-electrode distance.
+- Alternatively, configure the grid manually.
 
-### Selecting Channels
-- Each channel has a **checkbox** labeled "Good" to mark it as selected.
-- Use the **Select All** checkbox to toggle all channels at once.
+### Navigate and Visualize
 
-### Detailed View
-- Click the **extend icon** next to a channel to open a detailed, interactive plot for that channel.
+- Channels are shown in pages for performance.
+- Use **Next/Previous** buttons to navigate pages.
+- Click the **eye icon** for a detailed channel view (amplitude + frequency).
 
-### Saving Selections
-- Click the **Save Selection** button to save selected channel information in a `.json` file.
+### Select Channels
 
-### Future Implementation
-- Automatic Selection based on Frequency and Amplitude Analysis
+- Mark individual channels as "good" using checkboxes.
+- Use **Select All** to toggle all channels.
+- Automatic selection available (Amplitude-based).
+
+### Save Selection
+
+- Click **"Save Selection"** to export selection to `.json`.
 
 ---
 
-## File Information
-- The app displays:
-  - File name and size.
-  - Total number of channels in the file.
-  - Number of currently selected channels.
+## File Format
+
+A saved `.json` file includes:
+
+```json
+{
+  "filename": "example.mat",
+  "grids": [
+    {
+      "columns": 4,
+      "rows": 4,
+      "inter_electrode_distance_mm": 10,
+      "channels": [
+        {
+          "channel": 1,
+          "selected": true
+        },
+        {
+          "channel": 2,
+          "selected": false
+        },
+        ...
+      ]
+    }
+  ]
+}
+```
 
 ---
 
 ## Requirements
 
 - Python 3.8+
-- Packages listed in `requirements.txt`.
+- Dependencies listed in `requirements.txt`
+- Tested on: Linux and Windows 11
 
 ---
 
-## Example Output File
+## Contributing
 
-A saved `.json` file might look like this:
+Pull requests are welcome! If you find a bug or want to suggest a feature, feel free
+to [open an issue](https://github.com/haripen/Neuromechanics_FHCW/issues).
 
-```json
-{
-    "filename": "example.mat",
-    "grid": {
-        "columns": 4,
-        "rows": 4
-    },
-    "channels": [
-        {"channel": 1, "selected": true},
-        {"channel": 2, "selected": false}
-    ]
-}
-```
-### Notes:
-- Replace `channelSelectionApp.py` in the commands with your script name if it's different.
-- Ensure that the `"resources/extend.png"` eye icon file exists in the specified path or replace it with another valid icon.
+---
