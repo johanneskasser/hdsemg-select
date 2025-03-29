@@ -42,13 +42,13 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: HDsEMG-channelselection
+          name: hdsemg-pipe
           path: ./src/dist/hdsemg-pipe.exe
 
       - name: Create release
         uses: ncipollo/release-action@v1
         with:
-          artifacts: ./src/dist/main.exe
+          artifacts: ./src/dist/hdsemg-pipe.exe
           token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ github.ref_name }}
           name: Release ${{ github.ref_name }}
