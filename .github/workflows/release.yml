@@ -1,4 +1,4 @@
-name: Build and Release Channelselection Application
+name: Build and Release hdsemg-select
 
 on:
   push:
@@ -37,18 +37,18 @@ jobs:
       - name: Build executable
         working-directory: ./src
         run: |
-          pyinstaller --onefile --windowed --name hdsemg-pipe.exe main.py
+          pyinstaller --onefile --windowed --name hdsemg-select.exe main.py
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: hdsemg-pipe
-          path: ./src/dist/hdsemg-pipe.exe
+          name: hdsemg-select
+          path: ./src/dist/hdsemg-select.exe
 
       - name: Create release
         uses: ncipollo/release-action@v1
         with:
-          artifacts: ./src/dist/hdsemg-pipe.exe
+          artifacts: ./src/dist/hdsemg-select.exe
           token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ github.ref_name }}
           name: Release ${{ github.ref_name }}
