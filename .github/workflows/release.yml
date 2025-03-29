@@ -43,7 +43,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: HDsEMG-channelselection
-          path: ./src/dist/main.exe
+          path: ./src/dist/hdsemg-pipe.exe
 
       - name: Create release
         uses: ncipollo/release-action@v1
