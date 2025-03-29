@@ -8,37 +8,47 @@ on:
 jobs:
   build:
     runs-on: ubuntu-24.04
-
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: 3.10.13
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.10.13
 
-    - name: Install dependencies
-      working-directory: ./src
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r ../requirements.txt
-        pip install pyinstaller
+      - name: Install dependencies
+        working-directory: ./src
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r ../requirements.txt
+          pip install pyinstaller PyQt5
 
-    - name: Build executable
-      working-directory: ./src
-      run: pyinstaller --onefile --windowed --paths . --add-data "log;log" main.py
+      - name: Compile resources file
+        working-directory: ./src
+        run: |
+          if [ ! -f resources_rc.py ]; then
+            echo "Compiling resources.qrc to resources_rc.py"
+            pyrcc5 resources.qrc -o resources_rc.py
+          else
+            echo "resources_rc.py exists, skipping compilation"
+          fi
 
-    - name: Upload artifact
-      uses: actions/upload-artifact@v3
-      with:
-        name: HDsEMG-channelselection
-        path: ./src/dist/main
+      - name: Build executable
+        working-directory: ./src
+        run: |
+          pyinstaller --onefile --windowed --name main.exe --paths . --add-data "log;log" main.py
 
-    - name: Create release
-      uses: ncipollo/release-action@v1
-      with:
-        artifacts: ./src/dist/main.exe
-        token: ${{ secrets.GITHUB_TOKEN }}
-        tag: ${{ github.ref_name }}
-        name: Release ${{ github.ref_name }}
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: HDsEMG-channelselection
+          path: ./src/dist/main.exe
+
+      - name: Create release
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: ./src/dist/main.exe
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
