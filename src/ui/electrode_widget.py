@@ -1,7 +1,7 @@
 from PyQt5.QtCore import Qt, QRect
 from PyQt5.QtGui import QPainter, QPen, QColor, QFont
 from PyQt5.QtWidgets import QWidget, QGridLayout, QLabel, QVBoxLayout, QSizePolicy
-from log.log_config import logger
+from _log.log_config import logger
 
 
 class ElectrodeWidget(QWidget):

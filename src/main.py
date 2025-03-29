@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 
-from log.log_config import setup_logging
+from _log.log_config import setup_logging
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon, QFont, QKeySequence

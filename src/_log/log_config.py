@@ -24,7 +24,7 @@ def setup_logging():
                 'class': 'logging.FileHandler',
                 'formatter': 'standard',
                 'level': 'DEBUG',
-                'filename': 'channel_selection_app.log',
+                'filename': 'channel_selection_app._log',
                 'mode': 'a'
             }
         },

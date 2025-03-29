@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QLineEdit, QPushButton, QHBoxLayout, QMessageBox, QCheckBox
 from PyQt5.QtGui import QIntValidator
-from log.log_config import logger
+from _log.log_config import logger
 
 class AutomaticAmplitudeSelection:
     def __init__(self, parent):

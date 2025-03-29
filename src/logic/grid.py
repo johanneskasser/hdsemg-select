@@ -1,5 +1,5 @@
 import json
-from log.log_config import logger
+from _log.log_config import logger
 import re
 import requests
 
