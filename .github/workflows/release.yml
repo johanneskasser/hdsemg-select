@@ -37,7 +37,7 @@ jobs:
       - name: Build executable
         working-directory: ./src
         run: |
-          pyinstaller --onefile --windowed --name main.exe --paths . --add-data "log;log" main.py
+          pyinstaller --onefile --windowed --name hdsemg-pipe.exe main.py
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
