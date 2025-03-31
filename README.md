@@ -1,7 +1,8 @@
 <div align="center">
 <br>
   <img src="src/resources/icon.png" alt="App Icon" width="100" height="100"><br>
-    <h2 align="center">HDsEMG Channel Selection</h2>
+    <h2 align="center">🧼 hdsemg-pipe 🧼</h2>
+    <h3 align="center">HDsEMG data cleaning tool</h3>
 </div>
 
 ---
@@ -35,8 +36,8 @@ enabling more accurate and efficient analysis.
     - Overview with page navigation and signal thumbnails.
     - Detailed viewer with time-domain and frequency spectrum plots.
 - ✅ Manual and automatic channel selection.
-    - Amplitude-based selection with configurable thresholds.
-    - Frequency-based analysis (planned).
+    - 📈 Amplitude-based selection with configurable thresholds.
+    - 📊 Frequency-based analysis (planned).
 - 💾 Save selections in structured `.json` files and automatically generate cleaned `.mat` files.
 - 🖥 Dashboard with file metadata: filename, number of channels, sampling rate, size, selection count.
 - ⏱ Efficient loading with warnings and abort option for large data.
@@ -59,9 +60,8 @@ enabling more accurate and efficient analysis.
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/haripen/Neuromechanics_FHCW.git
-   cd Neuromechanics_FHCW/pipeline/channelselection
-   ```
+   git clone https://github.com/johanneskasser/hdsemg-select.git
+   cd hdsemg-select
 
 2. **Create a virtual environment (optional but recommended):**
    ```bash
@@ -142,6 +142,13 @@ A saved `.json` file includes:
 - Python 3.8+
 - Dependencies listed in `requirements.txt`
 - Tested on: Linux and Windows 11
+
+---
+
+## 🔗 Related Tools
+
+- [hdsemg-pipe App 🧼](https://github.com/johanneskasser/hdsemg-pipe.git)
+- [openhdemg 🧬](https://github.com/GiacomoValliPhD/openhdemg)
 
 ---
 
