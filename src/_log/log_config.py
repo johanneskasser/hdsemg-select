@@ -34,7 +34,7 @@ def setup_logging():
                 'level': 'DEBUG',
                 'propagate': True
             },
-            'hdsemg': {
+            'hdsemg-select': {
                 'handlers': ['console', 'file'],
                 'level': 'DEBUG',
                 'propagate': False
@@ -50,4 +50,4 @@ def setup_logging():
     logging.config.dictConfig(logging_config)
 
 # Create a global logger instance for the application.
-logger = logging.getLogger("hdsemg")
+logger = logging.getLogger("hdsemg-select")

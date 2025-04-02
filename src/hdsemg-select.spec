@@ -26,6 +26,7 @@ exe = EXE(
     a.datas,
     [],
     name='hdsemg-select',
+    icon='resources/icon.png',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
