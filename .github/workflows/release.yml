@@ -38,7 +38,7 @@ jobs:
 
       - name: Build executable
         working-directory: ./src
-        run: pyinstaller --onefile --windowed --name hdsemg-select.exe main.py
+        run: pyinstaller hdsemg-select.spec
         shell: cmd
 
       - name: Upload artifact
