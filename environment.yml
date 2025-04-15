@@ -1,0 +1,16 @@
+name: hdsemg-select
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pyqt>=5.15.0
+  - matplotlib>=3.4.0
+  - numpy>=1.21.0
+  - scipy>=1.7.0
+  - pyinstaller>=6.11.0
+  - requests>=2.30.0
+  - pip
+  - pip:
+      - pyqt5-tools>=5.15.0
+      - hdsemg-shared>=0.0.1
