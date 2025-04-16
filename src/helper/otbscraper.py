@@ -26,7 +26,7 @@ def fetch_product_info(url):
 
 def main():
     sitemap_url = "https://otbioelettronica.it/product-sitemap.xml"
-    output_file = "../logic/otbioelettronica_products.json"
+    output_file = "../select_logic/otbioelettronica_products.json"
 
     print("Fetching sitemap links...")
     product_links = fetch_sitemap_links(sitemap_url)

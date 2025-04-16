@@ -1,6 +1,6 @@
 import unittest
 from PyQt5.QtCore import Qt
-from logic.channel_management import update_channel_status_single, select_all_channels, count_selected_channels
+from select_logic.channel_management import update_channel_status_single, select_all_channels, count_selected_channels
 
 class TestChannelManagement(unittest.TestCase):
 
