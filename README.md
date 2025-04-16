@@ -65,16 +65,27 @@ enabling more accurate and efficient analysis.
 
 2. **Create a virtual environment (optional but recommended):**
    ```bash
+   # if you prefer python venv
    python -m venv venv
    source venv/bin/activate  # On Windows use venv\Scripts\activate
+   
+    # or if you prefer conda
+   conda env create -f environment.yml
    ```
 
 3. **Install dependencies:**
    ```bash
+   # only if you are using python venv
    pip install -r requirements.txt
    ```
+   
+4. **Compile the resource file:**
+    ```bash
+    cd ./src
+    pyrcc5 resources.qrc -o resources_rc.py
+    ```
 
-4. **Run the application:**
+5. **Run the application:**
    ```bash
    python src/main.py
    ```

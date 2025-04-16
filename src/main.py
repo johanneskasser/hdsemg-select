@@ -18,23 +18,22 @@ from PyQt5.QtWidgets import (
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 
-from logic.data_processing import welchPS
+from select_logic.data_processing import welchPS
 from ui.manual_grid_input import manual_grid_input
 from ui.selection.amplitude_based import AutomaticAmplitudeSelection
-from logic.channel_management import update_channel_status_single, select_all_channels, count_selected_channels
-from logic.data_processing import compute_upper_quartile, scale_data
-from logic.file_io import load_mat_file, save_selection_to_json, save_selection_to_mat
-from logic.grid import extract_grid_info, grid_json_setup
-from logic.plotting import create_channel_figure
+from select_logic.channel_management import update_channel_status_single, select_all_channels, count_selected_channels
+from select_logic.data_processing import compute_upper_quartile, scale_data
+from select_logic.plotting import create_channel_figure
 from ui.electrode_widget import ElectrodeWidget
 
 import resources_rc
 
+from hdsemg_shared import *
 
 class ChannelSelector(QMainWindow):
     def __init__(self, input_file=None, output_file=None):
         super().__init__()
-        self.setWindowTitle("HDsEMG Channel Selector")
+        self.setWindowTitle("hdsemg-select")
         self.setWindowIcon(QIcon(":/resources/icon.png"))
         self.setGeometry(100, 100, 1200, 800)
 
@@ -136,7 +135,6 @@ class ChannelSelector(QMainWindow):
         self.select_all_checkbox.stateChanged.connect(self.toggle_select_all)
         self.select_all_checkbox.setEnabled(False)
         self.header_layout.addWidget(self.select_all_checkbox)
-        grid_json_setup()
 
     def create_menus(self):
         menubar = self.menuBar()
@@ -203,7 +201,7 @@ class ChannelSelector(QMainWindow):
             self.file_path = file_path
             logger.info(f"Loading file {self.file_path}")
             (self.data, self.time, self.description,
-             self.sampling_frequency, self.file_name, self.file_size) = load_mat_file(file_path)
+             self.sampling_frequency, self.file_name, self.file_size) = load_file(file_path)
 
             logger.debug(f"Original Data Min: {np.min(self.data)}")
             logger.debug(f"Original Data Max: {np.max(self.data)}")
@@ -241,7 +239,7 @@ class ChannelSelector(QMainWindow):
 
             self.select_grid_and_orientation()
             self.electrode_widget.setHidden(False)
-            self.setWindowTitle(f"HDsEMG Channel Selector - Amplitude over Time - {self.file_name}")
+            self.setWindowTitle(f"hdsemg-select - Amplitude over Time - {self.file_name}")
 
     def select_grid_and_orientation(self):
         if not self.grid_info:
@@ -561,7 +559,7 @@ class ChannelSelector(QMainWindow):
         self.select_all_checkbox.setEnabled(False)
         self.select_all_checkbox.setChecked(False)
         self.electrode_widget.setHidden(True)
-        self.setWindowTitle("HDsEMG Channel Selector")
+        self.setWindowTitle("hdsemg-select")
         self.clear_grid_display()
 
         self.amplidude_menu.setEnabled(False)
@@ -574,7 +572,7 @@ if __name__ == "__main__":
     logger = logging.getLogger("hdsemg")
 
     # Parse command-line arguments for inputFile and outputFile.
-    parser = argparse.ArgumentParser(description="HDsEMG Channel Selector")
+    parser = argparse.ArgumentParser(description="hdsemg-select")
     parser.add_argument("--inputFile", type=str, help="File to be opened upon startup")
     parser.add_argument("--outputFile", type=str, help="Destination .mat file for saving the selection")
     args = parser.parse_args()
