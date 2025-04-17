@@ -52,13 +52,7 @@ jobs:
 
       - name: Build executable with version info
         working-directory: ./src
-        run: |
-          pyinstaller \
-            --clean \
-            --onefile \
-            --windowed \
-            --version-file=version.txt \
-            hdsemg-select.spec
+        run: pyinstaller --clean hdsemg-select.spec
         shell: bash
 
       - name: Rename EXE to include version
