@@ -3,7 +3,7 @@
 import os
 from PyInstaller.utils.hooks import collect_data_files
 
-+ version_txt = os.path.abspath(os.path.join(os.path.dirname(__file__), 'version.txt'))
+version_txt = os.path.abspath(os.path.join(os.path.dirname(__file__), 'version.txt'))
 
 a = Analysis(
     ['main.py'],
