@@ -8,6 +8,11 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+    env:
+      # GitHub provides the tag in GITHUB_REF_NAME, e.g. "v1.2.3"
+      RAW_TAG: ${{ github.ref_name }}
+      # Strip leading "v" for numeric version
+      APP_VERSION: ${{ github.ref_name#v }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -21,37 +26,58 @@ jobs:
         working-directory: ./src
         run: |
           python -m pip install --upgrade pip
-          pip install -r ../requirements.txt
-          pip install pyinstaller PyQt5
-        shell: cmd
+          pip install -r ../requirements.txt pyinstaller PyQt5
+        shell: bash
 
-      - name: Compile resources file
+      - name: Generate version.py from Git tag
         working-directory: ./src
         run: |
-          if not exist resources_rc.py (
-            echo Compiling resources.qrc to resources_rc.py
-            pyrcc5 resources.qrc -o resources_rc.py
-          ) else (
-            echo resources_rc.py exists, skipping compilation
-          )
-        shell: cmd
+          echo "__version__ = '${APP_VERSION}'" > version.py
+        shell: bash
 
-      - name: Build executable
+      - name: Make version resource (version.txt)
         working-directory: ./src
-        run: pyinstaller hdsemg-select.spec
-        shell: cmd
+        run: python make_version.py
+        shell: bash
+
+      - name: Compile Qt resources
+        working-directory: ./src
+        run: |
+          if [ ! -f resources_rc.py ]; then
+            echo "Compiling resources.qrc → resources_rc.py"
+            pyrcc5 resources.qrc -o resources_rc.py
+          else
+            echo "resources_rc.py exists, skipping"
+          fi
+        shell: bash
+
+      - name: Build executable with version info
+        working-directory: ./src
+        run: |
+          pyinstaller \
+            --clean \
+            --onefile \
+            --windowed \
+            --version-file=version.txt \
+            hdsemg-select.spec
+        shell: bash
+
+      - name: Rename EXE to include version
+        working-directory: ./src/dist
+        run: |
+          mv hdsemg-select.exe hdsemg-select_v${APP_VERSION}.exe
+        shell: bash
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: hdsemg-select
-          path: ./src/dist/hdsemg-select.exe
+          name: hdsemg-select_v${{ github.ref_name }}
+          path: ./src/dist/hdsemg-select_v${{ github.ref_name }}.exe
 
-      - name: Create release
+      - name: Create GitHub Release
         uses: ncipollo/release-action@v1
         with:
-          artifacts: ./src/dist/hdsemg-select.exe
+          artifacts: hdsemg-select_v${{ github.ref_name }}.exe
           token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ github.ref_name }}
           name: Release ${{ github.ref_name }}
-
