@@ -9,10 +9,7 @@ jobs:
   build:
     runs-on: windows-latest
     env:
-      # GitHub provides the tag in GITHUB_REF_NAME, e.g. "v1.2.3"
-      RAW_TAG: ${{ github.ref_name }}
-      # Strip leading "v" for numeric version
-      APP_VERSION: ${{ github.ref_name#v }}
+      RAW_TAG: ${{ github.ref_name }}    # z.B. "v1.2.3"
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -32,6 +29,8 @@ jobs:
       - name: Generate version.py from Git tag
         working-directory: ./src
         run: |
+          # Entferne führendes "v" mit Bash
+          APP_VERSION=${RAW_TAG#v}
           echo "__version__ = '${APP_VERSION}'" > version.py
         shell: bash
 
@@ -65,19 +64,20 @@ jobs:
       - name: Rename EXE to include version
         working-directory: ./src/dist
         run: |
+          APP_VERSION=${RAW_TAG#v}
           mv hdsemg-select.exe hdsemg-select_v${APP_VERSION}.exe
         shell: bash
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: hdsemg-select_v${{ github.ref_name }}
-          path: ./src/dist/hdsemg-select_v${{ github.ref_name }}.exe
+          name: hdsemg-select_${{ env.RAW_TAG }}
+          path: ./src/dist/hdsemg-select_${{ env.RAW_TAG }}.exe
 
       - name: Create GitHub Release
         uses: ncipollo/release-action@v1
         with:
-          artifacts: hdsemg-select_v${{ github.ref_name }}.exe
+          artifacts: hdsemg-select_${{ env.RAW_TAG }}.exe
           token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ github.ref_name }}
           name: Release ${{ github.ref_name }}
