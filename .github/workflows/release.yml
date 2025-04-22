@@ -29,7 +29,6 @@ jobs:
       - name: Generate version.py from Git tag
         working-directory: ./src
         run: |
-          # Entferne führendes "v" mit Bash
           APP_VERSION=${RAW_TAG#v}
           echo "__version__ = '${APP_VERSION}'" > version.py
         shell: bash
