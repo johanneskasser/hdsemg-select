@@ -13,6 +13,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Fetch all history for all tags
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -54,23 +56,41 @@ jobs:
         run: pyinstaller --clean hdsemg-select.spec
         shell: bash
 
-      - name: Rename EXE to include version
-        working-directory: ./src/dist
-        run: |
-          APP_VERSION=${RAW_TAG#v}
-          mv hdsemg-select.exe hdsemg-select_v${APP_VERSION}.exe
-        shell: bash
-
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: hdsemg-select_${{ env.RAW_TAG }}
-          path: ./src/dist/hdsemg-select_${{ env.RAW_TAG }}.exe
+          name: hdsemg-select
+          path: ./src/dist/hdsemg-select.exe
+
+      - name: Gather Release Notes
+        id: notes
+        run: |
+          # 1) Find the previous tag (sorted by tag date)
+          PREV_TAG=$(git tag --sort=-creatordate | sed -n "2p")
+          echo "Previous tag: $PREV_TAG"
+          echo "This tag:    $RAW_TAG"
+
+          # 2) Dump the README into the top of release-notes.md
+          echo "<!-- Auto-generated. Do not edit. -->" > release-notes.md
+          echo "" >> release-notes.md
+          cat README.md >> release-notes.md
+
+          # 3) Append a Changelog header
+          echo "" >> release-notes.md
+          echo "## Changelog" >> release-notes.md
+          echo "" >> release-notes.md
+
+          # 4) For each commit between PREV_TAG and RAW_TAG, print hash + message
+          git log $PREV_TAG..$RAW_TAG --pretty=format:'- [`%h`](https://github.com/${{ github.repository }}/commit/%H) %s' \
+            >> release-notes.md
+
+          # 5) Expose the path as an output
+          echo "::set-output name=notes_file::release-notes.md"
 
       - name: Create GitHub Release
         uses: ncipollo/release-action@v1
         with:
-          artifacts: hdsemg-select_${{ env.RAW_TAG }}.exe
+          artifacts: hdsemg-select.exe
           token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ github.ref_name }}
           name: Release ${{ github.ref_name }}
