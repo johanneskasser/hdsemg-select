@@ -94,3 +94,4 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ github.ref_name }}
           name: Release ${{ github.ref_name }}
+          bodyFile: ${{ steps.notes.outputs.notes_file }}
