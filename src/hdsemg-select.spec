@@ -1,5 +1,9 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+import os
+from PyInstaller.utils.hooks import collect_data_files
+
+version_txt = os.path.abspath('version.txt')
 
 a = Analysis(
     ['main.py'],
@@ -25,7 +29,12 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
+
     name='hdsemg-select',
+
+    # Hier wird die Resource eingebunden:
+    version=version_txt,
+
     icon='resources/icon.png',
     debug=False,
     bootloader_ignore_signals=False,

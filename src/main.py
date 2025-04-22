@@ -25,6 +25,7 @@ from select_logic.channel_management import update_channel_status_single, select
 from select_logic.data_processing import compute_upper_quartile, scale_data
 from select_logic.plotting import create_channel_figure
 from ui.electrode_widget import ElectrodeWidget
+from version import __version__
 
 import resources_rc
 
@@ -135,6 +136,10 @@ class ChannelSelector(QMainWindow):
         self.select_all_checkbox.stateChanged.connect(self.toggle_select_all)
         self.select_all_checkbox.setEnabled(False)
         self.header_layout.addWidget(self.select_all_checkbox)
+
+        version_label = QLabel(f"Version {__version__}")
+        version_label.setStyleSheet("padding-right: 10px;")
+        self.statusBar().addPermanentWidget(version_label)
 
     def create_menus(self):
         menubar = self.menuBar()
