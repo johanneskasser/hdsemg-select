@@ -86,12 +86,12 @@ jobs:
             >> release-notes.md
 
           # 5) Expose the path as an output
-          echo "::set-output name=notes_file::release-notes.md"
+          echo "notes_file=release-notes.md" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
         uses: ncipollo/release-action@v1
         with:
-          artifacts: hdsemg-select.exe
+          artifacts: ./src/dist/hdsemg-select.exe
           token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ github.ref_name }}
           name: Release ${{ github.ref_name }}
