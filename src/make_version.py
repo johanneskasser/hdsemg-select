@@ -61,4 +61,4 @@ text = "# UTF-8\n" + text + "\n"
 with open(out, 'w', encoding='utf-8') as f:
     f.write(text)
 
-print(f"Generated {out} (UTF‑8) for version {__version__}")
+print(f"Generated {out} for version {__version__}")
