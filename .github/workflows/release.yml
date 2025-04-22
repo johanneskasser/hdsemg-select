@@ -63,6 +63,7 @@ jobs:
           path: ./src/dist/hdsemg-select.exe
 
       - name: Gather Release Notes
+        shell: 'bash'
         id: notes
         run: |
           # 1) Find the previous tag (sorted by tag date)
