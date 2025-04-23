@@ -1,20 +1,21 @@
 from functools import partial
-from pathlib import Path
 
 import numpy as np
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon, QFont, QKeySequence
 from PyQt5.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QFrame, QVBoxLayout, QLabel, QScrollArea, QGridLayout, \
     QPushButton, QStyle, QCheckBox, QAction, QFileDialog, QMessageBox, QDialog, QComboBox
-from hdsemg_shared import load_file, extract_grid_info, save_selection_to_mat, save_selection_to_json
-from matplotlib import pyplot as plt
-from matplotlib.backends.backend_qt import NavigationToolbar2QT as NavigationToolbar
+from hdsemg_shared import load_file, extract_grid_info
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 
 from _log.log_config import logger
+from controller.file_management import save_selection
 from select_logic.channel_management import select_all_channels, update_channel_status_single, count_selected_channels
-from select_logic.data_processing import compute_upper_quartile, scale_data, welchPS
+from select_logic.data_processing import compute_upper_quartile, scale_data
 from select_logic.plotting import create_channel_figure
+from settings.settings_dialog import SettingsDialog
+from ui.channel_details import ChannelDetailWindow
+from ui.channel_spectrum import ChannelSpectrum
 from ui.electrode_widget import ElectrodeWidget
 from ui.manual_grid_input import manual_grid_input
 from ui.selection.amplitude_based import AutomaticAmplitudeSelection
@@ -29,6 +30,7 @@ class ChannelSelector(QMainWindow):
         self.setWindowTitle("hdsemg-select")
         self.setWindowIcon(QIcon(":/resources/icon.png"))
         self.setGeometry(100, 100, 1200, 800)
+        self.app_settings_dialog = SettingsDialog()
 
         # Save startup parameters (if any)
         self.input_file = input_file
@@ -129,9 +131,11 @@ class ChannelSelector(QMainWindow):
         self.select_all_checkbox.setEnabled(False)
         self.header_layout.addWidget(self.select_all_checkbox)
 
-        version_label = QLabel(f"Version {__version__}")
+        version_label = QLabel(
+            f"hdsemg-select | University of Applied Sciences Vienna - Department Physiotherapy | Version: {__version__}")
         version_label.setStyleSheet("padding-right: 10px;")
         self.statusBar().addPermanentWidget(version_label)
+        self.channel_flags = []
 
     def create_menus(self):
         menubar = self.menuBar()
@@ -148,9 +152,25 @@ class ChannelSelector(QMainWindow):
         save_action = QAction("Save Selection", self)
         save_action.setShortcut(QKeySequence("Ctrl+S"))
         save_action.setStatusTip("Save current channel selection")
-        save_action.triggered.connect(self.save_selection)
+        save_action.triggered.connect(lambda: save_selection(
+            self,  # parent
+            self.output_file,
+            self.data,
+            self.time,
+            self.description,
+            self.sampling_frequency,
+            self.channel_status,
+            self.file_name,
+            self.grid_info
+        ))
         save_action.setEnabled(False)
         file_menu.addAction(save_action)
+
+        app_settings_menu = QAction("Settings", self)
+        app_settings_menu.setStatusTip("Open application settings")
+        app_settings_menu.triggered.connect(self.openAppSettings)
+        file_menu.addAction(app_settings_menu)
+
 
         self.save_action = save_action  # store reference to enable/disable
 
@@ -297,7 +317,8 @@ class ChannelSelector(QMainWindow):
         max_channels = self.rows * self.cols
         grid_channels = self.grid_info[self.selected_grid]["electrodes"]
         if grid_channels < max_channels:
-            logger.debug(f"Grid {self.selected_grid} has {grid_channels} channels but {self.selected_grid} is {max_channels}. So I am filling the last with None.")
+            logger.debug(
+                f"Grid {self.selected_grid} has {grid_channels} channels but {self.selected_grid} is {max_channels}. So I am filling the last with None.")
             indices = indices + [None] * (max_channels - len(indices))
 
         full_grid_array = np.array(indices).reshape(self.rows, self.cols)
@@ -425,26 +446,7 @@ class ChannelSelector(QMainWindow):
             self.display_page()
 
     def view_channel_in_detail(self, channel_idx):
-        self.detail_window = QMainWindow(self)
-        self.detail_window.setWindowTitle(f"Channel {channel_idx + 1} - Detailed View")
-
-        fig, ax = plt.subplots(figsize=(10, 6))
-        ax.plot(self.data[:, channel_idx])
-        ax.set_title(f"Channel {channel_idx + 1}")
-        ax.set_xlabel("Time (s)")
-        ax.set_ylabel("Amplitude (μV)")
-
-        canvas = FigureCanvas(fig)
-        toolbar = NavigationToolbar(canvas, self.detail_window)
-
-        layout = QVBoxLayout()
-        layout.addWidget(toolbar)
-        layout.addWidget(canvas)
-
-        central_widget = QWidget()
-        central_widget.setLayout(layout)
-
-        self.detail_window.setCentralWidget(central_widget)
+        self.detail_window = ChannelDetailWindow(self, self.data, channel_idx)
         self.detail_window.show()
 
     def update_info_label(self):
@@ -468,68 +470,15 @@ class ChannelSelector(QMainWindow):
             super().keyPressEvent(event)
 
     def view_channel_spectrum(self, channel_idx):
-        y = self.data[:, channel_idx]
-        fs = self.sampling_frequency
-        xf, yf = welchPS(y, fs)
+        if not hasattr(self, 'channel_spectrum'):
+            self.channel_spectrum = ChannelSpectrum(self)
+        self.channel_spectrum.view_channel_spectrum(channel_idx)
 
-        self.spectrum_window = QMainWindow(self)
-        self.spectrum_window.setWindowTitle(f"Channel {channel_idx + 1} - Frequency Spectrum")
-
-        fig, ax = plt.subplots(figsize=(10, 6))
-        ax.plot(xf, yf)
-        ax.set_title(f"Channel {channel_idx + 1} Frequency Spectrum")
-        ax.set_xlabel("Frequency (Hz)")
-        ax.set_ylabel("Power")
-        ax.set_xlim(0, 600)
-
-        canvas = FigureCanvas(fig)
-        toolbar = NavigationToolbar(canvas, self.spectrum_window)
-
-        layout = QVBoxLayout()
-        layout.addWidget(toolbar)
-        layout.addWidget(canvas)
-
-        central_widget = QWidget()
-        central_widget.setLayout(layout)
-
-        self.spectrum_window.setCentralWidget(central_widget)
-        self.spectrum_window.show()
-
-    def save_selection(self):
-        # If output_file was provided at startup, bypass the file dialog.
-        if self.output_file:
-            file_path = self.output_file
-            # In this example we assume outputFile is a .mat file.
-            save_selection_to_mat(file_path, self.data, self.time, self.description, self.sampling_frequency,
-                                    self.channel_status, self.file_name, self.grid_info)
-            QMessageBox.information(
-                self,
-                "Success",
-                f"Selection saved successfully to {Path(file_path).name}.",
-                QMessageBox.Ok
-            )
-            self.close()  # Close the application after saving.
+    def openAppSettings(self):
+        if self.app_settings_dialog.exec_():
+            logger.debug(f"Settings Dialog closed and accepted")
         else:
-            options = QFileDialog.Options()
-            file_path, selected_filter = QFileDialog.getSaveFileName(
-                self,
-                "Save File",
-                "",
-                "JSON Files (*.json);;MATLAB Files (*.mat)",
-                options=options
-            )
-            if file_path:
-                if selected_filter.startswith("JSON") or file_path.endswith(".json"):
-                    save_selection_to_json(file_path, self.file_name, self.grid_info, self.channel_status, self.description)
-                elif selected_filter.startswith("MATLAB") or file_path.endswith(".mat"):
-                    save_selection_to_mat(file_path, self.data, self.time, self.description, self.sampling_frequency,
-                                          self.channel_status, self.file_name, self.grid_info)
-                QMessageBox.information(
-                    self,
-                    "Success",
-                    f"Selection saved successfully to {Path(file_path).name}.",
-                    QMessageBox.Ok
-                )
+            logger.debug("Settings Dialog closed")
 
     def reset_to_start_state(self):
         self.file_path = None
