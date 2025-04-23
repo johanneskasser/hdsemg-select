@@ -1,3 +1,4 @@
+# main_window.py
 from functools import partial
 
 import numpy as np
@@ -5,25 +6,24 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon, QFont, QKeySequence
 from PyQt5.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QFrame, QVBoxLayout, QLabel, QScrollArea, QGridLayout, \
     QPushButton, QStyle, QCheckBox, QAction, QFileDialog, QMessageBox, QDialog, QComboBox
-from hdsemg_shared import load_file, extract_grid_info
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 
 from _log.log_config import logger
-from controller.file_management import save_selection
 from select_logic.channel_management import select_all_channels, update_channel_status_single, count_selected_channels
-from select_logic.data_processing import compute_upper_quartile, scale_data
 from select_logic.plotting import create_channel_figure
 from settings.settings_dialog import SettingsDialog
 from ui.channel_details import ChannelDetailWindow
 from ui.channel_spectrum import ChannelSpectrum
 from ui.electrode_widget import ElectrodeWidget
-from ui.manual_grid_input import manual_grid_input
 from ui.selection.amplitude_based import AutomaticAmplitudeSelection
-from version import __version__
 
 import resources_rc
 
 from state.state import global_state
+
+from controller.menu_manager import MenuManager
+from controller.file_management import FileManager
+from controller.grid_setup_handler import GridSetupHandler
 
 
 class ChannelSelector(QMainWindow):
@@ -38,25 +38,34 @@ class ChannelSelector(QMainWindow):
         self.input_file = input_file
         self.output_file = output_file
 
+        # Instantiate handlers
+        self.menu_manager = MenuManager()
+        self.file_handler = FileManager()
+        self.grid_setup_handler = GridSetupHandler()
+
         # Local UI-specific variables or variables not part of the global state
-        self.current_page = 0
-        self.items_per_page = 16
-        self.total_pages = 0
-        self.checkboxes = []
-        self.channels_per_row = 4
+        # These are now managed by grid_setup_handler, but ChannelSelector
+        # stores/uses the values obtained from the handler.
+        # self.current_page = 0 # Managed by grid_setup_handler
+        # self.items_per_page = 16 # Managed by grid_setup_handler
+        # self.total_pages = 0 # Managed by grid_setup_handler
+        self.checkboxes = [] # UI element references, not state or grid setup
+        self.channels_per_row = 4 # UI layout setting, not state or grid setup
 
-        self.current_grid_indices = []
-        self.grid_channel_map = {}
-        self.orientation = None
-        self.rows = 0
-        self.cols = 0
-        self.selected_grid = None
+        # These are managed/calculated by grid_setup_handler, ChannelSelector gets them via getters
+        # self.current_grid_indices = [] # Managed by grid_setup_handler
+        # self.grid_channel_map = {} # Managed by grid_setup_handler
+        # self.orientation = None # Managed by grid_setup_handler
+        # self.rows = 0 # Managed by grid_setup_handler
+        # self.cols = 0 # Managed by grid_setup_handler
+        # self.selected_grid = None # Managed by grid_setup_handler
 
-        self.upper_quartile = None
+        # These are display/plotting parameters derived from scaled data
+        self.upper_quartile = None # Managed by file_handler, but stored here for display logic
         self.global_min = None
         self.global_max = None
         self.ylim = None
-        self.channel_flags = []
+        self.channel_flags = [] # Seems unused in provided code? Kept for now if it's used elsewhere.
 
 
         # Create the main layout
@@ -65,6 +74,7 @@ class ChannelSelector(QMainWindow):
 
         # Outer horizontal layout: electrode representation on the left, vertical line, and main UI on the right
         self.outer_layout = QHBoxLayout(self.main_widget)
+        # electrode_widget depends on rows/cols calculated by grid_setup_handler, update its usage later
         self.electrode_widget = ElectrodeWidget()
         self.outer_layout.addWidget(self.electrode_widget)
         self.electrode_widget.setHidden(True)
@@ -115,9 +125,9 @@ class ChannelSelector(QMainWindow):
         self.next_button.clicked.connect(self.next_page)
         self.pagination_layout.addWidget(self.next_button)
 
-        # Create the menu bar
-        self.automatic_selection = AutomaticAmplitudeSelection(self)
-        self.create_menus()
+        # Create the menu bar using the MenuManager
+        self.automatic_selection = AutomaticAmplitudeSelection(self) # Keep AutomaticSelection here
+        self.create_menus() # This method now delegates to MenuManager
 
         self.grid_label = QLabel("")
         self.grid_label.setAlignment(Qt.AlignCenter)
@@ -132,81 +142,24 @@ class ChannelSelector(QMainWindow):
         self.select_all_checkbox.setEnabled(False)
         self.header_layout.addWidget(self.select_all_checkbox)
 
-        version_label = QLabel(
-            f"hdsemg-select | University of Applied Sciences Vienna - Department Physiotherapy | Version: {__version__}")
-        version_label.setStyleSheet("padding-right: 10px;")
-        self.statusBar().addPermanentWidget(version_label)
+        # Version label is now added by MenuManager
+        # version_label = QLabel(...) # Removed
+        # self.statusBar().addPermanentWidget(version_label) # Removed
 
 
     def create_menus(self):
+        """Delegates menu creation to the MenuManager."""
         menubar = self.menuBar()
+        self.menu_manager.create_menus(menubar, self)
 
-        # File Menu
-        file_menu = menubar.addMenu("File")
+        # Get references to actions/menus created by the manager to control their enabled state
+        self.save_action = self.menu_manager.get_save_action()
+        self.change_grid_action = self.menu_manager.get_change_grid_action()
+        self.amplidude_menu = self.menu_manager.get_amplitude_menu()
 
-        open_action = QAction("Open...", self)
-        open_action.setStatusTip("Open a .mat file")
-        open_action.setShortcut(QKeySequence("Ctrl+O"))
-        open_action.triggered.connect(self.load_file)
-        file_menu.addAction(open_action)
-
-        save_action = QAction("Save Selection", self)
-        save_action.setShortcut(QKeySequence("Ctrl+S"))
-        save_action.setStatusTip("Save current channel selection")
-        save_action.triggered.connect(partial(
-            save_selection,
-            self,  # parent
-            self.output_file,
-            global_state.get_data(), # Use getter
-            global_state.get_time(), # Use getter
-            global_state.get_description(), # Use getter
-            global_state.get_sampling_frequency(), # Use getter
-            global_state.get_channel_status(), # Use getter
-            global_state.get_file_name(), # Use getter
-            global_state.get_grid_info() # Use getter
-        ))
-        save_action.setEnabled(False)
-        file_menu.addAction(save_action)
-
-        app_settings_menu = QAction("Settings", self)
-        app_settings_menu.setStatusTip("Open application settings")
-        app_settings_menu.triggered.connect(self.openAppSettings)
-        file_menu.addAction(app_settings_menu)
-
-
-        self.save_action = save_action  # store reference to enable/disable
-
-        # Grid Menu
-        grid_menu = menubar.addMenu("Grid")
-
-        change_grid_action = QAction("Change Grid/Orientation...", self)
-        change_grid_action.setShortcut(QKeySequence("Ctrl+C"))
-        change_grid_action.setStatusTip("Change the currently selected grid or orientation")
-        change_grid_action.triggered.connect(self.select_grid_and_orientation)
-        change_grid_action.setEnabled(False)
-        grid_menu.addAction(change_grid_action)
-
-        self.change_grid_action = change_grid_action  # store reference
-
-        # Automatic Selection Menu
-        auto_select_menu = menubar.addMenu("Automatic Selection")
-
-        amplitude_menu = auto_select_menu.addMenu("Amplitude Based")
-        amplitude_menu.setEnabled(False)
-
-        self.amplidude_menu = amplitude_menu  # store reference
-
-        start_action = QAction("Start", self)
-        start_action.setStatusTip("Start automatic channel selection based on thresholds")
-        start_action.triggered.connect(self.automatic_selection.perform_selection)
-        amplitude_menu.addAction(start_action)
-
-        settings_action = QAction("Settings", self)
-        settings_action.setStatusTip("Configure thresholds for automatic selection")
-        settings_action.triggered.connect(self.automatic_selection.open_settings_dialog)
-        amplitude_menu.addAction(settings_action)
 
     def load_file(self):
+        """Opens a file dialog and triggers file loading."""
         options = QFileDialog.Options()
         file_path, _ = QFileDialog.getOpenFileName(self, "Open File", "", "MAT Files (*.mat)", options=options)
         if file_path:
@@ -214,71 +167,33 @@ class ChannelSelector(QMainWindow):
 
     def load_file_path(self, file_path):
         """
-        Loads a file from the provided path (bypassing the file dialog).
+        Loads a file from the provided path using the FileManager.
         """
-        if file_path:
-            # Store file_path in state
-            global_state.set_file_path(file_path)
-            logger.info(f"Loading file {global_state.get_file_path()}") # Use getter
+        # Delegate file processing to the FileManager
+        success = self.file_handler.process_file(file_path, self) # Pass self for parent window context
 
-            # Load data and other info, store in state
-            data, time, description, sampling_frequency, file_name, file_size = load_file(file_path)
-            global_state.set_data(data)
-            global_state.set_time(time)
-            global_state.set_description(description)
-            global_state.set_sampling_frequency(sampling_frequency)
-            global_state.set_file_name(file_name)
-            global_state.set_file_size(file_size)
-
-
-            logger.debug(f"Original Data Min: {np.min(global_state.get_data())}") # Use getter
-            logger.debug(f"Original Data Max: {np.max(global_state.get_data())}") # Use getter
-
-            # Perform amplitude scaling, store scaled data in state
-            self.upper_quartile = compute_upper_quartile(global_state.get_data()) # Use getter
-            global_state.set_scaled_data(scale_data(global_state.get_data(), self.upper_quartile)) # Use getter
-
-            logger.debug(f"Scaled Data Min: {np.min(global_state.get_scaled_data())}") # Use getter
-            logger.debug(f"Scaled Data Max: {np.max(global_state.get_scaled_data())}") # Use getter
-
-            # Initialize channel count and status, store in state
-            global_state.set_channel_count(global_state.get_data().shape[1]) # Use getter
-            global_state.set_channel_status([False] * global_state.get_channel_count()) # Use getter
-
-            # Extract grid info and proceed, store in state
-            global_state.set_grid_info(extract_grid_info(global_state.get_description())) # Use getter
-            if not global_state.get_grid_info(): # Use getter
-                QMessageBox.warning(
-                    self, "Grid Info Missing",
-                    "Automatic grid extraction failed. Please provide grid sizes manually."
-                )
-                # Store manual grid info in state
-                manual_grid = manual_grid_input(
-                    global_state.get_channel_count(), # Use getter
-                    global_state.get_time(), # Use getter
-                    global_state.get_scaled_data() # Use getter
-                )
-                global_state.set_grid_info(manual_grid)
-
-                if not global_state.get_grid_info(): # Use getter
-                    QMessageBox.information(
-                        self, "Returning to Start State",
-                        "Grid entry failed."
-                    )
-                    self.reset_to_start_state()
-                    return
-
-            # Allow changing grid/orientation after first load
+        if success:
+            # Update UI elements enabled/disabled state based on successful load and processing
             self.change_grid_action.setEnabled(True)
             self.amplidude_menu.setEnabled(True)
 
+            # Trigger grid selection after successful file processing
             self.select_grid_and_orientation()
+
             self.electrode_widget.setHidden(False)
             self.setWindowTitle(f"hdsemg-select - Amplitude over Time - {global_state.get_file_name()}") # Use getter
+        else:
+            # File processing failed (message box already shown by FileManager)
+            # Ensure UI is reset or stays in a no-file state
+            self.reset_to_start_state()
+
 
     def select_grid_and_orientation(self):
-        if not global_state.get_grid_info(): # Use getter
-            return
+        """Opens dialog to select grid and orientation."""
+        # Access grid info from state to populate the dialog
+        grid_info = global_state.get_grid_info()
+        if not grid_info:
+            return # Should not happen if load_file_path succeeded, but safety check
 
         dialog = QDialog(self)
         dialog.setWindowTitle("Select Grid and Orientation")
@@ -288,7 +203,7 @@ class ChannelSelector(QMainWindow):
         layout.addWidget(grid_label)
 
         grid_combo = QComboBox()
-        for grid_key in global_state.get_grid_info().keys(): # Use getter
+        for grid_key in grid_info.keys():
             grid_combo.addItem(grid_key)
         layout.addWidget(grid_combo)
 
@@ -305,76 +220,63 @@ class ChannelSelector(QMainWindow):
         def on_ok():
             selected_grid = grid_combo.currentText()
             orientation = orientation_combo.currentData()
+            # Call method to apply selection logic
             self.apply_grid_selection(selected_grid, orientation, dialog)
 
         ok_button.clicked.connect(on_ok)
         layout.addWidget(ok_button)
 
         dialog.setLayout(layout)
+        # Use exec_() to make the dialog modal
         dialog.exec_()
 
+
     def apply_grid_selection(self, selected_grid, orientation, dialog):
-        self.selected_grid = selected_grid
-        self.orientation = orientation
+        """Applies the selected grid and orientation using the GridSetupHandler."""
 
-        # Access grid info from state
-        grid_info = global_state.get_grid_info()
+        # Delegate the calculation and logic to the handler
+        success = self.grid_setup_handler.apply_selection(selected_grid, orientation, self) # Pass self for parent window context
 
-        self.rows = grid_info[self.selected_grid]["rows"]
-        self.cols = grid_info[self.selected_grid]["cols"]
-        indices = grid_info[self.selected_grid]["indices"]
+        if success:
+            # Update local UI state from the handler's calculated values
+            # self.selected_grid = self.grid_setup_handler.get_selected_grid() # Redundant, already passed
+            # self.orientation = self.grid_setup_handler.get_orientation() # Redundant, already passed
+            self.rows = self.grid_setup_handler.get_rows()
+            self.cols = self.grid_setup_handler.get_cols()
+            # self.current_grid_indices = self.grid_setup_handler.get_current_grid_indices() # Used in display_page, get it there
+            # self.grid_channel_map = self.grid_setup_handler.get_grid_channel_map() # Used in handle_single_channel_update, get it there
+            self.items_per_page = self.grid_setup_handler.get_items_per_page()
+            self.total_pages = self.grid_setup_handler.get_total_pages()
+            self.grid_setup_handler.set_current_page(0) # Ensure page resets on grid change
 
 
-        # Validate the grid shape
-        if len(indices) != grid_info[self.selected_grid]["electrodes"]:
-            QMessageBox.critical(
-                self, "Grid Error",
-                f"Grid shape mismatch: Cannot reshape {len(indices)} indices into "
-                f"({self.rows}, {self.cols}). Please check the grid configuration. If this file has already been through the channel selection process it cannot be opened again (future implementation)."
-            )
-            dialog.reject()
-            return
+            dialog.accept() # Accept the dialog now that application logic succeeded
 
-        # Adjust indices if electrodes are less than rows * cols
-        max_channels = self.rows * self.cols
-        grid_channels = grid_info[self.selected_grid]["electrodes"]
-        if grid_channels < max_channels:
-            logger.debug(
-                f"Grid {self.selected_grid} has {grid_channels} channels but {self.selected_grid} is {max_channels}. So I am filling the last with None.")
-            indices = indices + [None] * (max_channels - len(indices))
+            # Update UI elements based on new grid setup
+            self.electrode_widget.set_grid_shape((self.rows, self.cols))
+            self.electrode_widget.label_electrodes()
+            # electrode_widget requires current_page, orientation, and the index mapping. Get orientation from handler.
+            self.electrode_widget.set_orientation_highlight(self.grid_setup_handler.get_orientation(), self.grid_setup_handler.get_current_page())
 
-        full_grid_array = np.array(indices).reshape(self.rows, self.cols)
-        if self.orientation == "perpendicular":
-            self.current_grid_indices = full_grid_array.flatten(order='C').tolist()
-            self.items_per_page = self.cols # Items per page depends on display orientation
+
+            self.display_page() # Refresh the display
+
+            # Enable relevant actions
+            self.save_action.setEnabled(True)
+            self.select_all_checkbox.setEnabled(True)
+            # Update grid label using values from handler
+            self.grid_label.setText(f"{self.rows}x{self.cols} grid - {self.grid_setup_handler.get_orientation()}")
+            self.grid_label.setHidden(False)
         else:
-            self.current_grid_indices = full_grid_array.flatten(order='F').tolist()
-            self.items_per_page = self.rows # Items per page depends on display orientation
-
-        # Remove placeholder channels (None) from the final list
-        self.current_grid_indices = [ch for ch in self.current_grid_indices if ch is not None]
-
-        if len(self.current_grid_indices) > max_channels:
-             # This check seems redundant after removing None, but keeping it for safety
-            self.current_grid_indices = self.current_grid_indices[:max_channels]
-
-        self.grid_channel_map = {ch_idx: i for i, ch_idx in enumerate(self.current_grid_indices)}
-        self.total_pages = int(np.ceil(len(self.current_grid_indices) / self.items_per_page))
-        self.current_page = 0
-        dialog.accept()
-
-        self.electrode_widget.set_grid_shape((self.rows, self.cols))
-        self.electrode_widget.label_electrodes()
-        self.electrode_widget.set_orientation_highlight(self.orientation, self.current_page)
-
-        self.display_page()
-        self.save_action.setEnabled(True)
-        self.select_all_checkbox.setEnabled(True)
-        self.grid_label.setText(f"{self.rows}x{self.cols} grid - {self.orientation}")
-        self.grid_label.setHidden(False)
+            # Grid setup failed (message box already shown by handler)
+            dialog.reject()
+            # Optionally reset to a clearer state if grid selection is fundamental
+            # self.reset_to_start_state() # Maybe too harsh? Depends on desired behavior.
+            pass
 
 
     def toggle_select_all(self):
+        """Toggles selection status for all channels."""
         # Get channel status from state
         channel_status = global_state.get_channel_status()
 
@@ -386,68 +288,90 @@ class ChannelSelector(QMainWindow):
             # Update status in state
             global_state.set_channel_status(select_all_channels(channel_status, False))
             self.select_all_checkbox.setText("Select All")
-        self.display_page()
-        self.update_info_label()
+
+        self.display_page() # Refresh display to show changes
+        self.update_info_label() # Update selected count label
 
     def clear_grid_display(self):
+        """Clears all widgets from the channel grid layout."""
         for i in reversed(range(self.grid_layout.count())):
             widget = self.grid_layout.itemAt(i).widget()
             if widget:
                 widget.setParent(None)
 
     def display_page(self):
-        self.page_label.setText(f"Page {self.current_page + 1}/{self.total_pages}")
-        self.prev_button.setEnabled(self.current_page > 0)
-        self.next_button.setEnabled(self.current_page < self.total_pages - 1)
+        """Displays the channels for the current page."""
+        # Get display/paging parameters from GridSetupHandler
+        current_page = self.grid_setup_handler.get_current_page()
+        total_pages = self.grid_setup_handler.get_total_pages()
+        items_per_page = self.grid_setup_handler.get_items_per_page()
+        current_grid_indices = self.grid_setup_handler.get_current_grid_indices()
+        rows = self.grid_setup_handler.get_rows() # Needed for potential full grid calculations
+        cols = self.grid_setup_handler.get_cols() # Needed for potential full grid calculations
+        selected_grid_key = self.grid_setup_handler.get_selected_grid() # Needed for grid info lookup
+
+
+        self.page_label.setText(f"Page {current_page + 1}/{total_pages}")
+        self.prev_button.setEnabled(current_page > 0)
+        self.next_button.setEnabled(current_page < total_pages - 1)
 
         self.clear_grid_display()
-        self.checkboxes = []
+        self.checkboxes = [] # Clear list of checkboxes for the previous page
 
-        start_idx = self.current_page * self.items_per_page
-        end_idx = start_idx + self.items_per_page
+        start_idx = current_page * items_per_page
+        end_idx = start_idx + items_per_page
 
-        # Access grid info and scaled data from state
-        grid_info = global_state.get_grid_info()
+        # Get state data
+        grid_info = global_state.get_grid_info() # Needed to find electrode count for grid
         scaled_data = global_state.get_scaled_data()
-        time_data = global_state.get_time() # Need time data too
+        time_data = global_state.get_time()
+        channel_status = global_state.get_channel_status()
 
-        end_electrode_per_grid_idx = start_idx + grid_info[self.selected_grid]["electrodes"]
-        page_channels = self.current_grid_indices[start_idx:end_idx]
-        grid_electrode_channels = self.current_grid_indices[start_idx:end_electrode_per_grid_idx]
 
-        # Ensure we don't try to index with None if placeholder was added but not removed correctly (shouldn't happen now)
-        valid_grid_electrode_channels = [ch for ch in grid_electrode_channels if ch is not None]
+        # Calculate min/max for the *entire* grid data to ensure consistent scaling
+        # Get the indices for the entire selected grid from grid_info
+        if selected_grid_key and grid_info and selected_grid_key in grid_info:
+            full_grid_indices_flat = [ch for ch in grid_info[selected_grid_key]["indices"] if ch is not None]
 
-        # Calculate global min/max based on the data included in the selected grid
-        # Use scaled data from state
-        if valid_grid_electrode_channels:
-             data_for_grid = scaled_data[:, valid_grid_electrode_channels]
-             self.global_min = np.min(data_for_grid)
-             self.global_max = np.max(data_for_grid)
+            if full_grid_indices_flat and scaled_data is not None:
+                data_for_grid = scaled_data[:, full_grid_indices_flat]
+                self.global_min = np.min(data_for_grid)
+                self.global_max = np.max(data_for_grid)
+            else:
+                 self.global_min = -1
+                 self.global_max = 1
+                 if scaled_data is None:
+                      logger.warning("Scaled data is None when trying to calculate global min/max.")
+                 if not full_grid_indices_flat and selected_grid_key:
+                     logger.warning(f"No valid indices found for grid '{selected_grid_key}' to calculate global min/max.")
+
         else:
-             # Handle case with no valid channels in the selected grid (shouldn't happen if file loaded)
-             self.global_min = -1 # sensible defaults
+             # No grid selected or grid info missing
+             self.global_min = -1
              self.global_max = 1
-             logger.warning("No valid channels found for the selected grid slice.")
+             logger.warning("Grid info or selected grid missing, using default ylim.")
 
 
         # Use calculated min/max for ylim
-        self.ylim = (self.global_min - 0.1 * abs(self.global_min) if self.global_min is not None else -1.1,
-                     self.global_max + 0.1 * abs(self.global_max) if self.global_max is not None else 1.1)
+        # Add a small buffer to the limits
+        buffer = 0.1 * (abs(self.global_max) + abs(self.global_min)) if self.global_min is not None and self.global_max is not None else 0.2
+        self.ylim = (self.global_min - buffer if self.global_min is not None else -1.1,
+                     self.global_max + buffer if self.global_max is not None else 1.1)
 
 
-        # Access channel status from state
-        channel_status = global_state.get_channel_status()
+        # Get the channels for the current page based on current_grid_indices
+        page_channels = current_grid_indices[start_idx:end_idx]
 
         for page_pos, channel_idx in enumerate(page_channels):
-            if channel_idx is None: # Skip placeholder channels if they somehow remain
-                continue
+            # channel_idx should not be None here because we filtered current_grid_indices
 
             ch_number = channel_idx + 1
             # Use time and scaled data from state
+            # create_channel_figure needs time, scaled_data slice, channel_idx, ylim
             figure = create_channel_figure(time_data, scaled_data[:, channel_idx], channel_idx, self.ylim)
             canvas = FigureCanvas(figure)
 
+            # Calculate row/col for the QGridLayout display
             ui_col = page_pos % self.channels_per_row
             ui_plot_row = (page_pos // self.channels_per_row) * 2
 
@@ -456,15 +380,22 @@ class ChannelSelector(QMainWindow):
             control_layout = QHBoxLayout()
             checkbox = QCheckBox(f"Ch {ch_number}", self)
             # Use channel status from state
-            checkbox.setChecked(channel_status[channel_idx])
+            if channel_idx < len(channel_status): # Safety check
+                 checkbox.setChecked(channel_status[channel_idx])
+            else:
+                 logger.warning(f"Channel index {channel_idx} out of bounds for channel_status list (len {len(channel_status)}).")
+                 checkbox.setEnabled(False) # Disable checkbox if status is unavailable
+
+            # Connect checkbox signal to handler method
             checkbox.stateChanged.connect(partial(self.handle_single_channel_update, channel_idx))
             control_layout.addWidget(checkbox)
-            self.checkboxes.append(checkbox)
+            self.checkboxes.append(checkbox) # Store reference to the checkbox
 
             view_button = QPushButton()
             view_button.setIcon(QIcon(":/resources/extend.png"))
             view_button.setToolTip("View Time Series")
             view_button.setFixedSize(30, 30)
+            # Connect button signal to view method
             view_button.clicked.connect(partial(self.view_channel_in_detail, channel_idx))
             control_layout.addWidget(view_button)
 
@@ -472,6 +403,7 @@ class ChannelSelector(QMainWindow):
             spectrum_button.setIcon(QIcon(":/resources/frequency.png"))
             spectrum_button.setToolTip("View Frequency Spectrum")
             spectrum_button.setFixedSize(30, 30)
+            # Connect button signal to view method
             spectrum_button.clicked.connect(partial(self.view_channel_spectrum, channel_idx))
             control_layout.addWidget(spectrum_button)
 
@@ -479,51 +411,81 @@ class ChannelSelector(QMainWindow):
             control_widget.setLayout(control_layout)
             self.grid_layout.addWidget(control_widget, ui_plot_row + 1, ui_col)
 
-        self.update_info_label()
-        # Use channel status from state
-        self.electrode_widget.update_all(channel_status, self.current_grid_indices)
-        self.electrode_widget.set_orientation_highlight(self.orientation, self.current_page)
+        self.update_info_label() # Update info label after refreshing display
+        # Update electrode widget highlights based on channel status and current grid indices
+        # electrode_widget needs channel_status and the list of indices being displayed/represented
+        self.electrode_widget.update_all(channel_status, self.grid_setup_handler.get_current_grid_indices())
+        # Update orientation highlight
+        self.electrode_widget.set_orientation_highlight(
+             self.grid_setup_handler.get_orientation(),
+             self.grid_setup_handler.get_current_page() # Use handler's current page
+        )
 
 
     def handle_single_channel_update(self, idx, state):
+        """Handles state change for a single channel checkbox."""
         # Update channel status in state (modifies list in place)
-        update_channel_status_single(global_state.get_channel_status(), idx, state)
-        self.update_info_label()
-        if idx in self.grid_channel_map:
-            grid_idx = self.grid_channel_map[idx]
-            self.electrode_widget.set_orientation_highlight(self.orientation, self.current_page)
+        channel_status = global_state.get_channel_status()
+        if idx < len(channel_status): # Safety check
+            update_channel_status_single(channel_status, idx, state)
+        else:
+             logger.warning(f"Attempted to update status for channel index {idx} which is out of bounds.")
+             return # Exit if index is invalid
+
+        self.update_info_label() # Update selected count label
+
+        # Update electrode widget highlight for the specific channel
+        grid_channel_map = self.grid_setup_handler.get_grid_channel_map()
+        if idx in grid_channel_map:
+            grid_idx = grid_channel_map[idx]
             # Use channel status from state
-            self.electrode_widget.update_electrode(grid_idx, global_state.get_channel_status()[idx])
+            self.electrode_widget.set_orientation_highlight(
+                self.grid_setup_handler.get_orientation(),
+                self.grid_setup_handler.get_current_page()
+            )
+            self.electrode_widget.update_electrode(grid_idx, channel_status[idx])
+        else:
+             logger.debug(f"Channel index {idx} not found in current grid map.")
+
 
     def prev_page(self):
-        if self.current_page > 0:
-            self.current_page -= 1
-            self.display_page()
+        """Navigates to the previous page."""
+        if self.grid_setup_handler.get_current_page() > 0:
+            self.grid_setup_handler.decrement_page() # Update page in handler
+            self.display_page() # Refresh display
 
     def next_page(self):
-        if self.current_page < self.total_pages - 1:
-            self.current_page += 1
-            self.display_page()
+        """Navigates to the next page."""
+        if self.grid_setup_handler.get_current_page() < self.grid_setup_handler.get_total_pages() - 1:
+            self.grid_setup_handler.increment_page() # Update page in handler
+            self.display_page() # Refresh display
 
     def view_channel_in_detail(self, channel_idx):
+        """Opens a detailed time series view for a channel."""
         # Use data from state
-        self.detail_window = ChannelDetailWindow(self, global_state.get_data(), channel_idx)
-        self.detail_window.show()
+        if global_state.get_data() is not None:
+             self.detail_window = ChannelDetailWindow(self, global_state.get_data(), channel_idx)
+             self.detail_window.show()
+        else:
+             logger.warning("Cannot view channel detail: No data loaded.")
+
 
     def update_info_label(self):
+        """Updates the information label in the header."""
         # Use channel status, file size, file name, channel count, and sampling frequency from state
         selected_count = count_selected_channels(global_state.get_channel_status())
         file_size = global_state.get_file_size()
-        file_size_kb = file_size / 1024 if file_size else 0
+        file_size_kb = file_size / 1024 if file_size is not None else 0
         info_text = (
             f"File: {global_state.get_file_name() if global_state.get_file_name() else 'None'} ({file_size_kb:.2f} KB)\n"
             f"Total Channels: {global_state.get_channel_count()}\n"
-            f"Sampling Frequency: {global_state.get_sampling_frequency() if global_state.get_sampling_frequency() else 'N/A'}\n"
+            f"Sampling Frequency: {global_state.get_sampling_frequency() if global_state.get_sampling_frequency() is not None else 'N/A'}\n"
             f"Selected Channels: {selected_count}"
         )
         self.info_label.setText(info_text)
 
     def keyPressEvent(self, event):
+        """Handles keyboard shortcuts for navigation."""
         key = event.key()
         if key == Qt.Key_Left:
             self.prev_page()
@@ -533,37 +495,45 @@ class ChannelSelector(QMainWindow):
             super().keyPressEvent(event)
 
     def view_channel_spectrum(self, channel_idx):
-        if not hasattr(self, 'channel_spectrum'):
-            self.channel_spectrum = ChannelSpectrum(self)
-        # ChannelSpectrum likely needs time, scaled_data, and sampling_frequency
-        # Ensure ChannelSpectrum uses getters from global_state internally, or pass them here if needed.
-        # Assuming ChannelSpectrum accesses state directly via global_state.
-        self.channel_spectrum.view_channel_spectrum(channel_idx)
+        """Opens a frequency spectrum view for a channel."""
+        # ChannelSpectrum likely needs data from global state (scaled_data, sampling_frequency, time)
+        # Ensure ChannelSpectrum uses getters from global_state internally or pass necessary data.
+        # Assuming ChannelSpectrum uses global_state directly.
+        if global_state.get_scaled_data() is not None and global_state.get_sampling_frequency() is not None:
+            if not hasattr(self, 'channel_spectrum'):
+                self.channel_spectrum = ChannelSpectrum(self)
+            self.channel_spectrum.view_channel_spectrum(channel_idx)
+        else:
+            logger.warning("Cannot view spectrum: Data or sampling frequency not available.")
+
 
     def openAppSettings(self):
+        """Opens the application settings dialog."""
+        # Settings dialog might need/set values from global state or other sources.
+        # It's instantiated in __init__ and managed here.
         if self.app_settings_dialog.exec_():
-            logger.debug(f"Settings Dialog closed and accepted")
+            logger.debug("Settings Dialog closed and accepted")
         else:
             logger.debug("Settings Dialog closed")
 
     def reset_to_start_state(self):
+        """Resets the application state and UI to the initial state."""
         # Reset the global state singleton
         global_state.reset()
 
-        # Reset local UI-specific variables
-        self.current_page = 0
-        self.total_pages = 0
-        self.current_grid_indices = []
-        self.grid_channel_map = {}
-        self.orientation = None
-        self.rows = 0
-        self.cols = 0
-        self.selected_grid = None
+        # Reset local UI-specific variables managed directly by ChannelSelector
+        self.checkboxes = []
         self.upper_quartile = None
         self.global_min = None
         self.global_max = None
         self.ylim = None
+        self.channel_flags = []
 
+
+        # Reset local variables managed by handlers (via resetting the handler instances or calling their reset)
+        # It's cleaner to reset the handlers themselves if they hold significant state
+        # Let's add a reset method to GridSetupHandler
+        self.grid_setup_handler = GridSetupHandler() # Re-instantiate or call a reset method
 
         self.info_label.setText("No file loaded. Use File -> Open... to load a file.")
         self.grid_label.setHidden(True)
@@ -571,8 +541,9 @@ class ChannelSelector(QMainWindow):
         self.select_all_checkbox.setChecked(False)
         self.electrode_widget.setHidden(True)
         self.setWindowTitle("hdsemg-select")
-        self.clear_grid_display()
+        self.clear_grid_display() # Clear the visual grid layout
 
-        self.amplidude_menu.setEnabled(False)
-        self.save_action.setEnabled(False)
-        self.change_grid_action.setEnabled(False)
+        # Disable menus/actions that require a file/grid loaded
+        if self.amplidude_menu: self.amplidude_menu.setEnabled(False)
+        if self.save_action: self.save_action.setEnabled(False)
+        if self.change_grid_action: self.change_grid_action.setEnabled(False)

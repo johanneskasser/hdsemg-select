@@ -2,6 +2,7 @@ from PyQt5.QtWidgets import QMainWindow, QVBoxLayout, QWidget
 from matplotlib.backends.backend_qt import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib import pyplot as plt
+from state.state import global_state
 
 from select_logic.data_processing import welchPS
 
@@ -11,8 +12,8 @@ class ChannelSpectrum:
         self.parent = parent
 
     def view_channel_spectrum(self, channel_idx):
-        y = self.parent.data[:, channel_idx]
-        fs = self.parent.sampling_frequency
+        y = global_state.get_data()[:, channel_idx]
+        fs = global_state.get_sampling_frequency()
         xf, yf = welchPS(y, fs)
 
         self.spectrum_window = QMainWindow(self.parent)
