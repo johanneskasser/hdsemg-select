@@ -17,6 +17,7 @@ from select_logic.auto_flagger import AutoFlagger
 from select_logic.channel_management import select_all_channels, update_channel_status_single, count_selected_channels
 from select_logic.plotting import create_channel_figure
 from settings.settings_dialog import SettingsDialog
+from settings.tabs.auto_flagger_settings_tab import validate_auto_flagger_settings
 from state.state import global_state
 from ui.channel_details import ChannelDetailWindow
 from ui.channel_label_dialog import ChannelLabelDialog
@@ -491,23 +492,19 @@ class ChannelSelector(QMainWindow):
         # Get settings from the settings dialog
         try:
             settings = {
-                'noise_freq_threshold': config.get(Settings.AUTO_FLAGGER_NOISE_FREQ_THRESHOLD),  # Implement this getter
-                'artifact_variance_threshold': config.get(Settings.AUTO_FLAGGER_ARTIFACT_VARIANCE_THRESHOLD),
-                # Implement this getter
-                'check_50hz': config.get(Settings.AUTO_FLAGGER_CHECK_50HZ),  # Implement this getter
-                'check_60hz': config.get(Settings.AUTO_FLAGGER_CHECK_60HZ),  # Implement this getter
-                'noise_freq_band_hz': config.get(Settings.AUTO_FLAGGER_NOISE_FREQ_BAND_HZ),  # Implement this getter
+                Settings.AUTO_FLAGGER_NOISE_FREQ_THRESHOLD.name: config.get(Settings.AUTO_FLAGGER_NOISE_FREQ_THRESHOLD),
+                Settings.AUTO_FLAGGER_ARTIFACT_VARIANCE_THRESHOLD.name: config.get(Settings.AUTO_FLAGGER_ARTIFACT_VARIANCE_THRESHOLD),
+                Settings.AUTO_FLAGGER_CHECK_50HZ.name: config.get(Settings.AUTO_FLAGGER_CHECK_50HZ),
+                Settings.AUTO_FLAGGER_CHECK_60HZ.name: config.get(Settings.AUTO_FLAGGER_CHECK_60HZ),
+                Settings.AUTO_FLAGGER_NOISE_FREQ_BAND_HZ.name: config.get(Settings.AUTO_FLAGGER_NOISE_FREQ_BAND_HZ),
             }
             # Basic validation that settings are available
-            if not all(key in settings for key in
-                       ['noise_freq_threshold', 'artifact_variance_threshold', 'check_50hz', 'check_60hz',
-                        'noise_freq_band_hz']):
-                raise ValueError("Incomplete settings from settings dialog.")
+            validate_auto_flagger_settings(settings)
 
         except Exception as e:
-            logger.error(f"Failed to retrieve auto-flagger settings: {e}", exc_info=True)
+            logger.error(f"Failed to retrieve auto-flagger settings: {e}")
             QMessageBox.critical(self, "Auto-Flagger Error",
-                                 f"Failed to retrieve settings. Please check application settings.\nError: {e}")
+                                 f"Failed to retrieve settings. Please check application settings under File -> Settings -> Automatic Channel Flagging Settings.\nError: {e}")
             return
 
         # Run the auto-flagger

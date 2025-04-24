@@ -1,6 +1,28 @@
 from PyQt5.QtWidgets import QDoubleSpinBox, QFormLayout, QGroupBox, QLabel, QVBoxLayout, QWidget, QCheckBox
 from config.config_enums import Settings
 
+def validate_auto_flagger_settings(settings: dict) -> None:
+    """
+    Raise ValueError when a required key is missing *or* its value is None.
+    """
+    required = [
+        Settings.AUTO_FLAGGER_NOISE_FREQ_THRESHOLD.name,
+        Settings.AUTO_FLAGGER_ARTIFACT_VARIANCE_THRESHOLD.name,
+        Settings.AUTO_FLAGGER_CHECK_50HZ.name,
+        Settings.AUTO_FLAGGER_CHECK_60HZ.name,
+        Settings.AUTO_FLAGGER_NOISE_FREQ_BAND_HZ.name,
+    ]
+
+    missing_or_none = [
+        k for k in required
+        if k not in settings or settings[k] is None
+    ]
+
+    if missing_or_none:
+        raise ValueError(
+            f"missing/None: {', '.join(missing_or_none)}"
+        )
+
 class AutoFlaggerSettingsTab(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
