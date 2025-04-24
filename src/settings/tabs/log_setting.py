@@ -1,3 +1,5 @@
+# settings/tabs/log_setting.py
+
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QHBoxLayout,
     QPushButton, QComboBox
@@ -6,63 +8,104 @@ from _log.log_config import logger
 import logging
 
 from config.config_enums import Settings
-from config.config_manager import config
 
-def init(parent):
-    """
-    Initialize the OpenHD-EMG settings tab.
-    """
-    layout = QVBoxLayout()
+class LoggingSettingsTab(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.initUI()
+        self._connect_signals() # Connect signals after UI is built
 
-    info_label = QLabel("Set the logging level of the application.")
-    layout.addWidget(info_label)
 
-    # Horizontal layout row for the log level selection
-    h_layout = QHBoxLayout()
-    label = QLabel("Log Level:")
-    h_layout.addWidget(label)
+    def initUI(self):
+        """
+        Initializes the UI elements for the logging settings tab.
+        """
+        layout = QVBoxLayout(self) # Use 'self' as the parent for the layout
 
-    # Dropdown for selecting the log level
-    log_level_dropdown = QComboBox()
-    log_level_dropdown.addItems(["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"])
-    h_layout.addWidget(log_level_dropdown)
+        info_label = QLabel("Set the logging level of the application.")
+        layout.addWidget(info_label)
 
-    # Button to confirm the new log level
-    set_level_button = QPushButton("Apply")
-    h_layout.addWidget(set_level_button)
+        # Horizontal layout row for the log level selection
+        h_layout = QHBoxLayout()
+        label = QLabel("Log Level:")
+        h_layout.addWidget(label)
 
-    # Label to display the current log level
-    current_log_level_label = QLabel()
-    current_log_level_label.setText(f"Current: <b>{logging.getLevelName(logger.getEffectiveLevel())}</b>")
-    layout.addWidget(current_log_level_label)
+        # Dropdown for selecting the log level
+        self.log_level_dropdown = QComboBox()
+        # Ensure the items match logging levels
+        self.log_level_dropdown.addItems(["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"])
+        h_layout.addWidget(self.log_level_dropdown)
 
-    layout.addLayout(h_layout)
+        # Button to confirm the new log level
+        self.set_level_button = QPushButton("Apply")
+        h_layout.addWidget(self.set_level_button)
 
-    # Function to set the new log level
-    def set_log_level(selected_text=None):
-        if selected_text is None or type(selected_text) != str:
-            # Retrieve text (like "DEBUG") from combo box
-            selected_text = log_level_dropdown.currentText()
-            # Convert it to the numeric log level
+        # Label to display the current log level
+        self.current_log_level_label = QLabel()
+        # Initial text will be set by loadSettings
+        # self.current_log_level_label.setText(f"Current: <b>{logging.getLevelName(logger.getEffectiveLevel())}</b>") # Removed, loadSettings will handle
+        layout.addLayout(h_layout)
 
-        new_level = getattr(logging, selected_text)
+        layout.addWidget(self.current_log_level_label) # Add label below the HBox
 
-        # Set the logger's level
-        logger.setLevel(new_level)
-        # Optionally update handlers
-        for handler in logger.handlers:
-            handler.setLevel(new_level)
+        layout.addStretch(1) # Push content to top
 
-        # Update the label to reflect new level
-        current_log_level_label.setText(f"Current: <b>{selected_text}</b>")
-        log_level_dropdown.setCurrentText(selected_text)
-        config.set(Settings.LOG_LEVEL, selected_text)
 
-    # Connect button click to set_log_level function
-    set_level_button.clicked.connect(set_log_level)
+    def _connect_signals(self):
+        """Connects signals to slots."""
+        # Connect button click to the apply method
+        self.set_level_button.clicked.connect(self._apply_log_level)
 
-    settings_level = config.get(Settings.LOG_LEVEL)
-    if settings_level is not None and type(settings_level) is not bool:
-        set_log_level(settings_level)
 
-    return layout
+    def _apply_log_level(self):
+        """Applies the selected log level to the logger and updates the label."""
+        selected_text = self.log_level_dropdown.currentText()
+        self._set_logger_level(selected_text)
+
+
+    def _set_logger_level(self, level_text: str):
+        """Sets the logger and handler levels."""
+        try:
+            new_level = getattr(logging, level_text.upper()) # Get level from string
+            logger.setLevel(new_level)
+            # Optionally update handlers - depends on your logging setup
+            for handler in logger.handlers:
+                 handler.setLevel(new_level)
+
+            effective_level_name = logging.getLevelName(logger.getEffectiveLevel())
+            self.current_log_level_label.setText(f"Current: <b>{effective_level_name}</b>")
+            # Ensure dropdown reflects the level that was just set (useful if loading sets it)
+            index = self.log_level_dropdown.findText(level_text.upper())
+            if index != -1:
+                self.log_level_dropdown.setCurrentIndex(index)
+
+        except AttributeError:
+            # Handle cases where selected_text is not a valid level name
+            print(f"Warning: Invalid log level selected: {level_text}")
+            pass # Or log an error
+
+
+    def loadSettings(self, config_manager) -> None:
+        """Loads logging settings from ConfigManager and updates UI/logger."""
+        # Get the default level from the *current* logger setup if not in config
+        default_level_name = logging.getLevelName(logger.getEffectiveLevel())
+        saved_level_text = config_manager.get(Settings.LOG_LEVEL, default_level_name)
+
+        # Set the dropdown to the saved level
+        index = self.log_level_dropdown.findText(saved_level_text.upper())
+        if index != -1:
+            self.log_level_dropdown.setCurrentIndex(index)
+        else:
+             # If saved level is invalid, fall back to default and set dropdown
+             self.log_level_dropdown.setCurrentText(default_level_name.upper())
+             saved_level_text = default_level_name # Use default for setting logger
+
+        # Apply the loaded/default level to the actual logger
+        self._set_logger_level(saved_level_text)
+
+
+    def saveSettings(self, config_manager) -> None:
+        """Saves logging settings from UI elements to ConfigManager."""
+        # Save the current selection in the dropdown
+        selected_level_text = self.log_level_dropdown.currentText()
+        config_manager.set(Settings.LOG_LEVEL, selected_level_text)

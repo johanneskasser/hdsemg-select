@@ -1,3 +1,5 @@
+from _log.log_config import logger
+
 class State:
     _instance = None
 
@@ -19,6 +21,9 @@ class State:
         self._scaled_data = None
         self._description = None
         self._sampling_frequency = None
+        self._channel_labels = {}
+        self._input_file = None
+        self._output_file = None
 
 
 
@@ -56,6 +61,9 @@ class State:
     def get_sampling_frequency(self):
         return self._sampling_frequency
 
+    def get_channel_labels(self):
+        return self._channel_labels
+
     # Setters
     def set_channel_status(self, value: list):
         self._channel_status = value
@@ -89,5 +97,33 @@ class State:
 
     def set_sampling_frequency(self, value):
         self._sampling_frequency = value
+
+    def get_input_file(self):
+        return self._input_file
+
+    def set_input_file(self, value):
+        self._input_file = value
+
+    def get_output_file(self):
+        return self._output_file
+
+    def set_output_file(self, value):
+        self._output_file = value
+
+    # New Method to update labels for a specific channel
+    def update_channel_labels(self, channel_idx: int, labels: list):
+        if not isinstance(labels, list):
+            raise ValueError("Labels must be a list")
+        if channel_idx < 0 or channel_idx >= self._channel_count:
+            # Handle potential out of bounds if channel_count is zero or incorrect
+            if self._channel_count > 0:
+                logger.warning(
+                    f"Attempted to update labels for channel index {channel_idx}, but channel count is {self._channel_count}. Ignoring.")
+                return
+
+        if labels:
+            self._channel_labels[channel_idx] = labels
+        elif channel_idx in self._channel_labels:
+            del self._channel_labels[channel_idx]
 
 global_state = State()
