@@ -36,6 +36,8 @@ class ChannelSelector(QMainWindow):
         self.setWindowTitle("hdsemg-select")
         self.setWindowIcon(QIcon(":/resources/icon.png"))
         self.setGeometry(100, 100, 1200, 800)
+        self.setFocusPolicy(Qt.StrongFocus)
+
         self.app_settings_dialog = SettingsDialog()
 
         # Save startup parameters (if any)
@@ -435,16 +437,6 @@ class ChannelSelector(QMainWindow):
         )
         self.info_label.setText(info_text)
 
-    def keyPressEvent(self, event):
-        """Handles keyboard shortcuts for navigation."""
-        key = event.key()
-        if key == Qt.Key_Left:
-            self.prev_page()
-        elif event.key() == Qt.Key_Right:
-            self.next_page()
-        else:
-            super().keyPressEvent(event)
-
     def view_channel_spectrum(self, channel_idx):
         """Opens a frequency spectrum view for a channel."""
         if global_state.get_scaled_data() is not None and global_state.get_sampling_frequency() is not None:
@@ -472,13 +464,6 @@ class ChannelSelector(QMainWindow):
             # Update the labels in the global state
             global_state.update_channel_labels(channel_idx, new_labels)
             logger.info(f"Labels updated for Channel {channel_idx + 1}: {new_labels}")
-
-            # Update the labels display ONLY for the affected widget on the current page
-            #for widget in self.channel_widgets:
-             #   if widget.channel_idx == channel_idx:
-              #      widget.update_labels_display(new_labels)
-               #     widget.update()
-                #    break  # Found the widget, can stop searching
 
     def run_auto_flagger(self):
         """Triggers the automatic suggestion of artifact flags."""

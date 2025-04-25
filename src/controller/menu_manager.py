@@ -1,6 +1,7 @@
 # menu_manager.py
 from functools import partial
 
+from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QKeySequence
 from PyQt5.QtWidgets import QAction, QMenu, QLabel  # Import QMenu
 
@@ -27,6 +28,7 @@ class MenuManager:
         file_menu.setObjectName("File")
         grid_menu.setObjectName("Grid")
         auto_select_menu.setObjectName("Automatic Selection")
+        self._init_arrow_key_navigation(parent_window)
 
     def _create_file_menu(self, menubar, parent_window) -> QMenu:  # Added return type hint
         file_menu = menubar.addMenu("File")
@@ -125,6 +127,24 @@ class MenuManager:
             grid_info=grid_info,
             channel_labels=channel_labels  # Pass the collected labels
         )
+
+    def _init_arrow_key_navigation(self, parent_window):
+        """
+        Initializes arrow key navigation using QActions.
+        These actions work as global shortcuts for the main window.
+        """
+        # Action for the left arrow key
+        self.go_left_action = QAction('Go Left', parent_window)
+        # Use Qt.Key_Left for the shortcut
+        self.go_left_action.setShortcut(QKeySequence(Qt.Key_Left))
+        self.go_left_action.triggered.connect(parent_window.prev_page)
+        parent_window.addAction(self.go_left_action)
+
+        self.go_right_action = QAction('Go Right', parent_window)
+        self.go_right_action.setShortcut(QKeySequence(Qt.Key_Right))
+        self.go_right_action.triggered.connect(parent_window.next_page)
+        parent_window.addAction(self.go_right_action)
+
 
     # Methods to access the created actions/menus if needed by the parent window
     def get_save_action(self):
