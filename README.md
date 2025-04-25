@@ -1,3 +1,4 @@
+
 <div align="center">
 <br>
   <img src="src/resources/icon.png" alt="App Icon" width="100" height="100"><br>
@@ -8,8 +9,7 @@
 ---
 
 A graphical user interface (GUI) application for selecting and analyzing HDsEMG channels from `.mat` files. This tool
-helps identify and exclude faulty channels (e.g., due to electrode misplacement or corrosion) from HDsEMG recordings,
-enabling more accurate and efficient analysis.
+helps identify and exclude faulty channels (e.g., due to electrode misplacement or corrosion) and **automatically flag potential artifacts like ECG contamination, power line noise (50/60Hz), or general signal anomalies**. This enables more accurate and efficient analysis by providing suggestions for channels or segments needing review.
 
 ---
 
@@ -37,8 +37,9 @@ enabling more accurate and efficient analysis.
     - Detailed viewer with time-domain and frequency spectrum plots.
 - ✅ Manual and automatic channel selection.
     - 📈 Amplitude-based selection with configurable thresholds.
-    - 📊 Frequency-based analysis (planned).
-- 💾 Save selections in structured `.json` files and automatically generate cleaned `.mat` files.
+- ⚡️ **Automatic Artifact Flagging:** Identify potential ECG contamination, power line noise (50Hz/60Hz), or general artifacts based on configurable thresholds (Frequency Threshold, Variance Threshold, Frequency Band). Suggested flags are added as channel labels.
+- 📊 Frequency-based analysis (planned).
+- 💾 Save selections and **artifact flags** in structured `.json` files and automatically generate cleaned `.mat` files (excluding selected/flagged channels if desired).
 - 🖥 Dashboard with file metadata: filename, number of channels, sampling rate, size, selection count.
 - ⏱ Efficient loading with warnings and abort option for large data.
 
@@ -46,13 +47,25 @@ enabling more accurate and efficient analysis.
 
 ## Screenshots
 
-| Dashboard                                 | Electrode Widget                                        |
-|-------------------------------------------|---------------------------------------------------------|
-| ![Dashboard](doc/resources/dashboard.png) | ![Electrode Widget](doc/resources/electrode_widget.png) |
+### Dashboard
+![Dashboard](doc/resources/dashboard.png)
+_Overview of the application dashboard with loaded file metadata._
 
-| Detail Viewer                                           | Frequency Spectrum                                               | Raw Data Viewer                                                     |
-|---------------------------------------------------------|------------------------------------------------------------------|---------------------------------------------------------------------|
-| ![Detail Viewer](doc/resources/channel_detail_view.png) | ![Frequency Spectrum](doc/resources/frequency_spectrum_plot.png) | ![Raw Data Viewer](doc/resources/manual_grid_raw_channels_view.png) |
+### Electrode Widget
+![Electrode Widget](doc/resources/electrode_widget.png)
+_Visualize location of channels on the electrode grid._
+
+### Detail Viewer
+![Detail Viewer](doc/resources/channel_detail_view.png)
+_Detailed view of a single channel's time-domain signal._
+
+### Frequency Spectrum
+![Frequency Spectrum](doc/resources/frequency_spectrum_plot.png)
+_Analyze the frequency content of a selected channel._
+
+### Channel Labels / Flags
+![Channel Labels (Example)](doc/resources/channel_label_dialog.png)
+_Dialog to add/remove Channel Labels._
 
 ---
 
@@ -60,7 +73,7 @@ enabling more accurate and efficient analysis.
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/johanneskasser/hdsemg-select.git
+   git clone [https://github.com/johanneskasser/hdsemg-select.git](https://github.com/johanneskasser/hdsemg-select.git)
    cd hdsemg-select
 
 2. **Create a virtual environment (optional but recommended):**
@@ -68,7 +81,7 @@ enabling more accurate and efficient analysis.
    # if you prefer python venv
    python -m venv venv
    source venv/bin/activate  # On Windows use venv\Scripts\activate
-   
+
     # or if you prefer conda
    conda env create -f environment.yml
    ```
@@ -78,7 +91,7 @@ enabling more accurate and efficient analysis.
    # only if you are using python venv
    pip install -r requirements.txt
    ```
-   
+
 4. **Compile the resource file:**
     ```bash
     cd ./src
@@ -96,7 +109,7 @@ enabling more accurate and efficient analysis.
 
 ### Load a File
 
-- Click **"Load File"** and select a `.mat` file.
+- Click **"File" -> "Open..."** and select a `.mat` file.
 - The app attempts to auto-detect the grid based on inter-electrode distance.
 - Alternatively, configure the grid manually.
 
@@ -109,42 +122,82 @@ enabling more accurate and efficient analysis.
 ### Select Channels
 
 - Mark individual channels as "good" using checkboxes.
-- Use **Select All** to toggle all channels.
-- Automatic selection available (Amplitude-based).
+- Use **Select All** from the "Automatic Selection" menu to toggle all channels.
+- Automatic selection available (Amplitude-based) from the "Automatic Selection" -> "Amplitude Based" menu.
 
-### Save Selection
+### Automatic Artifact Flagging
 
-- Click **"Save Selection"** to export selection to `.json`.
+1.  **Configure Settings:** Go to **"File" -> "Settings"**. In the Settings dialog, select the **"Automatic Channel Flagging Settings"** tab. Adjust the thresholds and checks (e.g., for 50Hz/60Hz noise) according to your data characteristics and click **"OK"** to save.
+2.  **Run Flagger:** After loading a `.mat` file, go to the **"Automatic Selection"** menu and click **"Suggest Artifact Flags..."**.
+3.  The application will process the channels based on your saved settings and add suggested flags (like "ECG", "Noise", "Artifact") as labels to the corresponding channels.
+4.  Review the suggested flags on the channel widgets and in the detailed view. You can manually edit or remove these labels if needed.
+
+### Save Selection and Flags
+
+- Click **"File" -> "Save Selection"** to export your current channel selection status and any associated labels/flags to `.json` and generate a cleaned `.mat` file.
 
 ---
 
 ## File Format
 
-A saved `.json` file includes:
+A saved `.json` file includes the overall selection status and detailed information for each channel, including any assigned labels:
 
 ```json
 {
   "filename": "example.mat",
+  "total_channels_summary": [
+    {
+      "channel_index": 0,
+      "channel_number": 1,
+      "selected": true,
+      "description": "Grid1_1x1",
+      "labels": []
+    },
+     {
+      "channel_index": 1,
+      "channel_number": 2,
+      "selected": false,
+      "description": "Grid1_1x2",
+      "labels": ["ECG", "Artifact"]
+    },
+    {
+      "channel_index": 15,
+      "channel_number": 16,
+      "selected": true,
+      "description": "Grid1_4x4",
+      "labels": ["Noise_60Hz"]
+    }
+    ...
+  ],
   "grids": [
     {
-      "columns": 4,
+      "grid_key": "Grid1",
       "rows": 4,
+      "columns": 4,
       "inter_electrode_distance_mm": 10,
       "channels": [
         {
-          "channel": 1,
-          "selected": true
+          "channel_index": 0,
+          "channel_number": 1,
+          "selected": true,
+          "description": "Grid1_1x1",
+          "labels": []
         },
         {
-          "channel": 2,
-          "selected": false
+          "channel_index": 1,
+          "channel_number": 2,
+          "selected": false,
+          "description": "Grid1_1x2",
+          "labels": ["ECG", "Artifact"]
         },
         ...
       ]
     }
+    ...
   ]
 }
 ```
+*(Note: Added `total_channels_summary` based on your `save_selection_to_json` code, and updated the `channels` structure within `grids` to match)*
 
 ---
 
