@@ -1,11 +1,17 @@
+from PyQt5.QtCore import QObject
+from PyQt5.QtCore import pyqtSignal
+
 from _log.log_config import logger
 
-class State:
+class State(QObject):
+    channel_labels_changed = pyqtSignal(int, list)
+
     _instance = None
 
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
+            QObject.__init__(cls._instance)      # initialise QObject
             cls._instance.reset()
         return cls._instance
 
@@ -61,8 +67,16 @@ class State:
     def get_sampling_frequency(self):
         return self._sampling_frequency
 
-    def get_channel_labels(self):
-        return self._channel_labels
+    def get_channel_labels(self, idx: int = None):
+        if idx is None:
+            return self._channel_labels
+        else:
+            if idx in self._channel_labels:
+                return self._channel_labels[idx]
+            else:
+                logger.debug(f"Channel index {idx} not found in channel labels. Creating an empty list.")
+                self._channel_labels[idx] = []
+                return self._channel_labels[idx]
 
     # Setters
     def set_channel_status(self, value: list):
@@ -125,5 +139,8 @@ class State:
             self._channel_labels[channel_idx] = labels
         elif channel_idx in self._channel_labels:
             del self._channel_labels[channel_idx]
+
+        # Emit signal to notify that channel labels have changed
+        self.channel_labels_changed.emit(channel_idx, labels)
 
 global_state = State()

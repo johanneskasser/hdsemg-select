@@ -474,11 +474,11 @@ class ChannelSelector(QMainWindow):
             logger.info(f"Labels updated for Channel {channel_idx + 1}: {new_labels}")
 
             # Update the labels display ONLY for the affected widget on the current page
-            for widget in self.channel_widgets:
-                if widget.channel_idx == channel_idx:
-                    widget.update_labels_display(new_labels)
-                    widget.update()
-                    break  # Found the widget, can stop searching
+            #for widget in self.channel_widgets:
+             #   if widget.channel_idx == channel_idx:
+              #      widget.update_labels_display(new_labels)
+               #     widget.update()
+                #    break  # Found the widget, can stop searching
 
     def run_auto_flagger(self):
         """Triggers the automatic suggestion of artifact flags."""

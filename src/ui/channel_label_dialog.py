@@ -57,13 +57,6 @@ class ChannelLabelDialog(QDialog):
         # Ensure labels are unique and sorted for consistency
         return sorted(list(set(self.selected_labels)))
 
-    def accept(self):
-        """
-        Accept the dialog and emit the labels_changed signal.
-        """
-        self.labels_changed.emit(self.channel_idx, self.get_selected_labels())
-        super().accept()
-
 # Need functools.partial and Qt for the checkbox connection
 from functools import partial
 from PyQt5.QtCore import Qt, pyqtSignal

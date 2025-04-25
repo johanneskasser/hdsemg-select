@@ -6,6 +6,7 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QChe
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure  # Import Figure
 from PyQt5.QtCore import pyqtSignal
+from state.state import global_state
 
 from ui.label_bean_widget import LabelBeanWidget
 
@@ -92,6 +93,9 @@ class ChannelWidget(QWidget):
         self.spectrum_button.clicked.connect(partial(self.view_spectrum_requested.emit, self.channel_idx))
         self.buttons_h_layout.addWidget(self.spectrum_button)
 
+        global_state.channel_labels_changed.connect(self._on_label_changed)
+
+
     def _draw_plot(self):
         """Draws the time series plot on the canvas."""
         if self.time_data is None or self.scaled_data_slice is None:
@@ -155,3 +159,9 @@ class ChannelWidget(QWidget):
         self.checkbox.blockSignals(True)
         self.checkbox.setChecked(status)
         self.checkbox.blockSignals(False)
+
+    def _on_label_changed(self, ch_idx: int, new_labels: list):
+        """Handles the signal emitted when labels are changed."""
+        if ch_idx == self.channel_idx:
+            self.update_labels_display(new_labels)
+            self.update()

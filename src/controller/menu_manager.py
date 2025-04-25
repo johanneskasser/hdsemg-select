@@ -58,6 +58,7 @@ class MenuManager:
         self.change_grid_action.setShortcut(QKeySequence("Ctrl+C"))
         self.change_grid_action.setStatusTip("Change the currently selected grid or orientation")
         self.change_grid_action.setEnabled(False)
+        self.change_grid_action.triggered.connect(parent_window.select_grid_and_orientation)
         grid_menu.addAction(self.change_grid_action)
 
         return grid_menu  # Return the created menu
@@ -70,8 +71,6 @@ class MenuManager:
 
         start_action = QAction("Start", parent_window)
         start_action.setStatusTip("Start automatic channel selection based on thresholds")
-        # This action likely needs access to global_state data and settings
-        # Assuming automatic_selection.perform_selection gets necessary data/settings itself or via parent
         start_action.triggered.connect(parent_window.automatic_selection.perform_selection)
         self.amplitude_menu.addAction(start_action)
 
