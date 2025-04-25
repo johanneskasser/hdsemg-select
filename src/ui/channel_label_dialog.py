@@ -1,7 +1,17 @@
 # ui/channel_label_dialog.py
 from PyQt5.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QDialogButtonBox, QCheckBox
-
 class ChannelLabelDialog(QDialog):
+    """
+        A dialog for selecting labels for a specific channel.
+
+        Attributes:
+            channel_idx (int): Index of the channel for which labels are being selected.
+            current_labels (list): List of currently selected labels.
+            selected_labels (list): List of labels selected by the user.
+            available_labels (list): List of all available labels.
+            checkboxes (dict): Dictionary storing checkboxes for each label.
+        """
+
     def __init__(self, channel_idx: int, current_labels: list, parent=None):
         super().__init__(parent)
         self.channel_idx = channel_idx
@@ -47,6 +57,13 @@ class ChannelLabelDialog(QDialog):
         # Ensure labels are unique and sorted for consistency
         return sorted(list(set(self.selected_labels)))
 
+    def accept(self):
+        """
+        Accept the dialog and emit the labels_changed signal.
+        """
+        self.labels_changed.emit(self.channel_idx, self.get_selected_labels())
+        super().accept()
+
 # Need functools.partial and Qt for the checkbox connection
 from functools import partial
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, pyqtSignal

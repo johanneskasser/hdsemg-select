@@ -477,6 +477,7 @@ class ChannelSelector(QMainWindow):
             for widget in self.channel_widgets:
                 if widget.channel_idx == channel_idx:
                     widget.update_labels_display(new_labels)
+                    widget.update()
                     break  # Found the widget, can stop searching
 
     def run_auto_flagger(self):

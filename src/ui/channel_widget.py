@@ -61,7 +61,7 @@ class ChannelWidget(QWidget):
         self.add_label_button.clicked.connect(partial(self.edit_labels_requested.emit, self.channel_idx))
         self.labels_h_layout.addWidget(self.add_label_button)
 
-        self. update_labels_display(initial_labels)  # Display initial labels
+        self.update_labels_display(initial_labels)  # Display initial labels
         # --- Buttons Layout ---
         self.buttons_h_layout = QHBoxLayout()  # Horizontal layout for checkbox and view buttons
         self.buttons_h_layout.setContentsMargins(0, 0, 0, 0)
@@ -144,7 +144,6 @@ class ChannelWidget(QWidget):
             self.labels_h_layout.insertWidget(self.labels_h_layout.count() - 2, bean)
             self.label_widgets.append(bean)
 
-        # Optional: Update tooltip of the '+' button to show current labels
         if labels:
             self.add_label_button.setToolTip(f"Edit labels for Channel {self.channel_number}:\n" + ", ".join(labels))
         else:
