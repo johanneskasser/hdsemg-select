@@ -1,0 +1,141 @@
+# grid_setup_handler.py
+import numpy as np
+from PyQt5.QtWidgets import QMessageBox
+from _log.log_config import logger
+from state.state import global_state # Import global state
+
+class GridSetupHandler:
+    def __init__(self):
+        # Local variables derived from grid info and selection
+        self.current_grid_indices = []
+        self.grid_channel_map = {}
+        self.orientation = None
+        self.rows = 0
+        self.cols = 0
+        self.items_per_page = 16 # Default, will be updated based on grid/orientation
+        self.total_pages = 0
+        self.selected_grid = None
+
+    def apply_selection(self, selected_grid, orientation, parent_window):
+        """
+        Applies the selected grid and orientation, calculates display parameters.
+        Returns True on success, False on failure. Updates self attributes.
+        """
+        if not global_state.get_grid_info():
+            logger.warning("apply_selection called without grid_info in state.")
+            return False
+
+        # Access grid info from state
+        grid_info = global_state.get_grid_info()
+
+        if selected_grid not in grid_info:
+             logger.error(f"Selected grid '{selected_grid}' not found in grid_info.")
+             QMessageBox.critical(parent_window, "Grid Error", f"Selected grid '{selected_grid}' not found.")
+             return False
+
+        self.selected_grid = selected_grid
+        self.orientation = orientation
+
+        self.rows = grid_info[self.selected_grid]["rows"]
+        self.cols = grid_info[self.selected_grid]["cols"]
+        indices = grid_info[self.selected_grid]["indices"]
+
+
+        # Validate the grid shape
+        expected_electrodes = grid_info[self.selected_grid]["electrodes"]
+        if len(indices) != expected_electrodes:
+             logger.error(f"Grid shape mismatch for '{selected_grid}': Expected {expected_electrodes} indices, got {len(indices)}.")
+             QMessageBox.critical(
+                 parent_window, "Grid Error",
+                 f"Grid shape mismatch: Configuration error for '{selected_grid}'. Expected {expected_electrodes} channels, but file description indicates {len(indices)}."
+             )
+             return False
+
+        # Adjust indices if electrodes are less than rows * cols
+        max_channels_in_shape = self.rows * self.cols
+        if expected_electrodes < max_channels_in_shape:
+            logger.debug(
+                f"Grid '{self.selected_grid}' has {expected_electrodes} channels but shape is {self.rows}x{self.cols}={max_channels_in_shape}. Filling the last with None.")
+            # Make a copy before extending to avoid modifying the list within grid_info
+            indices_padded = list(indices) + [None] * (max_channels_in_shape - len(indices))
+        else:
+            indices_padded = indices # Use original indices if no padding needed
+
+        try:
+            full_grid_array = np.array(indices_padded).reshape(self.rows, self.cols)
+        except ValueError as e:
+             logger.error(f"Failed to reshape grid indices for '{selected_grid}': {e}", exc_info=True)
+             QMessageBox.critical(
+                 parent_window, "Grid Error",
+                 f"Failed to reshape grid indices for '{selected_grid}'. Check grid dimensions and indices.\nError: {e}"
+             )
+             return False
+
+
+        if self.orientation == "perpendicular":
+            self.current_grid_indices = full_grid_array.flatten(order='C').tolist()
+            self.items_per_page = self.cols # Items per page depends on display orientation
+        else: # 'parallel' or default
+            self.current_grid_indices = full_grid_array.flatten(order='F').tolist()
+            self.items_per_page = self.rows # Items per page depends on display orientation
+
+        self.current_grid_indices = [ch for ch in self.current_grid_indices if ch is not None]
+
+
+        if self.orientation == "perpendicular":
+            full_flattened_indices = full_grid_array.flatten(order='C').tolist()
+        else: # 'parallel' or default
+            full_flattened_indices = full_grid_array.flatten(order='F').tolist()
+
+        self.grid_channel_map = {ch_idx: i for i, ch_idx in enumerate(full_flattened_indices) if ch_idx is not None}
+        self.current_grid_indices = [ch for ch in full_flattened_indices if ch is not None]
+
+
+        self.total_pages = int(np.ceil(len(self.current_grid_indices) / self.items_per_page))
+        self.current_page = 0 # Reset page on grid change
+
+        logger.debug(f"Applied grid '{selected_grid}' ({self.rows}x{self.cols}, {self.orientation})")
+        logger.debug(f"Items per page: {self.items_per_page}")
+        logger.debug(f"Total pages: {self.total_pages}")
+        logger.debug(f"Current grid indices (first 20): {self.current_grid_indices[:20]}")
+        # logger.debug(f"Grid channel map (first 20): {list(self.grid_channel_map.items())[:20]}") # Can be large
+
+        return True # Indicate success
+
+    def get_current_grid_indices(self):
+        return self.current_grid_indices
+
+    def get_grid_channel_map(self):
+        return self.grid_channel_map
+
+    def get_orientation(self):
+        return self.orientation
+
+    def get_rows(self):
+        return self.rows
+
+    def get_cols(self):
+        return self.cols
+
+    def get_items_per_page(self):
+        return self.items_per_page
+
+    def get_total_pages(self):
+        return self.total_pages
+
+    def get_selected_grid(self):
+        return self.selected_grid
+
+    def get_current_page(self):
+         return self.current_page
+
+    def set_current_page(self, page_num):
+         self.current_page = page_num
+
+    def increment_page(self):
+         if self.current_page < self.total_pages - 1:
+              self.current_page += 1
+
+    def decrement_page(self):
+         if self.current_page > 0:
+              self.current_page -= 1
