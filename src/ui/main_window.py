@@ -98,7 +98,7 @@ class ChannelSelector(QMainWindow):
         self.layout.addLayout(self.pagination_layout)
 
         self.prev_button = QPushButton()
-        self.prev_button.setToolTip("Previous")
+        self.prev_button.setToolTip("Previous (Left Arrow)")
         self.prev_button.setIcon(self.style().standardIcon(QStyle.SP_ArrowBack))
         self.prev_button.clicked.connect(self.prev_page)
         self.pagination_layout.addWidget(self.prev_button)
@@ -108,7 +108,7 @@ class ChannelSelector(QMainWindow):
         self.pagination_layout.addWidget(self.page_label)
 
         self.next_button = QPushButton()
-        self.next_button.setToolTip("Next")
+        self.next_button.setToolTip("Next (Right Arrow)")
         self.next_button.setIcon(self.style().standardIcon(QStyle.SP_ArrowForward))
         self.next_button.clicked.connect(self.next_page)
         self.pagination_layout.addWidget(self.next_button)
