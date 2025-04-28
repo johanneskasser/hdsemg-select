@@ -21,11 +21,13 @@ def setup_logging():
                 'stream': 'ext://sys.stdout'
             },
             'file': {
-                'class': 'logging.FileHandler',
+                'class': 'logging.handlers.RotatingFileHandler',
                 'formatter': 'standard',
                 'level': 'DEBUG',
                 'filename': 'hdsemg-select.log',
-                'mode': 'a'
+                'mode': 'a',
+                'maxBytes': 1_000_000,  # 1 MB
+                'backupCount': 3  # Keep 3 backup files
             }
         },
         'loggers': {
