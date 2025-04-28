@@ -190,7 +190,12 @@ def save_selection(parent, output_file, data, time, description, sampling_freque
             QMessageBox.Ok
          )
 
-def save_selection_to_json(file_path, file_name, grid_info, channel_status, description, channel_labels):
+def save_selection_to_json(file_path,
+                           file_name,
+                           grid_info,
+                           channel_status,
+                           description,
+                           channel_labels):
     """
     Saves the selection information, including channel labels, to a JSON file.
 
@@ -202,91 +207,112 @@ def save_selection_to_json(file_path, file_name, grid_info, channel_status, desc
     :param channel_labels: Dictionary of channel indices to a list of labels: {channel_idx: ['label1', 'label2']}.
     """
 
-    grids = []
-    # Ensure grid_info is a dictionary before iterating
+    grids_out = []
+
+    #  Build the per-grid structures
     if isinstance(grid_info, dict):
         for grid_key, info in grid_info.items():
-            # Basic validation for grid info structure
-            if not all(key in info for key in ["rows", "cols", "ied_mm", "indices"]):
-                 logger.debug(f"Warning: Skipping grid '{grid_key}' due to missing keys in grid_info.")
-                 continue
 
-            rows = info["rows"]
-            cols = info["cols"]
-            # Use get with default for safety
-            scale = info.get("ied_mm", None)
-            indices = info["indices"]
+            # -------- sanity check -------------------------------------------------
+            must_have = {"rows", "cols", "ied_mm", "indices", "reference_signals"}
+            if not must_have.issubset(info):
+                logger.debug(
+                    "Skipping grid %s: missing keys (%s)",
+                    grid_key, must_have - set(info)
+                )
+                continue
 
-            channels_for_grid = []
-            # Ensure indices is iterable and channel_status/description are lists/arrays
+            rows, cols = info["rows"], info["cols"]
+            scale      = info.get("ied_mm")      # None accepted
+            indices    = info["indices"]         # list/ndarray
+            ref_list   = info["reference_signals"]  # list of {'index': int, 'name': str}
+
+            #  ordinary channels
+            ch_objects = []
             if isinstance(indices, (list, np.ndarray)):
                 for ch_idx in indices:
-                    # Skip None placeholders if they are in indices
-                    if ch_idx is None:
+                    if ch_idx is None:        # placeholder in some grids
                         continue
 
-                    # Ensure channel index is valid for status, description, and labels
-                    is_selected = channel_status[ch_idx] if isinstance(channel_status, (list, np.ndarray)) and ch_idx < len(channel_status) else False
-                    # Access description safely - assuming description is an array of strings or similar
-                    ch_description = description[ch_idx, 0].item() if (
-                         isinstance(description, np.ndarray) and description.ndim > 1 and
-                         ch_idx < description.shape[0] and description.shape[1] > 0
-                    ) else f"Channel {ch_idx + 1}" # Default description if unavailable
+                    is_selected  = bool(channel_status[ch_idx])
 
-                    # Get labels for the channel, default to empty list if none exist
-                    # Use get with default for safety
-                    ch_labels = channel_labels.get(ch_idx, []) if isinstance(channel_labels, dict) else []
+                    # description stored as numpy byte/string?
+                    if (isinstance(description, np.ndarray)
+                            and ch_idx < description.shape[0]
+                            and description.ndim >= 1):
+                        ch_descr = description[ch_idx, 0].item()
+                    else:
+                        ch_descr = f"Channel {ch_idx + 1}"
 
-                    channels_for_grid.append({
-                        "channel_index": int(ch_idx), # Use 0-based index internally
-                        "channel_number": int(ch_idx + 1), # Add 1-based channel number for readability
-                        "selected": bool(is_selected),
-                        "description": str(ch_description),
-                        "labels": ch_labels # Include the labels
+                    ch_labels = channel_labels.get(ch_idx, []) \
+                                if isinstance(channel_labels, dict) else []
+
+                    ch_objects.append({
+                        "channel_index":   int(ch_idx),
+                        "channel_number":  int(ch_idx + 1),
+                        "selected":        is_selected,
+                        "description":     str(ch_descr),
+                        "labels":          ch_labels
                     })
 
-            grids.append({
-                "grid_key": grid_key, # Add the grid key
-                "rows": rows,
-                "columns": cols, # Changed key from "cols" to "columns" for consistency
+            #  reference signals
+            ref_objects = []
+            for ref in ref_list:
+                ref_idx  = ref.get("index")
+                ref_name = ref.get("name", f"Ref {ref_idx+1}")
+
+                # skip if index inconsistent
+                if ref_idx is None or ref_idx >= len(channel_status):
+                    continue
+
+                ref_objects.append({
+                    "ref_index":   int(ref_idx),
+                    "ref_number":  int(ref_idx + 1),
+                    "name":        str(ref_name),
+                    "selected":    bool(channel_status[ref_idx]),
+                    "labels":      channel_labels.get(ref_idx, [])
+                                   if isinstance(channel_labels, dict) else []
+                })
+
+            grids_out.append({
+                "grid_key":  grid_key,
+                "rows":      rows,
+                "columns":   cols,
                 "inter_electrode_distance_mm": scale,
-                "channels": channels_for_grid
+                "channels":  ch_objects,
+                "reference_signals": ref_objects
             })
-    elif grid_info is not None:
-         logger.warning(f"Warning: grid_info is not a dictionary: {type(grid_info)}")
 
+    else:
+        logger.warning("grid_info is not a dict but %s", type(grid_info))
 
-    # Also include selection status and labels for all channels, not just those in grids
+    #  Flat summary over *all* channels
     all_channels_summary = []
-    channel_count = len(channel_status) if isinstance(channel_status, (list, np.ndarray)) else 0
-    for i in range(channel_count):
-        is_selected = channel_status[i]
-        ch_description = description[i, 0].item() if (
-             isinstance(description, np.ndarray) and description.ndim > 1 and
-             i < description.shape[0] and description.shape[1] > 0
-        ) else f"Channel {i + 1}"
-
-        ch_labels = channel_labels.get(i, []) if isinstance(channel_labels, dict) else []
+    for i, sel in enumerate(channel_status):
+        if (isinstance(description, np.ndarray) and i < description.shape[0]):
+            ch_descr = description[i, 0].item()
+        else:
+            ch_descr = f"Channel {i + 1}"
 
         all_channels_summary.append({
-            "channel_index": i,
+            "channel_index":  i,
             "channel_number": i + 1,
-            "selected": bool(is_selected),
-            "description": str(ch_description),
-            "labels": ch_labels
+            "selected":       bool(sel),
+            "description":    str(ch_descr),
+            "labels":         channel_labels.get(i, [])
+                              if isinstance(channel_labels, dict) else []
         })
 
-
     result = {
-        "filename": file_name if file_name is not None else "unknown",
-        "total_channels_summary": all_channels_summary, # New section for all channels
-        "grids": grids
+        "filename":               file_name or "unknown",
+        "total_channels_summary": all_channels_summary,
+        "grids":                  grids_out
     }
 
     try:
-        with open(file_path, "w") as f:
-            json.dump(result, f, indent=4) # Use indent for readability
-        return True # Indicate success
-    except IOError as e:
-        logger.error(f"Error writing JSON file {file_path}: {e}")
-        return False # Indicate failure
+        with open(file_path, "w", encoding="utf-8") as f:
+            json.dump(result, f, indent=4)
+        return True
+    except OSError as exc:
+        logger.error("Cannot write JSON %s: %s", file_path, exc)
+        return False
