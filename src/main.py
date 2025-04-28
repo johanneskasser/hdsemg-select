@@ -2,6 +2,7 @@ import argparse
 import logging
 import sys
 
+from _log.exception_hook import exception_hook
 from _log.log_config import setup_logging
 
 from PyQt5.QtWidgets import (
@@ -12,6 +13,7 @@ from ui.main_window import ChannelSelector
 
 if __name__ == "__main__":
     setup_logging()
+    sys.excepthook = exception_hook
     logger = logging.getLogger("hdsemg")
 
     # Parse command-line arguments for inputFile and outputFile.
