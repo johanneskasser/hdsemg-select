@@ -142,8 +142,9 @@ def save_selection(parent, output_file, data, time, description, sampling_freque
     try:
         # Ensure we only save if data is available for the .mat file
         if data is not None and time is not None and description is not None:
-             save_selection_to_mat(mat_file_path, data, time, description, sampling_frequency, channel_status, file_name)
-             messages.append(f"Saved .mat to {Path(mat_file_path).name}")
+            data_mat, description_mat = clean_data_and_description_signal(channel_status, data, description)
+            save_selection_to_mat(mat_file_path, data_mat, time, description_mat, sampling_frequency, channel_status, file_name)
+            messages.append(f"Saved .mat to {Path(mat_file_path).name}")
         else:
              messages.append(".mat file skipped (data not available)")
              logger.warning(f"Warning: .mat save skipped, missing data (data={data is not None}, time={time is not None}, description={description is not None})")
@@ -316,3 +317,14 @@ def save_selection_to_json(file_path,
     except OSError as exc:
         logger.error("Cannot write JSON %s: %s", file_path, exc)
         return False
+
+def clean_data_and_description_signal(channel_status, data, description):
+    if data.ndim != 2:
+        raise ValueError("data must be a 2D array")
+    if data.shape[1] != len(channel_status):
+        raise ValueError("Length of 'channel_status' has to match the number of channels in 'data'")
+
+    data = data[:, channel_status]
+    description = description[channel_status, :]
+
+    return data, description
