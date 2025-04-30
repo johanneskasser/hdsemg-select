@@ -54,7 +54,7 @@ class FileManager:
 
             # Extract grid info and proceed, store in state
             global_state.set_grid_info(extract_grid_info(global_state.get_description()))
-            global_state.set_channel_status(_build_channel_descriptions(global_state.get_channel_count(), global_state.get_grid_info()))
+            global_state.set_channel_status(_build_channel_status(global_state.get_channel_count(), global_state.get_grid_info()))
 
             if not global_state.get_grid_info():
                 QMessageBox.warning(
@@ -329,7 +329,7 @@ def clean_data_and_description_signal(channel_status, data, description):
 
     return data, description
 
-def _build_channel_descriptions(n_channels, grid_info):
+def _build_channel_status(n_channels, grid_info):
     channel_status = [False] * n_channels
 
     for grid in grid_info.values():
