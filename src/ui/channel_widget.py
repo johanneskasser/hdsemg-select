@@ -6,6 +6,8 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QChe
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure  # Import Figure
 from PyQt5.QtCore import pyqtSignal
+
+from config.config_manager import config
 from state.state import global_state
 
 from ui.label_bean_widget import LabelBeanWidget
@@ -131,25 +133,15 @@ class ChannelWidget(QWidget):
             widget.deleteLater()
         self.label_widgets = []
 
-        # Mapping labels to colors
-        label_colors = {
-            "ECG": "salmon",
-            "Noise 50 Hz": "gold",
-            "Noise 60 Hz": "gold",
-            "Artifact": "orange",
-            "Bad Channel": "red",
-        }
-
         # Add new label bean widgets
-        for label in sorted(labels):  # Sort labels alphabetically for consistency
-            color = label_colors.get(label, "lightblue")  # Default color if label not in map
-            bean = LabelBeanWidget(label, color=color)
+        for label in sorted(labels, key=lambda x: x["name"]):  # Sort labels alphabetically for consistency
+            bean = LabelBeanWidget(label.get("name"), color=label.get("color", "lightblue"))
             # Insert beans before the stretch and the '+' button
             self.labels_h_layout.insertWidget(self.labels_h_layout.count() - 2, bean)
             self.label_widgets.append(bean)
 
         if labels:
-            self.add_label_button.setToolTip(f"Edit labels for Channel {self.channel_number}:\n" + ", ".join(labels))
+            self.add_label_button.setToolTip(f"Edit labels for Channel {self.channel_number}:\n" + ", ".join(label.get("name", "") for label in labels))
         else:
             self.add_label_button.setToolTip(f"Add labels for Channel {self.channel_number}")
 

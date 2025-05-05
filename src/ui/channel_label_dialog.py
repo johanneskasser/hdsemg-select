@@ -1,5 +1,10 @@
 # ui/channel_label_dialog.py
 from PyQt5.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QDialogButtonBox, QCheckBox
+
+from state.state import global_state
+from config.config_manager import config
+
+
 class ChannelLabelDialog(QDialog):
     """
         A dialog for selecting labels for a specific channel.
@@ -28,15 +33,15 @@ class ChannelLabelDialog(QDialog):
         self.labels_layout = QVBoxLayout() # Use a layout for checkboxes
         self.layout.addLayout(self.labels_layout)
 
-        self.available_labels = ["ECG", "Noise 50 Hz", "Noise 60 Hz", "Artifact", "Bad Channel"]
+        self.available_labels = config.get_available_channel_labels()
         self.checkboxes = {} # Store checkboxes to access their state
 
         for label in self.available_labels:
-            checkbox = QCheckBox(label)
-            checkbox.setChecked(label in self.selected_labels)
+            checkbox = QCheckBox(label.get("name", ""))
+            checkbox.setChecked(label.get("id") in self.selected_labels)
             checkbox.stateChanged.connect(partial(self._update_selected_labels, label))
             self.labels_layout.addWidget(checkbox)
-            self.checkboxes[label] = checkbox # Store reference
+            self.checkboxes[label.get("id")] = checkbox # Store reference
 
 
         self.button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
@@ -54,8 +59,10 @@ class ChannelLabelDialog(QDialog):
 
     def get_selected_labels(self) -> list:
         """Returns the list of labels selected by the user."""
-        # Ensure labels are unique and sorted for consistency
-        return sorted(list(set(self.selected_labels)))
+        unique_labels = {}
+        for label in self.selected_labels:
+            unique_labels[label["id"]] = label
+        return sorted(unique_labels.values(), key=lambda x: str(x["id"]))
 
 # Need functools.partial and Qt for the checkbox connection
 from functools import partial

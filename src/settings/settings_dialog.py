@@ -4,6 +4,7 @@ from PyQt5.QtWidgets import (
     QDialogButtonBox, QWidget
 )
 
+from .tabs.custom_flagger_settings_tab import CustomFlaggerSettingsTab
 # Import the new tab classes
 from .tabs.log_setting import LoggingSettingsTab
 from .tabs.auto_flagger_settings_tab import AutoFlaggerSettingsTab
@@ -31,10 +32,12 @@ class SettingsDialog(QDialog):
         # Create instances of the tab widgets
         self.logging_tab_widget = LoggingSettingsTab(self.tab_widget) # Parent is tab_widget
         self.auto_flag_tab_widget = AutoFlaggerSettingsTab(self.tab_widget) # Parent is tab_widget
+        self.custom_flag_tab_widget = CustomFlaggerSettingsTab(self.tab_widget)
 
         # Add tab widgets to the tab widget
         self.tab_widget.addTab(self.logging_tab_widget, "Logging")
         self.tab_widget.addTab(self.auto_flag_tab_widget, "Automatic Channel Flagging Settings")
+        self.tab_widget.addTab(self.custom_flag_tab_widget, "Custom Channel Flags")
 
         # Add standard dialog buttons (OK and Cancel)
         self.button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
@@ -48,12 +51,14 @@ class SettingsDialog(QDialog):
         # Pass the config manager instance to the tab widgets
         self.logging_tab_widget.loadSettings(config)
         self.auto_flag_tab_widget.loadSettings(config)
+        self.custom_flag_tab_widget.loadSettings(config)
 
     def saveSettings(self) -> None:
         """Saves settings from all tab widgets."""
         # Pass the config manager instance to the tab widgets
         self.logging_tab_widget.saveSettings(config)
         self.auto_flag_tab_widget.saveSettings(config)
+        self.custom_flag_tab_widget.saveSettings(config)
 
     def accept(self) -> None:
         """Overrides the accept method to save settings before closing."""

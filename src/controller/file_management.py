@@ -191,88 +191,100 @@ def save_selection(parent, output_file, data, time, description, sampling_freque
             QMessageBox.Ok
          )
 
-def save_selection_to_json(file_path,
-                           file_name,
-                           grid_info,
-                           channel_status,
-                           description,
-                           channel_labels):
+def save_selection_to_json(file_path: str,
+                           file_name: str,
+                           grid_info: dict,
+                           channel_status: list,
+                           description: np.ndarray,
+                           channel_labels: dict) -> bool:
     """
-    Saves the selection information, including channel labels, to a JSON file.
+    Saves the selection information (including channel labels) to a JSON file.
 
-    :param file_path: The path where the JSON file should be saved.
-    :param file_name: The name of the original file.
-    :param grid_info: Dictionary containing info about all extracted grids.
-    :param channel_status: List of booleans indicating channel selection status.
-    :param description: List of strings indicating channel description.
-    :param channel_labels: Dictionary of channel indices to a list of labels: {channel_idx: ['label1', 'label2']}.
+    Parameters
+    ----------
+    file_path : str
+        Path where the JSON file should be saved.
+    file_name : str
+        Name of the original file.
+    grid_info : dict
+        Dictionary containing info about all extracted grids.
+    channel_status : list[bool]
+        Boolean list indicating channel selection status.
+    description : np.ndarray
+        Array of channel description strings (shape: n-channels × 1).
+    channel_labels : dict[int, list[dict]]
+        Mapping channel index → list of label-dicts
+        (each dict contains at least a 'name' key).
+
+    Returns
+    -------
+    bool
+        True on success, False on failure.
     """
+
+    label_names = {
+        idx: [lbl["name"] for lbl in lbl_list]
+        for idx, lbl_list in (channel_labels or {}).items()
+    }
 
     grids_out = []
 
-    #  Build the per-grid structures
     if isinstance(grid_info, dict):
         for grid_key, info in grid_info.items():
 
-            # -------- sanity check -------------------------------------------------
-            must_have = {"rows", "cols", "ied_mm", "indices", "reference_signals"}
+            # ––– Sanity-Check –––
+            must_have = {"rows", "cols", "ied_mm", "indices",
+                         "reference_signals"}
             if not must_have.issubset(info):
-                logger.debug(
-                    "Skipping grid %s: missing keys (%s)",
-                    grid_key, must_have - set(info)
-                )
+                logger.debug("Skipping grid %s: missing keys (%s)",
+                             grid_key, must_have - set(info))
                 continue
 
-            rows, cols = info["rows"], info["cols"]
-            scale      = info.get("ied_mm")      # None accepted
-            indices    = info["indices"]         # list/ndarray
-            ref_list   = info["reference_signals"]  # list of {'index': int, 'name': str}
+            rows      = info["rows"]
+            cols      = info["cols"]
+            scale     = info.get("ied_mm")   # may be None
+            indices   = info["indices"]
+            ref_list  = info["reference_signals"]
 
-            #  ordinary channels
+            # ---------- Channels ----------
             ch_objects = []
             if isinstance(indices, (list, np.ndarray)):
                 for ch_idx in indices:
-                    if ch_idx is None:        # placeholder in some grids
-                        continue
+                    if ch_idx is None:
+                        continue  # placeholder in some grids
 
-                    is_selected  = bool(channel_status[ch_idx])
+                    is_selected = bool(channel_status[ch_idx])
 
-                    # description stored as numpy byte/string?
+                    # description might be numpy bytes / string
                     if (isinstance(description, np.ndarray)
-                            and ch_idx < description.shape[0]
-                            and description.ndim >= 1):
+                            and ch_idx < description.shape[0]):
                         ch_descr = description[ch_idx, 0].item()
                     else:
                         ch_descr = f"Channel {ch_idx + 1}"
-
-                    ch_labels = channel_labels.get(ch_idx, []) \
-                                if isinstance(channel_labels, dict) else []
 
                     ch_objects.append({
                         "channel_index":   int(ch_idx),
                         "channel_number":  int(ch_idx + 1),
                         "selected":        is_selected,
                         "description":     str(ch_descr),
-                        "labels":          ch_labels
+                        "labels":          label_names.get(ch_idx, [])
                     })
 
-            #  reference signals
+            # ---------- Reference Signals ----------
             ref_objects = []
             for ref in ref_list:
                 ref_idx  = ref.get("index")
-                ref_name = ref.get("name", f"Ref {ref_idx+1}")
+                ref_name = ref.get("name", f"Ref {ref_idx + 1}")
 
-                # skip if index inconsistent
                 if ref_idx is None or ref_idx >= len(channel_status):
-                    continue
+                    continue  # inconsistent index, skip
 
                 ref_objects.append({
                     "ref_index":   int(ref_idx),
                     "ref_number":  int(ref_idx + 1),
                     "name":        str(ref_name),
                     "selected":    bool(channel_status[ref_idx]),
-                    "labels":      channel_labels.get(ref_idx, [])
-                                   if isinstance(channel_labels, dict) else []
+                    "labels":      label_names.get(ref_idx, [])
                 })
 
             grids_out.append({
@@ -283,14 +295,12 @@ def save_selection_to_json(file_path,
                 "channels":  ch_objects,
                 "reference_signals": ref_objects
             })
-
     else:
         logger.warning("grid_info is not a dict but %s", type(grid_info))
 
-    #  Flat summary over *all* channels
     all_channels_summary = []
     for i, sel in enumerate(channel_status):
-        if (isinstance(description, np.ndarray) and i < description.shape[0]):
+        if isinstance(description, np.ndarray) and i < description.shape[0]:
             ch_descr = description[i, 0].item()
         else:
             ch_descr = f"Channel {i + 1}"
@@ -300,8 +310,7 @@ def save_selection_to_json(file_path,
             "channel_number": i + 1,
             "selected":       bool(sel),
             "description":    str(ch_descr),
-            "labels":         channel_labels.get(i, [])
-                              if isinstance(channel_labels, dict) else []
+            "labels":         label_names.get(i, [])
         })
 
     result = {
