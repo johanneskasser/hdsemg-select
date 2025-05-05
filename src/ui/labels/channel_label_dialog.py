@@ -38,7 +38,7 @@ class ChannelLabelDialog(QDialog):
 
         for label in self.available_labels:
             checkbox = QCheckBox(label.get("name", ""))
-            checkbox.setChecked(label.get("id") in self.selected_labels)
+            checkbox.setChecked(any(item.get("id") == label.get("id") for item in self.selected_labels))
             checkbox.stateChanged.connect(partial(self._update_selected_labels, label))
             self.labels_layout.addWidget(checkbox)
             self.checkboxes[label.get("id")] = checkbox # Store reference

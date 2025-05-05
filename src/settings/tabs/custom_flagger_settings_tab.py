@@ -1,8 +1,8 @@
 # ui/custom_flagger_settings_tab.py
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QGroupBox, QHBoxLayout, QPushButton,
+    QWidget, QVBoxLayout, QLabel, QHBoxLayout, QPushButton,
     QFormLayout, QLineEdit, QColorDialog, QTableWidget, QTableWidgetItem,
-    QHeaderView, QMessageBox, QComboBox, QAbstractItemView
+    QHeaderView, QMessageBox, QAbstractItemView
 )
 from PyQt5.QtGui import QColor
 from PyQt5.QtCore import Qt
@@ -10,7 +10,7 @@ from PyQt5.QtCore import Qt
 import uuid
 
 from config.config_enums import Settings
-from ui.label_bean_widget import LabelBeanWidget        # your bean
+from ui.labels.label_bean_widget import LabelBeanWidget        # your bean
 
 class CustomFlaggerSettingsTab(QWidget):
     """

@@ -2,17 +2,14 @@
 from functools import partial
 
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QCheckBox, QStyle
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QCheckBox
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure  # Import Figure
 from PyQt5.QtCore import pyqtSignal
 
-from config.config_manager import config
 from state.state import global_state
 
-from ui.label_bean_widget import LabelBeanWidget
-
-import resources_rc
+from ui.labels.label_bean_widget import LabelBeanWidget
 
 
 class ChannelWidget(QWidget):

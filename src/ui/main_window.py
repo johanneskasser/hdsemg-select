@@ -1,12 +1,10 @@
 # main_window.py
-from functools import partial
 
 import numpy as np
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon, QFont
 from PyQt5.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QFrame, QVBoxLayout, QLabel, QScrollArea, QGridLayout, \
     QPushButton, QStyle, QCheckBox, QFileDialog, QDialog, QComboBox, QMessageBox
-from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 
 from _log.log_config import logger
 from config.config_enums import Settings
@@ -15,18 +13,17 @@ from controller.grid_setup_handler import GridSetupHandler
 from controller.menu_manager import MenuManager
 from select_logic.auto_flagger import AutoFlagger
 from select_logic.channel_management import select_all_channels, update_channel_status_single, count_selected_channels
-from select_logic.plotting import create_channel_figure
 from settings.settings_dialog import SettingsDialog
 from settings.tabs.auto_flagger_settings_tab import validate_auto_flagger_settings
 from state.state import global_state
 from ui.channel_details import ChannelDetailWindow
-from ui.channel_label_dialog import ChannelLabelDialog
+from ui.labels.channel_label_dialog import ChannelLabelDialog
 from ui.channel_spectrum import ChannelSpectrum
 from ui.channel_widget import ChannelWidget
 from ui.electrode_widget import ElectrodeWidget
 from ui.selection.amplitude_based import AutomaticAmplitudeSelection
 from config.config_manager import config
-
+# noinspection PyUnresolvedReferences
 import resources_rc
 
 
@@ -509,7 +506,7 @@ class ChannelSelector(QMainWindow):
 
             # Get current labels for this channel, add suggestions, ensure uniqueness and sorting
             existing_labels = current_labels.get(channel_idx, [])
-            combined_labels = sorted(list(set(existing_labels + suggestions)))
+            combined_labels = sorted({str(label): label for label in (existing_labels + suggestions)}.values(), key=lambda l: l["name"])
 
             # Only update state if labels actually changed
             if combined_labels != existing_labels:
