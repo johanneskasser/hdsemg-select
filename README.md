@@ -73,26 +73,22 @@ _Dialog to add/remove Channel Labels._
 
 1. **Clone the repository:**
    ```bash
-   git clone [https://github.com/johanneskasser/hdsemg-select.git](https://github.com/johanneskasser/hdsemg-select.git)
+   git clone https://github.com/johanneskasser/hdsemg-select.git
    cd hdsemg-select
 
-2. **Create a virtual environment (optional but recommended):**
+2. **Create a virtual environment !run commandline as admin! (optional but recommended):**
    ```bash
    # if you prefer python venv
    python -m venv venv
    source venv/bin/activate  # On Windows use venv\Scripts\activate
+   pip install -r requirements.txt
 
     # or if you prefer conda
    conda env create -f environment.yml
+   conda activate hdsemg-select
    ```
 
-3. **Install dependencies:**
-   ```bash
-   # only if you are using python venv
-   pip install -r requirements.txt
-   ```
-
-4. **Compile the resource file:**
+3. **Compile the resource file:**
     ```bash
     cd ./src
     pyrcc5 resources.qrc -o resources_rc.py
@@ -100,7 +96,7 @@ _Dialog to add/remove Channel Labels._
 
 5. **Run the application:**
    ```bash
-   python src/main.py
+   python main.py
    ```
 
 ---
