@@ -4,6 +4,8 @@ from scipy.fft import rfft, rfftfreq
 from scipy.signal import find_peaks # find_peaks is useful but requires scipy 1.1.0+
 import sys # To check scipy version if needed
 from _log.log_config import logger
+from ui.labels.base_labels import BaseChannelLabel
+
 
 class AutoFlagger:
     def __init__(self):
@@ -122,9 +124,9 @@ class AutoFlagger:
                                           # Flag as noise if power ratio is high and it's a local max
                                           if is_local_max and power_ratio > noise_freq_threshold:
                                               if target_freq == 50.0:
-                                                  channel_flags.append("Noise 50 Hz")
+                                                  channel_flags.append(BaseChannelLabel.NOISE_50.value)
                                               elif target_freq == 60.0:
-                                                  channel_flags.append("Noise 60 Hz")
+                                                  channel_flags.append(BaseChannelLabel.NOISE_60.value)
                                               logger.debug(f"Ch {i+1}: Flagged Noise {target_freq}Hz (Ratio: {power_ratio:.2f}, Local Max: {is_local_max})")
                                           else:
                                               logger.debug(f"Ch {i+1}: Did not flag Noise {target_freq}Hz (Ratio: {power_ratio:.2f}, Local Max: {is_local_max})")
@@ -143,9 +145,9 @@ class AutoFlagger:
 
                                   if is_local_max and power_ratio > noise_freq_threshold:
                                       if target_freq == 50.0:
-                                          channel_flags.append("Noise 50 Hz")
+                                          channel_flags.append(BaseChannelLabel.NOISE_50.value)
                                       elif target_freq == 60.0:
-                                          channel_flags.append("Noise 60 Hz")
+                                          channel_flags.append(BaseChannelLabel.NOISE_60.value)
                                       logger.debug(f"Ch {i+1}: Flagged Noise {target_freq}Hz (Fallback) (Ratio: {power_ratio:.2f}, Local Max: {is_local_max})")
                                   else:
                                       logger.debug(f"Ch {i+1}: Did not flag Noise {target_freq}Hz (Fallback) (Ratio: {power_ratio:.2f}, Local Max: {is_local_max})")
@@ -161,10 +163,8 @@ class AutoFlagger:
                  try:
                     variance = np.var(channel_data)
                     if variance > artifact_variance_threshold:
-                        # Avoid adding "Artifact" if a specific noise flag is already added?
-                        # Or allow multiple flags? Let's allow multiple for now.
-                        if "Artifact" not in channel_flags:
-                            channel_flags.append("Artifact")
+                        if BaseChannelLabel.ARTIFACT.value not in channel_flags:
+                            channel_flags.append(BaseChannelLabel.ARTIFACT.value)
                             logger.debug(f"Ch {i+1}: Flagged Artifact (Variance: {variance:.2e})")
                         else:
                             logger.debug(f"Ch {i+1}: Variance above threshold ({variance:.2e}), but Artifact already flagged.")

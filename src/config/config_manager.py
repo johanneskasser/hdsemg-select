@@ -3,6 +3,8 @@ import os
 import enum
 from threading import Lock
 from _log.log_config import logger
+from config.config_enums import Settings
+from ui.labels.base_labels import BaseChannelLabel
 
 CONFIG_FILE = "config/config.json"
 
@@ -50,6 +52,13 @@ class ConfigManager:
         """Get a configuration value."""
         key = key.name
         return self.settings.get(key, default)
+
+    def get_available_channel_labels(self):
+        """Get available channel labels from the configuration."""
+        base_labels = BaseChannelLabel.all_labels()
+        custom_flags = self.get(Settings.CUSTOM_FLAGS, [])
+        all_flags = base_labels + custom_flags
+        return sorted(all_flags, key=lambda x: x["name"])
 
 # Singleton instance
 config = ConfigManager()
