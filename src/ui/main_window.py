@@ -358,7 +358,6 @@ class ChannelSelector(QMainWindow):
             channel_widget.channel_status_changed.connect(self.handle_single_channel_update)
             channel_widget.view_detail_requested.connect(self.view_channel_in_detail)
             channel_widget.view_spectrum_requested.connect(self.view_channel_spectrum)
-            channel_widget.edit_labels_requested.connect(self.open_channel_label_dialog)
 
             # Calculate row and col for the QGridLayout
             ui_col = page_pos % self.channels_per_row
@@ -449,18 +448,6 @@ class ChannelSelector(QMainWindow):
             logger.debug("Settings Dialog closed and accepted")
         else:
             logger.debug("Settings Dialog closed")
-
-    def open_channel_label_dialog(self, channel_idx: int):
-        """Opens the dialog to set labels for a specific channel."""
-        # Get current labels for this channel from state
-        current_labels = global_state.get_channel_labels().get(channel_idx, [])
-
-        dialog = ChannelLabelDialog(channel_idx, current_labels, self)  # Pass self as parent
-        if dialog.exec_() == QDialog.Accepted:
-            new_labels = dialog.get_selected_labels()
-            # Update the labels in the global state
-            global_state.update_channel_labels(channel_idx, new_labels)
-            logger.info(f"Labels updated for Channel {channel_idx + 1}: {new_labels}")
 
     def run_auto_flagger(self):
         """Triggers the automatic suggestion of artifact flags."""

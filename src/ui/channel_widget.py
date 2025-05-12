@@ -1,22 +1,25 @@
 # ui/channel_widget.py
 from functools import partial
+import logging
 
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QCheckBox
+from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
+                             QCheckBox, QMenu, QWidgetAction, QToolButton)
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.figure import Figure  # Import Figure
-from PyQt5.QtCore import pyqtSignal
+from matplotlib.figure import Figure
+from PyQt5.QtCore import pyqtSignal, Qt
 
 from state.state import global_state
-
+from config.config_manager import config # For getting available labels
 from ui.labels.label_bean_widget import LabelBeanWidget
+from ui.labels.label_selection_widget import LabelSelectionWidget
 
+logger = logging.getLogger(__name__)
 
 class ChannelWidget(QWidget):
     channel_status_changed = pyqtSignal(int, int)  # channel_idx, state (Qt.Checked/Unchecked)
     view_detail_requested = pyqtSignal(int)  # channel_idx
     view_spectrum_requested = pyqtSignal(int)  # channel_idx
-    edit_labels_requested = pyqtSignal(int)  # channel_idx
 
     def __init__(self, channel_idx: int, time_data, scaled_data_slice, ylim: tuple,
                  initial_status: bool, initial_labels: list, parent=None):
@@ -26,61 +29,56 @@ class ChannelWidget(QWidget):
         self.time_data = time_data
         self.scaled_data_slice = scaled_data_slice
         self.ylim = ylim
-        self._current_labels = initial_labels  # Store current labels
+        self._current_labels = list(initial_labels) # Store a mutable copy
 
-        # --- Layout ---
         self.main_layout = QVBoxLayout(self)
-        self.main_layout.setContentsMargins(5, 5, 5, 5)  # Add some margin around the widget
-        self.main_layout.setSpacing(5)  # Space between plot and controls
+        self.main_layout.setContentsMargins(5, 5, 5, 5)
+        self.main_layout.setSpacing(5)
 
-        # --- Plot Area ---
-        self.figure = Figure(figsize=(4, 2), dpi=100)  # Adjust figure size as needed
+        self.figure = Figure(figsize=(4, 2), dpi=100)
         self.canvas = FigureCanvas(self.figure)
         self.main_layout.addWidget(self.canvas)
+        self._draw_plot()
 
-        self._draw_plot()  # Draw the initial plot
-
-        # --- Controls Area ---
-        self.controls_layout = QVBoxLayout()  # Vertical layout for labels above buttons
+        self.controls_layout = QVBoxLayout()
         self.main_layout.addLayout(self.controls_layout)
 
-        # --- Labels Layout ---
-        self.labels_h_layout = QHBoxLayout()  # Horizontal layout for labels and '+' button
+        self.labels_h_layout = QHBoxLayout()
         self.labels_h_layout.setContentsMargins(0, 0, 0, 0)
         self.labels_h_layout.setSpacing(3)
         self.controls_layout.addLayout(self.labels_h_layout)
 
-        self.label_widgets = []  # List to keep track of label bean widgets
+        self.label_widgets = []
+        self.labels_h_layout.addStretch(1)
 
-        self.labels_h_layout.addStretch(1)  # Push '+' button to the right
+        self.add_label_button = QToolButton(self)
+        self.add_label_button.setText("+   ")
+        self.add_label_button.setFixedSize(34, 24)
+        self.add_label_button.setPopupMode(QToolButton.InstantPopup) # Menu appears on click
 
-        self.add_label_button = QPushButton("+")
-        self.add_label_button.setFixedSize(24, 24)  # Make it small and square
-        self.add_label_button.setToolTip(f"Edit labels for Channel {self.channel_number}")
-        # Connect button to emit signal
-        self.add_label_button.clicked.connect(partial(self.edit_labels_requested.emit, self.channel_idx))
+        self.label_menu = QMenu(self) # Parent to self for lifetime management
+        self.add_label_button.setMenu(self.label_menu)
+        self.label_menu.aboutToShow.connect(self._prepare_label_menu) # Populate when about to show
+
         self.labels_h_layout.addWidget(self.add_label_button)
+        self.update_labels_display(self._current_labels) # Display initial labels & update tooltip
 
-        self.update_labels_display(initial_labels)  # Display initial labels
-        # --- Buttons Layout ---
-        self.buttons_h_layout = QHBoxLayout()  # Horizontal layout for checkbox and view buttons
+        self.buttons_h_layout = QHBoxLayout()
         self.buttons_h_layout.setContentsMargins(0, 0, 0, 0)
         self.buttons_h_layout.setSpacing(5)
         self.controls_layout.addLayout(self.buttons_h_layout)
 
         self.checkbox = QCheckBox(f"Ch {self.channel_number}")
         self.checkbox.setChecked(initial_status)
-        # Connect checkbox to emit signal
         self.checkbox.stateChanged.connect(partial(self.channel_status_changed.emit, self.channel_idx))
         self.buttons_h_layout.addWidget(self.checkbox)
 
-        self.buttons_h_layout.addStretch(1)  # Push buttons to the right
+        self.buttons_h_layout.addStretch(1)
 
         self.view_button = QPushButton()
         self.view_button.setIcon(QIcon(":/resources/extend.png"))
         self.view_button.setToolTip("View Time Series")
         self.view_button.setFixedSize(30, 30)
-        # Connect button to emit signal
         self.view_button.clicked.connect(partial(self.view_detail_requested.emit, self.channel_idx))
         self.buttons_h_layout.addWidget(self.view_button)
 
@@ -88,17 +86,57 @@ class ChannelWidget(QWidget):
         self.spectrum_button.setIcon(QIcon(":/resources/frequency.png"))
         self.spectrum_button.setToolTip("View Frequency Spectrum")
         self.spectrum_button.setFixedSize(30, 30)
-        # Connect button to emit signal
         self.spectrum_button.clicked.connect(partial(self.view_spectrum_requested.emit, self.channel_idx))
         self.buttons_h_layout.addWidget(self.spectrum_button)
 
         global_state.channel_labels_changed.connect(self._on_label_changed)
+        # Initial check for available labels to set button state
+        self._check_available_labels()
 
+
+    def _check_available_labels(self):
+        """Disables the add label button if no labels are available."""
+        available_labels = config.get_available_channel_labels()
+        if not available_labels:
+            self.add_label_button.setEnabled(False)
+            self.add_label_button.setToolTip(f"No labels available for Channel {self.channel_number}")
+        else:
+            self.add_label_button.setEnabled(True)
+            # Tooltip will be set/updated by update_labels_display
+
+
+    def _prepare_label_menu(self):
+        """
+        Populates the label selection menu right before it is shown.
+        """
+        self.label_menu.clear()
+
+        current_channel_labels = global_state.get_channel_labels().get(self.channel_idx, [])
+        available_labels = config.get_available_channel_labels()
+
+        if not available_labels: # Should be caught by _check_available_labels, but good as safeguard
+            no_labels_action = self.label_menu.addAction("No labels available")
+            no_labels_action.setEnabled(False)
+            self.add_label_button.setEnabled(False)
+            return
+        else:
+            self.add_label_button.setEnabled(True)
+
+        label_selection_widget = LabelSelectionWidget(available_labels, current_channel_labels, self.label_menu)
+        label_selection_widget.labels_applied.connect(self._apply_new_labels)
+
+        action = QWidgetAction(self.label_menu)
+        action.setDefaultWidget(label_selection_widget)
+        self.label_menu.addAction(action)
+        label_selection_widget.adjustSize() # Important for QWidgetAction
+
+    def _apply_new_labels(self, new_labels: list):
+        global_state.update_channel_labels(self.channel_idx, new_labels)
+        logger.info(f"Labels updated for Channel {self.channel_number} ({self.channel_idx}): {new_labels}")
+        # The global_state change will trigger _on_label_changed, which updates display.
 
     def _draw_plot(self):
-        """Draws the time series plot on the canvas."""
         if self.time_data is None or self.scaled_data_slice is None:
-            # Handle case where data is not available
             ax = self.figure.add_subplot(111)
             ax.text(0.5, 0.5, "No data", horizontalalignment='center', verticalalignment='center',
                     transform=ax.transAxes)
@@ -107,50 +145,39 @@ class ChannelWidget(QWidget):
             self.canvas.draw()
             return
 
-        # Clear previous plot
         self.figure.clear()
         ax = self.figure.add_subplot(111)
-
         ax.plot(self.time_data, self.scaled_data_slice)
         ax.set_ylim(self.ylim)
-        ax.axis('off')  # Hide axes for a cleaner look
-
-        # Adjust layout to prevent axis labels/titles overlapping
+        ax.axis('off')
         self.figure.tight_layout(pad=0)
-
         self.canvas.draw()
 
     def update_labels_display(self, labels: list):
-        """Updates the visual display of labels (beans) for this channel."""
-        self._current_labels = labels  # Store the new labels
-
-        # Clear existing label widgets (keep the '+' button)
+        self._current_labels = list(labels) # Update internal cache
         for widget in self.label_widgets:
             self.labels_h_layout.removeWidget(widget)
             widget.deleteLater()
         self.label_widgets = []
 
-        # Add new label bean widgets
-        for label in sorted(labels, key=lambda x: x["name"]):  # Sort labels alphabetically for consistency
+        for label in sorted(self._current_labels, key=lambda x: x.get("name", "")):
             bean = LabelBeanWidget(label.get("name"), color=label.get("color", "lightblue"))
-            # Insert beans before the stretch and the '+' button
             self.labels_h_layout.insertWidget(self.labels_h_layout.count() - 2, bean)
             self.label_widgets.append(bean)
 
-        if labels:
-            self.add_label_button.setToolTip(f"Edit labels for Channel {self.channel_number}:\n" + ", ".join(label.get("name", "") for label in labels))
-        else:
-            self.add_label_button.setToolTip(f"Add labels for Channel {self.channel_number}")
+        if self.add_label_button.isEnabled(): # Only update tooltip if button is enabled
+            if self._current_labels:
+                tooltip_text = f"Edit labels for Channel {self.channel_number}:\n" + \
+                               ", ".join(label.get("name", "") for label in self._current_labels)
+                self.add_label_button.setToolTip(tooltip_text)
+            else:
+                self.add_label_button.setToolTip(f"Add labels for Channel {self.channel_number}")
 
     def update_channel_status(self, status: bool):
-        """Updates the checkbox state programmatically."""
-        # Use blockSignals to prevent the signal from firing again when setting programmatically
         self.checkbox.blockSignals(True)
         self.checkbox.setChecked(status)
         self.checkbox.blockSignals(False)
 
     def _on_label_changed(self, ch_idx: int, new_labels: list):
-        """Handles the signal emitted when labels are changed."""
         if ch_idx == self.channel_idx:
             self.update_labels_display(new_labels)
-            self.update()

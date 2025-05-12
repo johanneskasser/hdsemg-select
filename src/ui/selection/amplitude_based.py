@@ -2,6 +2,7 @@ from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QLineEdit, QPushButton
 from PyQt5.QtGui import QIntValidator
 from _log.log_config import logger
 from state.state import global_state
+from ui.labels.base_labels import BaseChannelLabel
 
 
 class AutomaticAmplitudeSelection:
@@ -140,8 +141,8 @@ class AutomaticAmplitudeSelection:
                 labels = global_state.get_channel_labels(i).copy()
 
                 # add the new label only if it is not present yet
-                if "Bad Channel" not in labels:
-                    labels.append("Bad Channel")
+                if BaseChannelLabel.BAD_CHANNEL.value not in labels:
+                    labels.append(BaseChannelLabel.BAD_CHANNEL.value)
                     global_state.update_channel_labels(i, labels)
 
         # Update the global state with the new channel status
