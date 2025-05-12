@@ -27,7 +27,8 @@ def setup_logging():
                 'filename': 'hdsemg-select.log',
                 'mode': 'a',
                 'maxBytes': 1_000_000,  # 1 MB
-                'backupCount': 3  # Keep 3 backup files
+                'backupCount': 3,  # Keep 3 backup files
+                'encoding': 'utf-8'
             }
         },
         'loggers': {
