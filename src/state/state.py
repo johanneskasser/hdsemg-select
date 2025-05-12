@@ -34,8 +34,16 @@ class State(QObject):
 
 
     # Getters
-    def get_channel_status(self) -> list:
-        return self._channel_status
+    def get_channel_status(self, idx = None) -> list:
+        if idx is None:
+            return self._channel_status
+        else:
+            if idx in self._channel_status:
+                return self._channel_status[idx]
+            else:
+                logger.debug(f"Channel index {idx} not found in channel status. Creating an empty list.")
+                self._channel_status[idx] = []
+                return self._channel_status[idx]
 
     def get_grid_info(self) -> dict:
         return self._grid_info

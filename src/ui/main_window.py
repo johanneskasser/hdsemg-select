@@ -17,9 +17,8 @@ from settings.settings_dialog import SettingsDialog
 from settings.tabs.auto_flagger_settings_tab import validate_auto_flagger_settings
 from state.state import global_state
 from ui.channel_details import ChannelDetailWindow
-from ui.labels.channel_label_dialog import ChannelLabelDialog
 from ui.channel_spectrum import ChannelSpectrum
-from ui.channel_widget import ChannelWidget
+from ui.plot.channel_widget import ChannelWidget
 from ui.electrode_widget import ElectrodeWidget
 from ui.selection.amplitude_based import AutomaticAmplitudeSelection
 from config.config_manager import config
@@ -60,7 +59,7 @@ class ChannelSelector(QMainWindow):
         self.setCentralWidget(self.main_widget)
 
         self.outer_layout = QHBoxLayout(self.main_widget)
-        self.electrode_widget = ElectrodeWidget()
+        self.electrode_widget = ElectrodeWidget(self)
         self.outer_layout.addWidget(self.electrode_widget)
         self.electrode_widget.setHidden(True)
 

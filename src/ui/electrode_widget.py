@@ -1,12 +1,14 @@
 from PyQt5.QtCore import Qt, QRect
 from PyQt5.QtGui import QPainter, QPen, QColor, QFont
-from PyQt5.QtWidgets import QWidget, QGridLayout, QLabel, QVBoxLayout, QSizePolicy
+from PyQt5.QtWidgets import QWidget, QGridLayout, QLabel, QVBoxLayout, QSizePolicy, QPushButton
 from _log.log_config import logger
+from ui.plot.signal_overview_plot import open_signal_plot_dialog
 
 
 class ElectrodeWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.parent = parent
         self.layout = QVBoxLayout(self)
         self.grid_label = QLabel("")
 
@@ -24,6 +26,12 @@ class ElectrodeWidget(QWidget):
         # Highlight info
         self.highlight_orientation = None  # "parallel" or "perpendicular" or None
         self.highlight_index = 0  # which row/column is currently highlighted
+
+        open_signal_overview_btn = QPushButton("Open Signal Overview")
+        open_signal_overview_btn.setToolTip("Open signal overview window to visualize the selected grid in more detail and examine Action Potentials.")
+        open_signal_overview_btn.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+        open_signal_overview_btn.clicked.connect(self.open_signal_overview)
+        self.layout.addWidget(open_signal_overview_btn)
 
     def set_grid_shape(self, grid_shape):
         self.grid_shape = grid_shape
@@ -172,3 +180,8 @@ class ElectrodeWidget(QWidget):
         painter.rotate(-90)
         painter.drawText(-50, 0, "Muscle Fiber")
         painter.restore()
+
+    def open_signal_overview(self):
+        """Open the Signal Overview Plot"""
+        logger.info("Open Signal Overview Plot")
+        open_signal_plot_dialog(self.parent.grid_setup_handler, self)
