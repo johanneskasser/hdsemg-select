@@ -15,7 +15,6 @@ def _normalize_trace(trace: np.ndarray, max_amp: float = 1.1) -> np.ndarray:
     if trace.size == 0:
         return trace
     peak = np.max(np.abs(trace))
-    # Prüfen auf None, 0 oder NaN
     if peak is None or np.isclose(peak, 0.0) or np.isnan(peak):
         return np.copy(trace)
     return trace * (max_amp / peak)
@@ -136,7 +135,7 @@ class SignalPlotDialog(QDialog):
         rows = self.grid_handler.get_rows()
         cols = self.grid_handler.get_cols()
         try:
-            grid_arr = np.array(ch_indices).reshape(rows, cols)
+            grid_arr = np.array(ch_indices).reshape(cols, rows)
         except ValueError:
             grid_arr = np.array(ch_indices)[None, :]
         if self._rotated:
@@ -144,13 +143,7 @@ class SignalPlotDialog(QDialog):
         ch_indices = grid_arr.flatten().tolist()
         rows, cols = grid_arr.shape
 
-        # flip separator logic
-        orientation = self.grid_handler.get_orientation()
-        if self._rotated:
-            orientation = ("perpendicular"
-                           if orientation == "parallel"
-                           else "parallel")
-        separator_interval = cols if orientation == "perpendicular" else rows
+        separator_interval = cols
 
         # --- plotting ---
         self.ax.clear()
