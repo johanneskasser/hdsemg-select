@@ -110,73 +110,83 @@ class ElectrodeWidget(QWidget):
 
     def paintEvent(self, event):
         super().paintEvent(event)
+        if not self.electrode_labels:
+            return
+
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
 
         rows, cols = self.grid_shape
-        label_width = 20
-        label_height = 20
-        spacing_x = self.grid_layout.horizontalSpacing() or 0
-        spacing_y = self.grid_layout.verticalSpacing() or 0
 
-        # Calculate total width/height of the electrode grid
-        total_width = cols * (label_width + spacing_x) - spacing_x
-        total_height = rows * (label_height + spacing_y) - spacing_y
+        # Pick out the first & last electrode label for overall bounds
+        first_lbl = self.electrode_labels[0][0]
+        last_lbl = self.electrode_labels[rows - 1][cols - 1]
+        first_rect = first_lbl.geometry()
+        last_rect = last_lbl.geometry()
 
-        grid_layout_pos = self.grid_layout.geometry().topLeft()
-        offset_x = grid_layout_pos.x()
-        offset_y = grid_layout_pos.y()
+        # Semi-transparent yellow
+        yellow = QColor(255, 255, 0, 90)
 
+        # 1) Highlight a full ROW ("perpendicular")
+        if self.highlight_orientation == "perpendicular" and 0 <= self.highlight_index < rows:
+            r = self.highlight_index
+            a = self.electrode_labels[r][0].geometry()
+            b = self.electrode_labels[r][cols - 1].geometry()
+            span = QRect(
+                a.left(),
+                a.top(),
+                b.right() - a.left(),
+                a.height()
+            )
+            painter.fillRect(span, yellow)
+
+        # 2) Highlight a full COLUMN ("parallel")
+        elif self.highlight_orientation == "parallel" and 0 <= self.highlight_index < cols:
+            c = self.highlight_index
+            a = self.electrode_labels[0][c].geometry()
+            b = self.electrode_labels[rows - 1][c].geometry()
+            span = QRect(
+                a.left(),
+                a.top(),
+                a.width(),
+                b.bottom() - a.top()
+            )
+            painter.fillRect(span, yellow)
+
+        # 3) Draw the rounded‐rect outline around the entire grid
         padding = 10
-        rect = QRect(offset_x - padding, offset_y - padding,
-                     total_width + 2 * padding, total_height + 2 * padding)
-
-        # Draw highlight behind the row or column before drawing the outline
-        yellow = QColor("yellow")
-        yellow.setAlpha(90)
-        if self.highlight_orientation == "perpendicular":
-            # Highlight a specific row
-            if 0 <= self.highlight_index < rows:
-                highlight_y = offset_y + self.highlight_index * (label_height + spacing_y)
-                highlight_rect = QRect(offset_x, highlight_y, total_width, label_height + 3)
-                painter.fillRect(highlight_rect, yellow)
-
-        elif self.highlight_orientation == "parallel":
-            # Highlight a specific column
-            if 0 <= self.highlight_index < cols:
-                highlight_x = offset_x + self.highlight_index * (label_width + spacing_x)
-                highlight_rect = QRect(highlight_x, offset_y, label_width + 5, total_height)
-                painter.fillRect(highlight_rect, yellow)
-
-        # Now draw the sticker outline
+        outline = QRect(
+            first_rect.left() - padding,
+            first_rect.top() - padding,
+            (last_rect.right() - first_rect.left()) + 2 * padding,
+            (last_rect.bottom() - first_rect.top()) + 2 * padding
+        )
         pen = QPen(Qt.black, 2)
         painter.setPen(pen)
         painter.setBrush(Qt.NoBrush)
-        painter.drawRoundedRect(rect, 15, 15)
+        painter.drawRoundedRect(outline, 15, 15)
 
-        # Draw the tab at the bottom
-        tab_width = total_width * 0.3
-        tab_height = 30
-        tab_x = rect.left() + (rect.width() - tab_width) / 2
-        tab_y = rect.bottom()
-        tab_rect = QRect(int(tab_x), int(tab_y), int(tab_width), int(tab_height))
+        # 4) Draw the little tab under the sticker
+        tab_w = outline.width() * 0.3
+        tab_h = 30
+        tab_x = outline.left() + (outline.width() - tab_w) / 2
+        tab_y = outline.bottom()
+        tab_rect = QRect(int(tab_x), int(tab_y), int(tab_w), tab_h)
         painter.drawRoundedRect(tab_rect, 10, 10)
 
-        # Draw the muscle fiber direction arrow
-        arrow_x = rect.left() - 40
+        # 5) Draw the muscle‐fiber arrow to the left
+        arrow_x = outline.left() - 40
         pen_arrow = QPen(Qt.black, 3)
         painter.setPen(pen_arrow)
-        # vertical line
-        painter.drawLine(arrow_x, rect.top(), arrow_x, rect.bottom())
-        # arrow head at the top
-        painter.drawLine(arrow_x, rect.top(), arrow_x - 5, rect.top() + 10)
-        painter.drawLine(arrow_x, rect.top(), arrow_x + 5, rect.top() + 10)
+        painter.drawLine(arrow_x, outline.top(), arrow_x, outline.bottom())
+        painter.drawLine(arrow_x, outline.top(), arrow_x - 5, outline.top() + 10)
+        painter.drawLine(arrow_x, outline.top(), arrow_x + 5, outline.top() + 10)
 
-        # Add text "Muscle Fiber"
+        # 6) Label “Muscle Fiber” along the arrow
         painter.setPen(Qt.black)
         painter.setFont(QFont("Arial", 10))
         painter.save()
-        painter.translate(arrow_x - 10, (rect.top() + rect.bottom()) / 2)
+        painter.translate(arrow_x - 10, (outline.top() + outline.bottom()) / 2)
         painter.rotate(-90)
         painter.drawText(-50, 0, "Muscle Fiber")
         painter.restore()

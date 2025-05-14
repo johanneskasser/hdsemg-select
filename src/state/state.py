@@ -38,7 +38,7 @@ class State(QObject):
         if idx is None:
             return self._channel_status
         else:
-            if idx in self._channel_status:
+            if 0 <= idx < len(self._channel_status):
                 return self._channel_status[idx]
             else:
                 logger.debug(f"Channel index {idx} not found in channel status. Creating an empty list.")

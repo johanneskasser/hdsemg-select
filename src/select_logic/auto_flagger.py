@@ -108,11 +108,6 @@ class AutoFlagger:
 
                                       if len(peaks) > 0:
                                           closest_peak_idx_in_band = peaks[np.argmin(np.abs(band_freqs[peaks] - target_freq))]
-                                          # Calculate prominence of the peak at the target frequency
-                                          # Need to recalculate properties for a single peak or use height/threshold directly
-                                          # Simple check: Is there a peak *at* or *very near* the target freq above a height/prominence threshold?
-                                          # Or check if the power ratio is high enough AND it's a local maximum.
-                                          # Let's stick to the power ratio check combined with being a local max for simplicity if find_peaks logic is complex.
 
                                           # Check if the target freq bin is a local maximum (compared to immediate neighbors)
                                           is_local_max = True
