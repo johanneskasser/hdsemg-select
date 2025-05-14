@@ -1,5 +1,6 @@
 import numpy as np
-from PyQt5.QtWidgets import QDialog, QPushButton, QHBoxLayout, QLabel, QVBoxLayout, QMessageBox, QStyle, QApplication
+from PyQt5.QtWidgets import QDialog, QPushButton, QHBoxLayout, QLabel, QVBoxLayout, QMessageBox, QStyle, QApplication, \
+    QGroupBox, QFormLayout, QComboBox, QSizePolicy
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
@@ -49,21 +50,60 @@ class SignalPlotDialog(QDialog):
         else:
              self._show_no_grid_message()
 
-
     def _create_widgets(self):
-        """Erstellt die Widgets für den Dialog, einschließlich der Toolbar."""
-        self.rotate_btn = QPushButton(QApplication.style().standardIcon(QStyle.SP_BrowserReload), "")
+        """Erstellt die Widgets für den Dialog, einschließlich der Toolbar und des Settings-Formulars."""
+
+        # 1) Rotate-Button (rechts oben)
+        self.rotate_btn = QPushButton(
+            QApplication.style().standardIcon(QStyle.SP_BrowserReload), ""
+        )
         self.rotate_btn.setToolTip("Rotate view")
+        self.rotate_btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+
+        # 2) View-Settings-Box
+        box = QGroupBox("View Settings")
+        box.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+
+        form = QFormLayout()
+        # Combobox zum Umschalten zwischen Row/Column
+        self.layout_combo = QComboBox()
+        self.layout_combo.addItems(["Rows", "Columns"])
+        form.addRow("Layout:", self.layout_combo)
+
+        # Combobox für Fiber-Orientation
+        self.fiber_combo = QComboBox()
+        self.fiber_combo.addItems(["Parallel", "Perpendicular"])
+        form.addRow("Fibers:", self.fiber_combo)
+
+        # Apply-Button
+        self.apply_btn = QPushButton(
+            QApplication.style().standardIcon(QStyle.SP_DialogApplyButton),
+            ""
+        )
+        self.apply_btn.setToolTip("Apply changes")
+        self.apply_btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        form.addRow(self.apply_btn)
+
+        box.setLayout(form)
+
+        # 3) Controls-Layout ganz oben
         controls = QHBoxLayout()
         controls.addStretch()
+        controls.addWidget(box)
         controls.addWidget(self.rotate_btn)
+
+        # 4) Matplotlib-Canvas + Toolbar
         self.canvas = FigureCanvas(Figure(figsize=(15, 10)))
         self.ax = self.canvas.figure.add_subplot(111)
         self.toolbar = NavigationToolbar(self.canvas, self)
+
+        # 5) Gesamtes Dialog-Layout
         root = QVBoxLayout(self)
-        root.addLayout(controls)
+        root.addLayout(controls)  # ganz oben: Settings + Rotate (jetzt rechtsbündig)
         root.addWidget(self.toolbar)
         root.addWidget(self.canvas)
+
+        self.setLayout(root) # Wichtig, um das Layout für den Dialog zu setzen
 
     def _wire_signals(self):
         self.rotate_btn.clicked.connect(self._rotate_view)
