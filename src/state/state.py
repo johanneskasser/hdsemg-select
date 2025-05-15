@@ -1,7 +1,11 @@
+from typing import Dict
+
 from PyQt5.QtCore import QObject
 from PyQt5.QtCore import pyqtSignal
 
 from _log.log_config import logger
+from state.enum.layout_mode_enums import FiberMode, LayoutMode
+
 
 class State(QObject):
     channel_labels_changed = pyqtSignal(int, list)
@@ -30,6 +34,11 @@ class State(QObject):
         self._channel_labels = {}
         self._input_file = None
         self._output_file = None
+        # default fallback
+        self._fiber_to_layout: Dict[FiberMode, LayoutMode] = {
+            FiberMode.PARALLEL: LayoutMode.COLS,
+            FiberMode.PERPENDICULAR: LayoutMode.ROWS
+        }
 
 
 
@@ -132,7 +141,6 @@ class State(QObject):
     def set_output_file(self, value):
         self._output_file = value
 
-    # New Method to update labels for a specific channel
     def update_channel_labels(self, channel_idx: int, labels: list):
         if not isinstance(labels, list):
             raise ValueError("Labels must be a list")
@@ -150,5 +158,32 @@ class State(QObject):
 
         # Emit signal to notify that channel labels have changed
         self.channel_labels_changed.emit(channel_idx, labels)
+
+    def set_fiber_layout(self,
+                         fiber_mode: FiberMode,
+                         layout_mode: LayoutMode) -> None:
+        """Set fiber_mode→layout_mode and inverts automatically for other fiber mode."""
+        # 1) Validate
+        if not isinstance(fiber_mode, FiberMode):
+            raise ValueError(f"fiber_mode must be FiberMode, got {type(fiber_mode)}")
+        if not isinstance(layout_mode, LayoutMode):
+            raise ValueError(f"layout_mode must be LayoutMode, got {type(layout_mode)}")
+
+        # 2) find other fiber and layout mode
+        other_fiber = next(f for f in FiberMode if f is not fiber_mode)
+        other_layout = next(l for l in LayoutMode if l is not layout_mode)
+
+        # 3) save
+        self._fiber_to_layout[fiber_mode] = layout_mode
+        self._fiber_to_layout[other_fiber] = other_layout
+
+    def get_layout_for_fiber(self, fiber_mode: FiberMode) -> LayoutMode:
+        """Liefert den zugehörigen LayoutMode; ValueError, falls nicht gesetzt."""
+        if not isinstance(fiber_mode, FiberMode):
+            raise ValueError(f"fiber_mode must be FiberMode, got {type(fiber_mode)}")
+        try:
+            return self._fiber_to_layout[fiber_mode]
+        except KeyError:
+            raise KeyError(f"No layout assigned yet for {fiber_mode}")
 
 global_state = State()

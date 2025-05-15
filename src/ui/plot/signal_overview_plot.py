@@ -7,6 +7,7 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigatio
 from matplotlib.figure import Figure
 
 from controller.grid_setup_handler import GridSetupHandler
+from state.enum.layout_mode_enums import LayoutMode, FiberMode
 from state.state import global_state
 from _log.log_config import logger
 
@@ -31,7 +32,7 @@ class SignalPlotDialog(QDialog):
 
     def __init__(self, grid_handler: GridSetupHandler, parent=None):
         super().__init__(parent)
-        self._rotated = False
+        self._layout_mode = LayoutMode.ROWS
         self.setWindowTitle("Full Grid Signal Viewer")
         if not isinstance(grid_handler, GridSetupHandler):
              raise TypeError("grid_handler must be an instance of GridSetupHandler")
@@ -65,14 +66,14 @@ class SignalPlotDialog(QDialog):
         box.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
 
         form = QFormLayout()
-        # Combobox zum Umschalten zwischen Row/Column
-        self.layout_combo = QComboBox()
-        self.layout_combo.addItems(["Rows", "Columns"])
-        form.addRow("Layout:", self.layout_combo)
+        self.layout_label = QLabel(self._layout_mode.name.title())
+        self.layout_label.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        form.addRow("Layout:", self.layout_label)
 
         # Combobox für Fiber-Orientation
         self.fiber_combo = QComboBox()
-        self.fiber_combo.addItems(["Parallel", "Perpendicular"])
+        for mode in FiberMode:
+            self.fiber_combo.addItem(mode.name.title(), mode)
         form.addRow("Fibers:", self.fiber_combo)
 
         # Apply-Button
@@ -110,8 +111,22 @@ class SignalPlotDialog(QDialog):
 
     def _rotate_view(self):
         """Flip between row and column major view and redraw"""
-        self._rotated = not self._rotated
+        if self._layout_mode == LayoutMode.ROWS:
+            self._layout_mode = LayoutMode.COLS
+        else:
+            self._layout_mode = LayoutMode.ROWS
+        self.layout_label.setText(self._layout_mode.name.title())
         self.update_plot()
+
+    def _apply_orientation_selection(self):
+        """Applies the currently selected orientation selection (combination layout/fiber)"""
+        selected_fiber_mode: FiberMode = self.fiber_combo.currentData()
+        selected_layout_mode = self._layout_mode
+
+        logger.debug(f"Selected orientation: {selected_fiber_mode.name.title()} -> {selected_layout_mode.name.title()}")
+
+
+
 
     def _show_no_grid_message(self):
         self.ax.clear()
@@ -178,7 +193,7 @@ class SignalPlotDialog(QDialog):
             grid_arr = np.array(ch_indices).reshape(cols, rows)
         except ValueError:
             grid_arr = np.array(ch_indices)[None, :]
-        if self._rotated:
+        if self._layout_mode == LayoutMode.COLS:
             grid_arr = grid_arr.T
         ch_indices = grid_arr.flatten().tolist()
         rows, cols = grid_arr.shape
