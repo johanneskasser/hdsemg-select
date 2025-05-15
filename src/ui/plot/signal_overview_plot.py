@@ -63,12 +63,17 @@ class SignalPlotDialog(QDialog):
 
         # 2) View-Settings-Box
         box = QGroupBox("View Settings")
-        box.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+        box.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
 
         form = QFormLayout()
         self.layout_label = QLabel(self._layout_mode.name.title())
-        self.layout_label.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        form.addRow("Layout:", self.layout_label)
+        self.layout_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        layout_label_horizontal_layout = QHBoxLayout()
+        layout_label_horizontal_layout.setContentsMargins(0, 0, 0, 0)
+        layout_label_horizontal_layout.addWidget(self.layout_label)
+        layout_label_horizontal_layout.addWidget(self.rotate_btn)
+        #layout_label_horizontal_layout.addStretch()
+        form.addRow("Layout:", layout_label_horizontal_layout)
 
         # Combobox für Fiber-Orientation
         self.fiber_combo = QComboBox()
@@ -86,12 +91,12 @@ class SignalPlotDialog(QDialog):
         form.addRow(self.apply_btn)
 
         box.setLayout(form)
+        box.setMaximumHeight(box.sizeHint().height())
 
         # 3) Controls-Layout ganz oben
         controls = QHBoxLayout()
         controls.addStretch()
         controls.addWidget(box)
-        controls.addWidget(self.rotate_btn)
 
         # 4) Matplotlib-Canvas + Toolbar
         self.canvas = FigureCanvas(Figure(figsize=(15, 10)))
@@ -100,14 +105,15 @@ class SignalPlotDialog(QDialog):
 
         # 5) Gesamtes Dialog-Layout
         root = QVBoxLayout(self)
-        root.addLayout(controls)  # ganz oben: Settings + Rotate (jetzt rechtsbündig)
+        root.addLayout(controls)
         root.addWidget(self.toolbar)
         root.addWidget(self.canvas)
 
-        self.setLayout(root) # Wichtig, um das Layout für den Dialog zu setzen
+        self.setLayout(root)
 
     def _wire_signals(self):
         self.rotate_btn.clicked.connect(self._rotate_view)
+        self.apply_btn.clicked.connect(self._apply_orientation_selection)
 
     def _rotate_view(self):
         """Flip between row and column major view and redraw"""
@@ -124,6 +130,10 @@ class SignalPlotDialog(QDialog):
         selected_layout_mode = self._layout_mode
 
         logger.debug(f"Selected orientation: {selected_fiber_mode.name.title()} -> {selected_layout_mode.name.title()}")
+
+        global_state.set_fiber_layout(selected_fiber_mode, selected_layout_mode)
+
+        self.close()
 
 
 
