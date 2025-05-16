@@ -84,7 +84,6 @@ jobs:
           pip install \
             --only-binary=:all: \
             --platform macosx_12_0_universal2 \
-            --target-version cp310 \
             -r ../requirements.txt \
             pyinstaller \
             PyQt5==5.15.9 \
