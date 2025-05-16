@@ -61,7 +61,7 @@ class ChannelSelector(QMainWindow):
 
         self.outer_layout = QHBoxLayout(self.main_widget)
         self.electrode_widget = ElectrodeWidget(self)
-        self.electrode_widget.signal_overview_plot_applied.connect(self.display_page)
+        self.electrode_widget.signal_overview_plot_applied.connect(lambda: self.display_page(True))
         self.outer_layout.addWidget(self.electrode_widget)
         self.electrode_widget.setHidden(True)
 
@@ -271,11 +271,12 @@ class ChannelSelector(QMainWindow):
             if widget:
                 widget.setParent(None)
 
-    def display_page(self):
+    def display_page(self, orientation_change=False):
         """Displays the channels for the current page."""
-        selected_grid = self.grid_setup_handler.get_selected_grid()
-        orientation = self.grid_setup_handler.get_orientation()
-        success = self.grid_setup_handler.apply_selection(selected_grid, orientation, self) # Reapply selection to ensure state is consistent and grid layout changes are respected
+        if orientation_change:
+            selected_grid = self.grid_setup_handler.get_selected_grid()
+            orientation = self.grid_setup_handler.get_orientation()
+            success = self.grid_setup_handler.apply_selection(selected_grid, orientation, self) # Reapply selection to ensure state is consistent and grid layout changes are respected
         # Get display/paging parameters from GridSetupHandler
         current_page = self.grid_setup_handler.get_current_page()
         total_pages = self.grid_setup_handler.get_total_pages()
@@ -480,7 +481,7 @@ class ChannelSelector(QMainWindow):
             return
 
         # Run the auto-flagger
-        suggested_labels = self.auto_flagger.suggest_flags(scaled_data, sampling_frequency, settings)
+        suggested_labels, total_emg_channels, total_ref_channels = self.auto_flagger.suggest_flags(scaled_data, sampling_frequency, settings)
 
         # Apply suggested labels to the state (add to existing labels)
         current_labels = global_state.get_channel_labels()  # Get the current labels dict
@@ -506,7 +507,7 @@ class ChannelSelector(QMainWindow):
             logger.info(f"Applied suggested flags to {updated_count} channels.")
             # Refresh the display page to show updated labels on the channel widgets
             self.display_page()
-            QMessageBox.information(self, "Auto-Flagger", f"Suggested flags applied to {updated_count} channels.")
+            QMessageBox.information(self, "Auto-Flagger", f"Suggested flags applied to {total_emg_channels} emg-channels and {total_ref_channels} reference signals.")
         else:
             logger.info("Auto-flagger suggested no new flags for any channel.")
             QMessageBox.information(self, "Auto-Flagger", "No new flags were suggested based on the current settings.")
