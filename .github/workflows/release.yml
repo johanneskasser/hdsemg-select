@@ -77,18 +77,27 @@ jobs:
         with:
           python-version: '3.10.x'
 
-      - name: Install Dependencies
+      - name: Install Qt5
+        run: brew install qt@5
+        # Forcing link, though often not needed if PATH is set up correctly by brew
+        # run: |
+        #   brew install qt@5
+        #   echo "/usr/local/opt/qt@5/bin" >> $GITHUB_PATH # For Intel runners
+        #   echo "/opt/homebrew/opt/qt@5/bin" >> $GITHUB_PATH # For ARM runners (if you switch to macos-14)
+
+
+      - name: Install dependencies
         working-directory: ./src
         run: |
-          python -m pip install --upgrade pip setuptools
-          pip install \
-            --only-binary=:all: \
-            --platform macosx_12_0_universal2 \
-            -r ../requirements.txt \
-            pyinstaller \
-            PyQt5==5.15.9 \
-            PyQt5-Qt5==5.15.2 \
-            PyQt5-sip==12.13.0
+          python -m pip install --upgrade pip
+          # It's good practice to specify versions for packages that might cause build issues
+          # or rely on system libraries.
+          # Given pyqt5-tools 5.15.9.3.3 was pulled, it likely wants PyQt5 around 5.15.9.
+          # Let's try to install a common wheel version for PyQt5 first, then requirements.
+          # pip install "PyQt5==5.15.11" # Example: Or another version known to have good wheels for Python 3.10
+          # Then install the rest. If pyqt5-tools needs to build an older PyQt5, Qt5 tools will be present.
+          pip install -r ../requirements.txt pyinstaller PyQt5
+        shell: bash
 
       - name: Generate version.py from Git tag
         working-directory: ./src
@@ -107,6 +116,14 @@ jobs:
         run: |
           if [ ! -f resources_rc.py ]; then
             echo "Compiling resources.qrc → resources_rc.py"
+            # Ensure pyrcc5 uses the Qt installed by brew if needed
+            # For Intel runners with qt@5 from brew:
+            # /usr/local/opt/qt@5/bin/pyrcc5 resources.qrc -o resources_rc.py
+            # For ARM runners with qt@5 from brew:
+            # /opt/homebrew/opt/qt@5/bin/pyrcc5 resources.qrc -o resources_rc.py
+            # Or simply hope pyrcc5 from the pip installed PyQt5 finds the brew Qt.
+            # If pyrcc5 is found in the PATH from the pip installed PyQt5, it should be fine
+            # as long as the underlying Qt libraries (qmake, etc.) are found.
             pyrcc5 resources.qrc -o resources_rc.py
           else
             echo "resources_rc.py exists, skipping"
