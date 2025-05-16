@@ -1,6 +1,7 @@
 import numpy as np
+from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtWidgets import QDialog, QPushButton, QHBoxLayout, QLabel, QVBoxLayout, QMessageBox, QStyle, QApplication, \
-    QGroupBox, QFormLayout, QComboBox, QSizePolicy
+    QGroupBox, QFormLayout, QComboBox, QSizePolicy, QWidget, QGridLayout
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
@@ -27,12 +28,16 @@ class SignalPlotDialog(QDialog):
     Zeigt alle Kanäle des Grids über die gesamte Signallänge an,
     mit interaktivem Zoom/Pan über die Matplotlib-Toolbar und Kanalindizes auf der Y-Achse.
     """
+    orientation_applied = pyqtSignal()
 
     _COLORS = plt.get_cmap("tab10").colors
 
     def __init__(self, grid_handler: GridSetupHandler, parent=None):
         super().__init__(parent)
-        self._layout_mode = LayoutMode.ROWS
+        self.currently_selected_fiber_mode = grid_handler.get_orientation()
+
+        self._layout_mode = global_state.get_layout_for_fiber(self.currently_selected_fiber_mode)
+        logger.debug(f"SignalPlotDialog initialized with layout mode: {self._layout_mode.name.title()}")
         self.setWindowTitle("Full Grid Signal Viewer")
         if not isinstance(grid_handler, GridSetupHandler):
              raise TypeError("grid_handler must be an instance of GridSetupHandler")
@@ -52,64 +57,108 @@ class SignalPlotDialog(QDialog):
              self._show_no_grid_message()
 
     def _create_widgets(self):
-        """Erstellt die Widgets für den Dialog, einschließlich der Toolbar und des Settings-Formulars."""
+        """Creates the widgets for the dialog, including toolbar and settings form."""
 
-        # 1) Rotate-Button (rechts oben)
+        # -- Rotate button (upper right) --
         self.rotate_btn = QPushButton(
             QApplication.style().standardIcon(QStyle.SP_BrowserReload), ""
         )
         self.rotate_btn.setToolTip("Rotate view")
         self.rotate_btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
 
-        # 2) View-Settings-Box
-        box = QGroupBox("View Settings")
-        box.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
-
-        form = QFormLayout()
-        self.layout_label = QLabel(self._layout_mode.name.title())
-        self.layout_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-        layout_label_horizontal_layout = QHBoxLayout()
-        layout_label_horizontal_layout.setContentsMargins(0, 0, 0, 0)
-        layout_label_horizontal_layout.addWidget(self.layout_label)
-        layout_label_horizontal_layout.addWidget(self.rotate_btn)
-        #layout_label_horizontal_layout.addStretch()
-        form.addRow("Layout:", layout_label_horizontal_layout)
-
-        # Combobox für Fiber-Orientation
-        self.fiber_combo = QComboBox()
-        for mode in FiberMode:
-            self.fiber_combo.addItem(mode.name.title(), mode)
-        form.addRow("Fibers:", self.fiber_combo)
-
-        # Apply-Button
-        self.apply_btn = QPushButton(
-            QApplication.style().standardIcon(QStyle.SP_DialogApplyButton),
-            ""
-        )
-        self.apply_btn.setToolTip("Apply changes")
-        self.apply_btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        form.addRow(self.apply_btn)
-
-        box.setLayout(form)
-        box.setMaximumHeight(box.sizeHint().height())
-
-        # 3) Controls-Layout ganz oben
+        # -- Top controls layout --
         controls = QHBoxLayout()
         controls.addStretch()
-        controls.addWidget(box)
+        controls.addWidget(self._create_view_settings())
 
-        # 4) Matplotlib-Canvas + Toolbar
+        # -- Matplotlib canvas + toolbar --
         self.canvas = FigureCanvas(Figure(figsize=(15, 10)))
         self.ax = self.canvas.figure.add_subplot(111)
         self.toolbar = NavigationToolbar(self.canvas, self)
 
-        # 5) Gesamtes Dialog-Layout
+        # -- Main dialog layout --
         root = QVBoxLayout(self)
         root.addLayout(controls)
         root.addWidget(self.toolbar)
         root.addWidget(self.canvas)
-
         self.setLayout(root)
+
+    def _create_view_settings(self):
+        box = QGroupBox("View Settings")
+        box.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
+
+        grid = QGridLayout()
+        grid.setContentsMargins(8, 8, 8, 8)
+        grid.setHorizontalSpacing(12)
+        grid.setVerticalSpacing(6)
+
+        # Column indices:
+        # 0 = text label, 1 = info-icon, 2 = control that expands, 3 = tight control
+        grid.setColumnStretch(2, 1)
+
+        # --- ROW 0: Layout ---
+        lbl_layout = QLabel("<b>Layout:</b>")
+        btn_info_layout = QPushButton()
+        btn_info_layout.setIcon(self.style().standardIcon(QStyle.SP_MessageBoxInformation))
+        btn_info_layout.setFixedSize(20, 20)
+        btn_info_layout.setToolTip("What is Layout?")
+        btn_info_layout.clicked.connect(lambda:
+                                        QMessageBox.information(
+                                            self, "Layout Info",
+                                            "Rotate the grid between row-major (Rows) or column-major (Cols) view."
+                                        )
+                                        )
+
+        self.layout_label = QLabel(self._layout_mode.name.title())
+        self.layout_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+
+        self.rotate_btn = QPushButton(
+            self.style().standardIcon(QStyle.SP_BrowserReload), ""
+        )
+        self.rotate_btn.setToolTip("Rotate view")
+        self.rotate_btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+
+        grid.addWidget(lbl_layout, 0, 0, Qt.AlignLeft)
+        grid.addWidget(btn_info_layout, 0, 1, Qt.AlignLeft)
+        grid.addWidget(self.layout_label, 0, 2)
+        grid.addWidget(self.rotate_btn, 0, 3, Qt.AlignRight)
+
+        # --- ROW 1: Fibers ---
+        lbl_fibers = QLabel("<b>Fibers:</b>")
+        btn_info_fibers = QPushButton()
+        btn_info_fibers.setIcon(self.style().standardIcon(QStyle.SP_MessageBoxInformation))
+        btn_info_fibers.setFixedSize(20, 20)
+        btn_info_fibers.setToolTip("What are Fibers?")
+        btn_info_fibers.clicked.connect(lambda:
+                                        QMessageBox.information(
+                                            self, "Fibers Info",
+                                            "Choose whether to display electrodes parallel or perpendicular to the fiber direction."
+                                        )
+                                        )
+
+        self.fiber_combo = QComboBox()
+        for mode in FiberMode:
+            self.fiber_combo.addItem(mode.name.title(), mode)
+        # select current
+        idx = self.fiber_combo.findData(self.currently_selected_fiber_mode)
+        if idx >= 0:
+            self.fiber_combo.setCurrentIndex(idx)
+
+        grid.addWidget(lbl_fibers, 1, 0, Qt.AlignLeft)
+        grid.addWidget(btn_info_fibers, 1, 1, Qt.AlignLeft)
+        grid.addWidget(self.fiber_combo, 1, 2, 1, 2)
+
+        # --- ROW 2: Apply ---
+        self.apply_btn = QPushButton(
+            self.style().standardIcon(QStyle.SP_DialogApplyButton), ""
+        )
+        self.apply_btn.setToolTip("Apply changes")
+        self.apply_btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        grid.addWidget(self.apply_btn, 2, 0, 1, 4, Qt.AlignLeft)
+
+        box.setLayout(grid)
+        box.setMaximumHeight(box.sizeHint().height())
+        return box
 
     def _wire_signals(self):
         self.rotate_btn.clicked.connect(self._rotate_view)
@@ -133,10 +182,9 @@ class SignalPlotDialog(QDialog):
 
         global_state.set_fiber_layout(selected_fiber_mode, selected_layout_mode)
 
+        self.orientation_applied.emit()
+
         self.close()
-
-
-
 
     def _show_no_grid_message(self):
         self.ax.clear()
@@ -203,7 +251,7 @@ class SignalPlotDialog(QDialog):
             grid_arr = np.array(ch_indices).reshape(cols, rows)
         except ValueError:
             grid_arr = np.array(ch_indices)[None, :]
-        if self._layout_mode == LayoutMode.COLS:
+        if self._layout_mode == LayoutMode.ROWS:
             grid_arr = grid_arr.T
         ch_indices = grid_arr.flatten().tolist()
         rows, cols = grid_arr.shape

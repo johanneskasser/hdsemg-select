@@ -2,6 +2,7 @@
 import numpy as np
 from PyQt5.QtWidgets import QMessageBox
 from _log.log_config import logger
+from state.enum.layout_mode_enums import FiberMode, LayoutMode
 from state.state import global_state # Import global state
 
 class GridSetupHandler:
@@ -9,7 +10,7 @@ class GridSetupHandler:
         # Local variables derived from grid info and selection
         self.current_grid_indices = []
         self.grid_channel_map = {}
-        self.orientation = None
+        self.fiber_orientation: FiberMode = None
         self.rows = 0
         self.cols = 0
         self.items_per_page = 16 # Default, will be updated based on grid/orientation
@@ -34,7 +35,10 @@ class GridSetupHandler:
              return False
 
         self.selected_grid = selected_grid
-        self.orientation = orientation
+        if not isinstance(orientation, FiberMode):
+            raise TypeError(f"Expected FiberMode, got {type(orientation)}")
+        self.fiber_orientation = orientation
+        grid_layout = global_state.get_layout_for_fiber(self.fiber_orientation) # get the layout for the selected fiber orientation, can be defined by user
 
         self.rows = grid_info[self.selected_grid]["rows"]
         self.cols = grid_info[self.selected_grid]["cols"]
@@ -72,20 +76,16 @@ class GridSetupHandler:
              return False
 
 
-        if self.orientation == "perpendicular":
-            self.current_grid_indices = full_grid_array.flatten(order='C').tolist()
+        if grid_layout == LayoutMode.ROWS:
+            self.current_grid_indices = full_grid_array.flatten(order='C').tolist() # row-major order
             self.items_per_page = self.cols # Items per page depends on display orientation
-        else: # 'parallel' or default
-            self.current_grid_indices = full_grid_array.flatten(order='F').tolist()
-            self.items_per_page = self.rows # Items per page depends on display orientation
-
-        self.current_grid_indices = [ch for ch in self.current_grid_indices if ch is not None]
-
-
-        if self.orientation == "perpendicular":
             full_flattened_indices = full_grid_array.flatten(order='C').tolist()
         else: # 'parallel' or default
+            self.current_grid_indices = full_grid_array.flatten(order='F').tolist() # column-major order
+            self.items_per_page = self.rows # Items per page depends on display orientation
             full_flattened_indices = full_grid_array.flatten(order='F').tolist()
+
+        self.current_grid_indices = [ch for ch in self.current_grid_indices if ch is not None]
 
         self.grid_channel_map = {ch_idx: i for i, ch_idx in enumerate(full_flattened_indices) if ch_idx is not None}
         self.current_grid_indices = [ch for ch in full_flattened_indices if ch is not None]
@@ -94,7 +94,7 @@ class GridSetupHandler:
         self.total_pages = int(np.ceil(len(self.current_grid_indices) / self.items_per_page))
         self.current_page = 0 # Reset page on grid change
 
-        logger.debug(f"Applied grid '{selected_grid}' ({self.rows}x{self.cols}, {self.orientation})")
+        logger.debug(f"Applied grid '{selected_grid}' ({self.rows}x{self.cols}, {self.fiber_orientation})")
         logger.debug(f"Items per page: {self.items_per_page}")
         logger.debug(f"Total pages: {self.total_pages}")
         logger.debug(f"Current grid indices (first 20): {self.current_grid_indices[:20]}")
@@ -109,7 +109,7 @@ class GridSetupHandler:
         return self.grid_channel_map
 
     def get_orientation(self):
-        return self.orientation
+        return self.fiber_orientation
 
     def get_rows(self):
         return self.rows

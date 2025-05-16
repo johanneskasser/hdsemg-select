@@ -1,13 +1,17 @@
-from PyQt5.QtCore import Qt, QRect
+from PyQt5.QtCore import Qt, QRect, pyqtSignal
 from PyQt5.QtGui import QPainter, QPen, QColor, QFont
 from PyQt5.QtWidgets import QWidget, QGridLayout, QLabel, QVBoxLayout, QSizePolicy, QPushButton
 from _log.log_config import logger
+from state.enum.layout_mode_enums import LayoutMode, FiberMode
+from state.state import global_state
 from ui.plot.signal_overview_plot import open_signal_plot_dialog
 
 
 class ElectrodeWidget(QWidget):
+    signal_overview_plot_applied = pyqtSignal()
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.grid_orientation = None
         self.parent = parent
         self.layout = QVBoxLayout(self)
         self.grid_label = QLabel("")
@@ -24,7 +28,7 @@ class ElectrodeWidget(QWidget):
         self.electrode_labels = []
 
         # Highlight info
-        self.highlight_orientation = None  # "parallel" or "perpendicular" or None
+        self.fiber_orientation = None
         self.highlight_index = 0  # which row/column is currently highlighted
 
         open_signal_overview_btn = QPushButton("Open Signal Overview")
@@ -104,7 +108,11 @@ class ElectrodeWidget(QWidget):
         orientation: "parallel" or "perpendicular" or None
         current_page: the highlighted row (if parallel) or column (if perpendicular)
         """
-        self.highlight_orientation = orientation
+        if not isinstance(orientation, FiberMode):
+            raise ValueError(f"Orientation must be a FiberMode enum value. Got: {type(orientation)}")
+
+        self.fiber_orientation = orientation
+        self.grid_orientation = global_state.get_layout_for_fiber(self.fiber_orientation)
         self.highlight_index = current_page
         self.update()
 
@@ -127,8 +135,8 @@ class ElectrodeWidget(QWidget):
         # Semi-transparent yellow
         yellow = QColor(255, 255, 0, 90)
 
-        # 1) Highlight a full ROW ("perpendicular")
-        if self.highlight_orientation == "perpendicular" and 0 <= self.highlight_index < rows:
+        # 1) Highlight a full ROW
+        if self.grid_orientation == LayoutMode.ROWS and 0 <= self.highlight_index < rows:
             r = self.highlight_index
             a = self.electrode_labels[r][0].geometry()
             b = self.electrode_labels[r][cols - 1].geometry()
@@ -140,8 +148,8 @@ class ElectrodeWidget(QWidget):
             )
             painter.fillRect(span, yellow)
 
-        # 2) Highlight a full COLUMN ("parallel")
-        elif self.highlight_orientation == "parallel" and 0 <= self.highlight_index < cols:
+        # 2) Highlight a full COLUMN
+        elif self.grid_orientation == LayoutMode.COLS and 0 <= self.highlight_index < cols:
             c = self.highlight_index
             a = self.electrode_labels[0][c].geometry()
             b = self.electrode_labels[rows - 1][c].geometry()
@@ -194,4 +202,5 @@ class ElectrodeWidget(QWidget):
     def open_signal_overview(self):
         """Open the Signal Overview Plot"""
         logger.info("Open Signal Overview Plot")
-        open_signal_plot_dialog(self.parent.grid_setup_handler, self)
+        dlg = open_signal_plot_dialog(self.parent.grid_setup_handler, self)
+        dlg.orientation_applied.connect(self.signal_overview_plot_applied) # when the plot fires, immediatley re-emit it
