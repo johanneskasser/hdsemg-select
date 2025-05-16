@@ -28,6 +28,20 @@ _What did you expect to happen instead?_
 
 ---
 
+## 🏷️ Severity
+**How severe is this issue?**
+
+| Severity | User Suggestion | Dev Confirmation | Description                      |
+|----------|:---------------:|:----------------:|----------------------------------|
+| Critical |  <li>[ ]</li>   |   <li>[ ]</li>   | Application crash or data loss   |
+| Major    |  <li>[ ]</li>   |   <li>[ ]</li>   | Significant functionality broken |
+| Minor    |  <li>[ ]</li>   |   <li>[ ]</li>   | Minor functionality issue        |
+| Trivial  |  <li>[ ]</li>   |   <li>[ ]</li>   | Cosmetic issue or typo           |
+
+
+
+---
+
 ## 🖼️ Screenshots
 
 _If possible, add screenshots to illustrate the problem._
