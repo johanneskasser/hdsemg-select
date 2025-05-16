@@ -149,6 +149,13 @@ A saved `.json` file includes the overall selection status and detailed informat
 ```json
 {
   "filename": "example.mat",
+  "layout": {
+        "layout_mapping": {
+            "parallel": "cols",
+            "perpendicular": "rows"
+        },
+        "set_by_user": "False" // indicates if the grid was set by the user or auto-detected
+    },
   "total_channels_summary": [
     {
       "channel_index": 0,

@@ -313,8 +313,18 @@ def save_selection_to_json(file_path: str,
             "labels":         label_names.get(i, [])
         })
 
+    layout_association = {
+        fiber.name.lower(): layout.name.lower()
+        for fiber, layout in global_state.get_layout().items()
+    }
+
+    result_layout_association = {
+        "layout_mapping": layout_association,
+        "set_by_user": str(global_state.is_fiber_to_layout_user_set())
+    }
     result = {
         "filename":               file_name or "unknown",
+        "layout":                 result_layout_association,
         "total_channels_summary": all_channels_summary,
         "grids":                  grids_out
     }

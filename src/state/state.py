@@ -39,6 +39,7 @@ class State(QObject):
             FiberMode.PARALLEL: LayoutMode.COLS,
             FiberMode.PERPENDICULAR: LayoutMode.ROWS
         }
+        self._fiber_to_layout_user_set = False # dirty flag to check if the layout was set by the user - important for the json metdata
 
 
 
@@ -176,6 +177,7 @@ class State(QObject):
         # 3) save
         self._fiber_to_layout[fiber_mode] = layout_mode
         self._fiber_to_layout[other_fiber] = other_layout
+        self._fiber_to_layout_user_set = True
 
     def get_layout_for_fiber(self, fiber_mode: FiberMode) -> LayoutMode:
         """Liefert den zugehörigen LayoutMode; ValueError, falls nicht gesetzt."""
@@ -185,5 +187,12 @@ class State(QObject):
             return self._fiber_to_layout[fiber_mode]
         except KeyError:
             raise KeyError(f"No layout assigned yet for {fiber_mode}")
+
+    def get_layout(self):
+        """Returns the whole dict."""
+        return self._fiber_to_layout
+
+    def is_fiber_to_layout_user_set(self):
+        return self._fiber_to_layout_user_set
 
 global_state = State()
