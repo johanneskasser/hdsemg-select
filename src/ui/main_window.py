@@ -15,11 +15,11 @@ from select_logic.auto_flagger import AutoFlagger
 from select_logic.channel_management import select_all_channels, update_channel_status_single, count_selected_channels
 from settings.settings_dialog import SettingsDialog
 from settings.tabs.auto_flagger_settings_tab import validate_auto_flagger_settings
+from state.enum.layout_mode_enums import FiberMode
 from state.state import global_state
 from ui.channel_details import ChannelDetailWindow
-from ui.labels.channel_label_dialog import ChannelLabelDialog
 from ui.channel_spectrum import ChannelSpectrum
-from ui.channel_widget import ChannelWidget
+from ui.plot.channel_widget import ChannelWidget
 from ui.electrode_widget import ElectrodeWidget
 from ui.selection.amplitude_based import AutomaticAmplitudeSelection
 from config.config_manager import config
@@ -60,7 +60,8 @@ class ChannelSelector(QMainWindow):
         self.setCentralWidget(self.main_widget)
 
         self.outer_layout = QHBoxLayout(self.main_widget)
-        self.electrode_widget = ElectrodeWidget()
+        self.electrode_widget = ElectrodeWidget(self)
+        self.electrode_widget.signal_overview_plot_applied.connect(self.display_page)
         self.outer_layout.addWidget(self.electrode_widget)
         self.electrode_widget.setHidden(True)
 
@@ -194,15 +195,15 @@ class ChannelSelector(QMainWindow):
         layout.addWidget(orientation_label)
 
         orientation_combo = QComboBox()
-        orientation_combo.addItem("Parallel to fibers", "parallel")
-        orientation_combo.addItem("Perpendicular to fibers", "perpendicular")
+        orientation_combo.addItem("Parallel to fibers", FiberMode.PARALLEL)
+        orientation_combo.addItem("Perpendicular to fibers", FiberMode.PERPENDICULAR)
         layout.addWidget(orientation_combo)
 
         ok_button = QPushButton("OK")
 
         def on_ok():
             selected_grid = grid_combo.currentText()
-            orientation = orientation_combo.currentData()
+            orientation: FiberMode = orientation_combo.currentData()
             # Call method to apply selection logic
             self.apply_grid_selection(selected_grid, orientation, dialog)
 
@@ -210,7 +211,6 @@ class ChannelSelector(QMainWindow):
         layout.addWidget(ok_button)
 
         dialog.setLayout(layout)
-        # Use exec_() to make the dialog modal
         dialog.exec_()
 
     def apply_grid_selection(self, selected_grid, orientation, dialog):
@@ -218,8 +218,7 @@ class ChannelSelector(QMainWindow):
 
         # Delegate the calculation and logic to the handler
         success = self.grid_setup_handler.apply_selection(selected_grid, orientation,
-                                                          self)  # Pass self for parent window context
-
+                                                          self)
         if success:
             self.rows = self.grid_setup_handler.get_rows()
             self.cols = self.grid_setup_handler.get_cols()
@@ -241,7 +240,7 @@ class ChannelSelector(QMainWindow):
             self.save_action.setEnabled(True)
             self.select_all_checkbox.setEnabled(True)
             # Update grid label using values from handler
-            self.grid_label.setText(f"{self.rows}x{self.cols} grid - {self.grid_setup_handler.get_orientation()}")
+            self.grid_label.setText(f"{self.rows}x{self.cols} grid - {self.grid_setup_handler.get_orientation().name.title()}")
             self.grid_label.setHidden(False)
         else:
             # Grid setup failed (message box already shown by handler)
@@ -274,6 +273,9 @@ class ChannelSelector(QMainWindow):
 
     def display_page(self):
         """Displays the channels for the current page."""
+        selected_grid = self.grid_setup_handler.get_selected_grid()
+        orientation = self.grid_setup_handler.get_orientation()
+        success = self.grid_setup_handler.apply_selection(selected_grid, orientation, self) # Reapply selection to ensure state is consistent and grid layout changes are respected
         # Get display/paging parameters from GridSetupHandler
         current_page = self.grid_setup_handler.get_current_page()
         total_pages = self.grid_setup_handler.get_total_pages()
@@ -521,7 +523,7 @@ class ChannelSelector(QMainWindow):
         self.ylim = None
         self.channel_widgets = []
 
-        self.grid_setup_handler = GridSetupHandler()  # Re-instantiate or call a reset method
+        self.grid_setup_handler = GridSetupHandler()
 
         self.info_label.setText("No file loaded. Use File -> Open... to load a file.")
         self.grid_label.setHidden(True)

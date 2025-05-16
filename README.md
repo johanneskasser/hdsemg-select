@@ -38,10 +38,12 @@ helps identify and exclude faulty channels (e.g., due to electrode misplacement 
 - ✅ Manual and automatic channel selection.
     - 📈 Amplitude-based selection with configurable thresholds.
 - ⚡️ **Automatic Artifact Flagging:** Identify potential ECG contamination, power line noise (50Hz/60Hz), or general artifacts based on configurable thresholds (Frequency Threshold, Variance Threshold, Frequency Band). Suggested flags are added as channel labels.
+    - Ability to add custom labels in settings and apply them to channels.
 - 📊 Frequency-based analysis (planned).
 - 💾 Save selections and **artifact flags** in structured `.json` files and automatically generate cleaned `.mat` files (excluding selected/flagged channels if desired).
 - 🖥 Dashboard with file metadata: filename, number of channels, sampling rate, size, selection count.
 - ⏱ Efficient loading with warnings and abort option for large data.
+- 🔍 Analyse the action potential propagation of the selected grid and apply the orientation (row/col) to grid position relative to muscle fibers.
 
 ---
 
@@ -67,6 +69,10 @@ _Analyze the frequency content of a selected channel._
 ![Channel Labels (Example)](doc/resources/channel_label_dialog.png)
 _Dialog to add/remove Channel Labels._
 
+### Signal Overview Plot
+![Signal Overview Plot](doc/resources/signal_overview_plot.png)
+_Overview of all channels plotted underneath each other to inspect action potentials (amplitude normalized)._
+
 ---
 
 ## Installation
@@ -82,11 +88,13 @@ _Dialog to add/remove Channel Labels._
    python -m venv venv
    source venv/bin/activate  # On Windows use venv\Scripts\activate
    pip install -r requirements.txt
-
-    # or if you prefer conda
+   ```
+    **or**
+    ```bash
+    # if you prefer conda
    conda env create -f environment.yml
    conda activate hdsemg-select
-   ```
+    ```
 
 3. **Compile the resource file:**
     ```bash
@@ -141,6 +149,13 @@ A saved `.json` file includes the overall selection status and detailed informat
 ```json
 {
   "filename": "example.mat",
+  "layout": {
+        "layout_mapping": {
+            "parallel": "cols",
+            "perpendicular": "rows"
+        },
+        "set_by_user": "False" // indicates if the grid was set by the user or auto-detected
+    },
   "total_channels_summary": [
     {
       "channel_index": 0,
