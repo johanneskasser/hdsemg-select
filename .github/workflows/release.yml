@@ -78,7 +78,9 @@ jobs:
           python-version: '3.10.x'
 
       - name: Install Qt5
-        run: brew install qt@5
+        run: |
+          brew install qt@5
+          brew link qt5 --force
         # Forcing link, though often not needed if PATH is set up correctly by brew
         # run: |
         #   brew install qt@5
@@ -90,13 +92,7 @@ jobs:
         working-directory: ./src
         run: |
           python -m pip install --upgrade pip
-          # It's good practice to specify versions for packages that might cause build issues
-          # or rely on system libraries.
-          # Given pyqt5-tools 5.15.9.3.3 was pulled, it likely wants PyQt5 around 5.15.9.
-          # Let's try to install a common wheel version for PyQt5 first, then requirements.
-          # pip install "PyQt5==5.15.11" # Example: Or another version known to have good wheels for Python 3.10
-          # Then install the rest. If pyqt5-tools needs to build an older PyQt5, Qt5 tools will be present.
-          pip install -r ../requirements.txt pyinstaller PyQt5
+          pip install -r ../requirements.txt
         shell: bash
 
       - name: Generate version.py from Git tag
