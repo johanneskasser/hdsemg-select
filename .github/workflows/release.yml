@@ -120,8 +120,12 @@ jobs:
 
       - name: Build executable with version info
         working-directory: ./src
-        run: pyinstaller --clean hdsemg-select.spec
+        run: pyinstaller --clean --noconfirm hdsemg-select.spec
         shell: bash
+
+      - name: List files in dist
+        working-directory: ./src/dist
+        run: ls -la
 
       - name: Package macOS app
         working-directory: ./src/dist

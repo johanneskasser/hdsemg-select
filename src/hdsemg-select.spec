@@ -77,3 +77,11 @@ exe = EXE(
     [],
     **exe_kwargs,
 )
+
+if IS_MACOS:
+    app = BUNDLE(
+        exe,
+        name               = f"{APP_NAME}.app",
+        icon               = exe_kwargs["icon"],
+        bundle_identifier  = "at.fhcampuswien.hdsemgselect",
+    )
