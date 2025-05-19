@@ -1,3 +1,11 @@
+import platform, pathlib
+from version import __version__
+
+if platform.system() != "Windows":
+    pathlib.Path("version.txt").write_text(__version__ + "\n", encoding="utf-8")
+    print("Generated minimal version.txt for version", __version__)
+    raise SystemExit(0)
+
 from PyInstaller.utils.win32.versioninfo import (
     VSVersionInfo,
     FixedFileInfo,
@@ -7,7 +15,6 @@ from PyInstaller.utils.win32.versioninfo import (
     VarFileInfo,
     VarStruct
 )
-from version import __version__
 
 # Version in 4 Teile zerlegen (z.B. "0.0.2" → (0, 0, 2, 0))
 version_parts = list(map(int, __version__.split('.')))  # Konvertiere map-Objekt zu Liste
