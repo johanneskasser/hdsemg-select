@@ -1,10 +1,8 @@
 # -*- mode: python ; coding: utf-8 -*-
-
 import os
 from PyInstaller.utils.hooks import collect_data_files
 
-ICON_FILE = "resources/icon.icns"      # PyInstaller accepts .icns on macOS
-# ----------------------------------------------------------------------------
+ICON_FILE = "resources/icon.icns"
 
 a = Analysis(
     ["main.py"],
@@ -28,22 +26,29 @@ pyz = PYZ(a.pure)
 exe = EXE(
     pyz,
     a.scripts,
+    [],
+    exclude_binaries=True,
+    name               = "hdsemg-select",
+    icon               = ICON_FILE,
+    console            = False,
+    debug              = False,
+    strip              = False,
+    upx                = True,
+    target_arch        = "arm64",
+)
+
+coll = COLLECT(
+    exe,
     a.binaries,
     a.datas,
-    [],
-    name              = "hdsemg-select",
-    icon              = ICON_FILE,
-    debug             = False,
-    bootloader_ignore_signals=False,
-    strip             = False,
-    upx               = True,
-    upx_exclude       = [],
-    runtime_tmpdir    = None,
-    console           = False,
-    disable_windowed_traceback=False,
-    argv_emulation    = False,
-    # or e.g. "arm64" / "x86_64".
-    target_arch       = "arm64",
-    codesign_identity = None,
-    entitlements_file = None,
+    strip       = False,
+    upx         = True,
+    name        = "hdsemg-select",
+)
+
+app = BUNDLE(
+    coll,
+    name               = "hdsemg-select.app",
+    icon               = ICON_FILE,
+    bundle_identifier  = "at.fhcampuswien.hdsemgselect",
 )
