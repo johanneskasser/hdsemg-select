@@ -13,4 +13,4 @@ dependencies:
   - pip
   - pip:
       - pyqt5-tools>=5.15.0
-      - hdsemg-shared>=0.0.1
+      - hdsemg-shared>=0.0.5

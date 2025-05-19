@@ -112,14 +112,6 @@ jobs:
         run: |
           if [ ! -f resources_rc.py ]; then
             echo "Compiling resources.qrc → resources_rc.py"
-            # Ensure pyrcc5 uses the Qt installed by brew if needed
-            # For Intel runners with qt@5 from brew:
-            # /usr/local/opt/qt@5/bin/pyrcc5 resources.qrc -o resources_rc.py
-            # For ARM runners with qt@5 from brew:
-            # /opt/homebrew/opt/qt@5/bin/pyrcc5 resources.qrc -o resources_rc.py
-            # Or simply hope pyrcc5 from the pip installed PyQt5 finds the brew Qt.
-            # If pyrcc5 is found in the PATH from the pip installed PyQt5, it should be fine
-            # as long as the underlying Qt libraries (qmake, etc.) are found.
             pyrcc5 resources.qrc -o resources_rc.py
           else
             echo "resources_rc.py exists, skipping"
