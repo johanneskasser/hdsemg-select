@@ -119,7 +119,8 @@ jobs:
         shell: bash
 
       - name: Build icon.icns from PNG
-        run: scripts/make_icns.sh
+        working-directory: ./scripts
+        run: make_icns.sh
 
       - name: Build executable with version info
         working-directory: ./src
