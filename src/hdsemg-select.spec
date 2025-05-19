@@ -1,87 +1,54 @@
-# -*- mode: python ; coding: utf-8 -*-
-
-import os, platform
+# hdsemg-select.spec
+# ---------------------------------------------------------------
+import platform, os
 from PyInstaller.utils.hooks import collect_data_files
 
-# --------------------------------------------------------------------------
-#  Detect the platform we are running on
-# --------------------------------------------------------------------------
-SYSTEM      = platform.system()
-IS_WINDOWS  = SYSTEM == "Windows"
-IS_MACOS    = SYSTEM == "Darwin"
-
-# --------------------------------------------------------------------------
-#  Common inputs
-# --------------------------------------------------------------------------
+APP = "hdsemg-select"
 MAIN_SCRIPT = "main.py"
-APP_NAME    = "hdsemg-select"
 
-datas = [
-    ("_log",      "_log"),
-    ("resources", "resources"),
-]
+# ─── data that must be shipped on every platform ────────────────
+datas = [("_log", "_log"), ("resources", "resources")]
 
-# --------------------------------------------------------------------------
-#  Platform-specific
-# --------------------------------------------------------------------------
-exe_kwargs = dict(                # kwargs fed into EXE(...)
-    name                 = APP_NAME,
-    debug                = False,
-    bootloader_ignore_signals = False,
-    strip                = False,
-    upx                  = True,
-    upx_exclude          = [],
-    runtime_tmpdir       = None,
-    console              = False,
-    disable_windowed_traceback = False,
-    argv_emulation       = False,
-    codesign_identity    = None,
-    entitlements_file    = None,
-)
-
-if IS_WINDOWS:
-    # ① embed a VERSION resource
-    exe_kwargs["version"] = os.path.abspath("version.txt")
-    # ② Windows wants an .ico file
-    exe_kwargs["icon"]    = "resources/icon.ico"
-    # target_arch left to PyInstaller (it follows the Python bitness)
-
-elif IS_MACOS:
-    exe_kwargs["target_arch"] = "arm64"
-    exe_kwargs["icon"]        = "resources/icon.icns"
-
-else:
-    exe_kwargs["icon"] = "resources/icon.png"  # PNG is accepted on Linux
-
-a = Analysis(
-    [MAIN_SCRIPT],
-    pathex=["."],
-    binaries=[],
-    datas=datas,
-    hiddenimports=[],
-    hookspath=[],
-    hooksconfig={},
-    runtime_hooks=[],
-    excludes=[],
-    noarchive=False,
-    optimize=0,
-)
-
+a   = Analysis([MAIN_SCRIPT], pathex=["."], datas=datas, binaries=[])
 pyz = PYZ(a.pure)
 
+# ---------------- common EXE ----------------
 exe = EXE(
     pyz,
-    a.scripts,
-    a.binaries,
-    a.datas,
-    [],
-    **exe_kwargs,
+    a.scripts, a.binaries, a.datas,
+    name              = APP,
+    console           = False,          # GUI
+    strip             = False,
+    upx               = True,
+    # platform-specific below
 )
 
-if IS_MACOS:
+system = platform.system()
+
+if system == "Windows":
+    exe.version = os.path.abspath("version.txt")
+    exe.icon    = "resources/icon.ico"
+
+elif system == "Darwin":                 # macOS
+    exe.icon         = "resources/icon.icns"
+    exe.target_arch  = "arm64"           # or "x86_64" on Intel
+
+# -------------- onedir build everywhere --------------
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    strip=False,
+    upx=True,
+    name=APP,
+)
+
+# -------------- wrap in .app bundle *only* on macOS --------------
+if system == "Darwin":
     app = BUNDLE(
-        exe,
-        name               = f"{APP_NAME}.app",
-        icon               = exe_kwargs["icon"],
-        bundle_identifier  = "at.fhcampuswien.hdsemgselect",
+        coll,
+        name              = f"{APP}.app",
+        icon              = exe.icon,
+        bundle_identifier = "com.yourorg.hdsemgselect",
     )
