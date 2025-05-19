@@ -6,15 +6,15 @@ on:
       - 'v*'
 
 jobs:
-  build:
+  build-windows:
     runs-on: windows-latest
     env:
-      RAW_TAG: ${{ github.ref_name }}    # z.B. "v1.2.3"
+      RAW_TAG: ${{ github.ref_name }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0  # Fetch all history for all tags
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -53,45 +53,139 @@ jobs:
 
       - name: Build executable with version info
         working-directory: ./src
-        run: pyinstaller --clean hdsemg-select.spec
+        run: pyinstaller --clean hdsemg-select-win.spec
         shell: bash
 
-      - name: Upload artifact
+      - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
-          name: hdsemg-select
+          name: hdsemg-select-windows
           path: ./src/dist/hdsemg-select.exe
+
+  build-macos:
+    runs-on: macOS-latest
+    env:
+      RAW_TAG: ${{ github.ref_name }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11.x'
+
+      - name: Install Qt5
+        run: |
+          brew install qt@5
+          brew link qt5 --force
+        # Forcing link, though often not needed if PATH is set up correctly by brew
+        # run: |
+        #   brew install qt@5
+        #   echo "/usr/local/opt/qt@5/bin" >> $GITHUB_PATH # For Intel runners
+        #   echo "/opt/homebrew/opt/qt@5/bin" >> $GITHUB_PATH # For ARM runners (if you switch to macos-14)
+
+
+      - name: Install dependencies
+        working-directory: ./src
+        run: |
+          python -m pip install --upgrade pip
+          pip install --only-binary=:all: -r ../requirements.txt
+        shell: bash
+
+      - name: Generate version.py from Git tag
+        working-directory: ./src
+        run: |
+          APP_VERSION=${RAW_TAG#v}
+          echo "__version__ = '${APP_VERSION}'" > version.py
+        shell: bash
+
+      - name: Make version resource (version.txt)
+        working-directory: ./src
+        run: python make_version.py
+        shell: bash
+
+      - name: Compile Qt resources
+        working-directory: ./src
+        run: |
+          if [ ! -f resources_rc.py ]; then
+            echo "Compiling resources.qrc → resources_rc.py"
+            pyrcc5 resources.qrc -o resources_rc.py
+          else
+            echo "resources_rc.py exists, skipping"
+          fi
+        shell: bash
+
+      - name: Build executable with version info
+        working-directory: ./src
+        run: pyinstaller --clean --noconfirm hdsemg-select-macos.spec
+        shell: bash
+
+      - name: List files in dist
+        working-directory: ./src/dist
+        run: ls -la
+
+      - name: Package macOS app
+        working-directory: ./src/dist
+        run: |
+          zip -r hdsemg-select-macos.zip hdsemg-select.app
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hdsemg-select-macos
+          path: ./src/dist/hdsemg-select-macos.zip
+
+  release:
+    needs: [build-windows, build-macos]
+    runs-on: ubuntu-latest
+    env:
+      RAW_TAG: ${{ github.ref_name }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: hdsemg-select-windows
+          path: windows-artifact
+
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: hdsemg-select-macos
+          path: macos-artifact
 
       - name: Gather Release Notes
         shell: 'bash'
         id: notes
         run: |
-          # 1) Find the previous tag (sorted by tag date)
           PREV_TAG=$(git tag --sort=-creatordate | sed -n "2p")
           echo "Previous tag: $PREV_TAG"
           echo "This tag:    $RAW_TAG"
 
-          # 2) Dump the README into the top of release-notes.md
           echo "<!-- Auto-generated. Do not edit. -->" > release-notes.md
           echo "" >> release-notes.md
           cat README.md >> release-notes.md
 
-          # 3) Append a Changelog header
           echo "" >> release-notes.md
           echo "## Changelog" >> release-notes.md
           echo "" >> release-notes.md
 
-          # 4) For each commit between PREV_TAG and RAW_TAG, print hash + message
           git log $PREV_TAG..$RAW_TAG --pretty=format:'- [`%h`](https://github.com/${{ github.repository }}/commit/%H) %s' \
             >> release-notes.md
 
-          # 5) Expose the path as an output
           echo "notes_file=release-notes.md" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
         uses: ncipollo/release-action@v1
         with:
-          artifacts: ./src/dist/hdsemg-select.exe
+          artifacts: 'windows-artifact/*.exe,macos-artifact/*.zip'
           token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ github.ref_name }}
           name: Release ${{ github.ref_name }}
