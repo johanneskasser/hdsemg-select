@@ -53,7 +53,7 @@ jobs:
 
       - name: Build executable with version info
         working-directory: ./src
-        run: pyinstaller --clean hdsemg-select.spec
+        run: pyinstaller --clean hdsemg-select-win.spec
         shell: bash
 
       - name: Upload Windows artifact
@@ -120,7 +120,7 @@ jobs:
 
       - name: Build executable with version info
         working-directory: ./src
-        run: pyinstaller --clean --noconfirm hdsemg-select.spec
+        run: pyinstaller --clean --noconfirm hdsemg-select-macos.spec
         shell: bash
 
       - name: List files in dist
