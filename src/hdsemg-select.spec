@@ -1,54 +1,78 @@
-# hdsemg-select.spec
-# ---------------------------------------------------------------
-import platform, os
+# -*- mode: python ; coding: utf-8 -*-
+# A single spec that works on Windows and macOS without edits
+import sys
+import os
+from pathlib import Path
 from PyInstaller.utils.hooks import collect_data_files
 
-APP = "hdsemg-select"
-MAIN_SCRIPT = "main.py"
+ROOT = Path(__file__).parent.resolve()
+VERSION_TXT = ROOT / "version.txt"
 
-# ─── data that must be shipped on every platform ────────────────
-datas = [("_log", "_log"), ("resources", "resources")]
+is_macos   = sys.platform == "darwin"
+is_windows = sys.platform.startswith("win")
 
-a   = Analysis([MAIN_SCRIPT], pathex=["."], datas=datas, binaries=[])
-pyz = PYZ(a.pure)
-
-# ---------------- common EXE ----------------
-exe = EXE(
-    pyz,
-    a.scripts, a.binaries, a.datas,
-    name              = APP,
-    console           = False,          # GUI
-    strip             = False,
-    upx               = True,
-    # platform-specific below
+# ─────────────────── Analysis ────────────────────────────────────────────────
+a = Analysis(
+    ["main.py"],
+    pathex=[str(ROOT)],
+    binaries=[],
+    datas=[
+        ("_log",      "_log"),
+        ("resources", "resources"),
+    ],
+    hiddenimports=[],
+    hookspath=[],
+    hooksconfig={},
+    runtime_hooks=[],
+    excludes=[],
+    noarchive=False,
+    optimize=0,
 )
 
-system = platform.system()
+pyz = PYZ(a.pure)
 
-if system == "Windows":
-    exe.version = os.path.abspath("version.txt")
-    exe.icon    = "resources/icon.ico"
+# ─────────────────── EXE ─────────────────────────────────────────────────────
+exe = EXE(
+    pyz,
+    a.scripts,
+    a.binaries,
+    a.datas,
+    [],
+    name="hdsemg-select",
+    version=str(VERSION_TXT),
+    icon="resources/icon.png" if is_windows else None,
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    runtime_tmpdir=None,
+    console=False,           # GUI app
+)
 
-elif system == "Darwin":                 # macOS
-    exe.icon         = "resources/icon.icns"
-    exe.target_arch  = "arm64"           # or "x86_64" on Intel
+# ─────────────────── macOS: wrap inside .app bundle ─────────────────────────
+if is_macos:
+    app = BUNDLE(
+        exe,
+        name="hdsemg-select.app",
+        icon="resources/icon.icns",
+        bundle_identifier="at.fhcampuswien.hdsemg-select",
+    )
+    # This is what we will hand to COLLECT
+    main_target = app
+else:
+    # Windows (and Linux, if ever needed) → just the exe
+    main_target = exe
 
-# -------------- onedir build everywhere --------------
+# ─────────────────── COLLECT (creates dist/ folder) ─────────────────────────
 coll = COLLECT(
-    exe,
+    main_target,          # *** pass the object, not a string path! ***
     a.binaries,
     a.zipfiles,
     a.datas,
     strip=False,
     upx=True,
-    name=APP,
+    upx_exclude=[],
+    name="hdsemg-select",
 )
 
-# -------------- wrap in .app bundle *only* on macOS --------------
-if system == "Darwin":
-    app = BUNDLE(
-        coll,
-        name              = f"{APP}.app",
-        icon              = exe.icon,
-        bundle_identifier = "com.yourorg.hdsemgselect",
-    )
