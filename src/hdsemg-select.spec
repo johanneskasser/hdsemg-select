@@ -1,25 +1,25 @@
 # -*- mode: python ; coding: utf-8 -*-
-# A single spec that works on Windows and macOS without edits
-import sys
-import os
+import sys, os
 from pathlib import Path
 from PyInstaller.utils.hooks import collect_data_files
 
-ROOT = Path(__file__).parent.resolve()
+# ── robust project root detection ────────────────────────────────────────────
+if "__file__" in globals():
+    ROOT = Path(__file__).parent.resolve()
+else:
+    ROOT = Path.cwd().resolve()
+
 VERSION_TXT = ROOT / "version.txt"
 
 is_macos   = sys.platform == "darwin"
 is_windows = sys.platform.startswith("win")
 
-# ─────────────────── Analysis ────────────────────────────────────────────────
+# ── Analysis ─────────────────────────────────────────────────────────────────
 a = Analysis(
     ["main.py"],
     pathex=[str(ROOT)],
     binaries=[],
-    datas=[
-        ("_log",      "_log"),
-        ("resources", "resources"),
-    ],
+    datas=[("_log", "_log"), ("resources", "resources")],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
@@ -28,29 +28,19 @@ a = Analysis(
     noarchive=False,
     optimize=0,
 )
-
 pyz = PYZ(a.pure)
 
-# ─────────────────── EXE ─────────────────────────────────────────────────────
+# ── EXE ──────────────────────────────────────────────────────────────────────
 exe = EXE(
-    pyz,
-    a.scripts,
-    a.binaries,
-    a.datas,
-    [],
+    pyz, a.scripts, a.binaries, a.datas, [],
     name="hdsemg-select",
     version=str(VERSION_TXT),
     icon="resources/icon.png" if is_windows else None,
-    debug=False,
-    bootloader_ignore_signals=False,
-    strip=False,
-    upx=True,
-    upx_exclude=[],
-    runtime_tmpdir=None,
-    console=False,           # GUI app
+    debug=False, strip=False, upx=True,
+    console=False,
 )
 
-# ─────────────────── macOS: wrap inside .app bundle ─────────────────────────
+# ── macOS .app bundle (wraps the exe) ────────────────────────────────────────
 if is_macos:
     app = BUNDLE(
         exe,
@@ -58,21 +48,17 @@ if is_macos:
         icon="resources/icon.icns",
         bundle_identifier="at.fhcampuswien.hdsemg-select",
     )
-    # This is what we will hand to COLLECT
     main_target = app
 else:
-    # Windows (and Linux, if ever needed) → just the exe
     main_target = exe
 
-# ─────────────────── COLLECT (creates dist/ folder) ─────────────────────────
+# ── COLLECT ──────────────────────────────────────────────────────────────────
 coll = COLLECT(
-    main_target,          # *** pass the object, not a string path! ***
+    main_target,
     a.binaries,
     a.zipfiles,
     a.datas,
     strip=False,
     upx=True,
-    upx_exclude=[],
     name="hdsemg-select",
 )
-
