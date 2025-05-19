@@ -40,7 +40,8 @@ exe = EXE(
     console=False,
 )
 
-# ── macOS .app bundle (wraps the exe) ────────────────────────────────────────
+# optional macOS .app wrapper
+targets = [exe]
 if is_macos:
     app = BUNDLE(
         exe,
@@ -48,13 +49,11 @@ if is_macos:
         icon="resources/icon.icns",
         bundle_identifier="at.fhcampuswien.hdsemg-select",
     )
-    main_target = app
-else:
-    main_target = exe
+    targets.append(app)
 
-# ── COLLECT ──────────────────────────────────────────────────────────────────
+# --------------------------------------------------------------------
 coll = COLLECT(
-    main_target,
+    *targets,
     a.binaries,
     a.zipfiles,
     a.datas,
@@ -62,3 +61,4 @@ coll = COLLECT(
     upx=True,
     name="hdsemg-select",
 )
+
