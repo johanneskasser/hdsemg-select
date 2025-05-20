@@ -19,6 +19,7 @@ from state.enum.layout_mode_enums import FiberMode
 from state.state import global_state
 from ui.channel_details import ChannelDetailWindow
 from ui.channel_spectrum import ChannelSpectrum
+from ui.dialog.grid_orientation_dialog import GridOrientationDialog
 from ui.plot.channel_widget import ChannelWidget
 from ui.electrode_widget import ElectrodeWidget
 from ui.selection.amplitude_based import AutomaticAmplitudeSelection
@@ -174,44 +175,13 @@ class ChannelSelector(QMainWindow):
 
     def select_grid_and_orientation(self):
         """Opens dialog to select grid and orientation."""
-        # Access grid info from state to populate the dialog
-        grid_info = global_state.get_grid_info()
-        if not grid_info:
-            return  # Should not happen if load_file_path succeeded, but safety check
+        # Usage in your main class
+        def apply_callback(selected_grid, orientation, dialog):
+            self.apply_grid_selection(selected_grid, orientation,dialog)
 
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Select Grid and Orientation")
-        layout = QVBoxLayout()
-
-        grid_label = QLabel("Select a Grid:")
-        layout.addWidget(grid_label)
-
-        grid_combo = QComboBox()
-        for grid_key in grid_info.keys():
-            grid_combo.addItem(grid_key)
-        layout.addWidget(grid_combo)
-
-        orientation_label = QLabel("Select Orientation:")
-        layout.addWidget(orientation_label)
-
-        orientation_combo = QComboBox()
-        orientation_combo.addItem("Parallel to fibers", FiberMode.PARALLEL)
-        orientation_combo.addItem("Perpendicular to fibers", FiberMode.PERPENDICULAR)
-        layout.addWidget(orientation_combo)
-
-        ok_button = QPushButton("OK")
-
-        def on_ok():
-            selected_grid = grid_combo.currentText()
-            orientation: FiberMode = orientation_combo.currentData()
-            # Call method to apply selection logic
-            self.apply_grid_selection(selected_grid, orientation, dialog)
-
-        ok_button.clicked.connect(on_ok)
-        layout.addWidget(ok_button)
-
-        dialog.setLayout(layout)
+        dialog = GridOrientationDialog(self, apply_callback)
         dialog.exec_()
+
 
     def apply_grid_selection(self, selected_grid, orientation, dialog):
         """Applies the selected grid and orientation using the GridSetupHandler."""
