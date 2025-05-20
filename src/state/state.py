@@ -34,6 +34,7 @@ class State(QObject):
         self._channel_labels = {}
         self._input_file = None
         self._output_file = None
+        self.max_amplitude = None
         # default fallback
         self._fiber_to_layout: Dict[FiberMode, LayoutMode] = {
             FiberMode.PARALLEL: LayoutMode.COLS,

@@ -9,7 +9,7 @@ from hdsemg_shared import save_selection_to_mat, load_file, extract_grid_info
 from select_logic.data_processing import compute_upper_quartile, scale_data
 from state.state import global_state
 from _log.log_config import logger
-from ui.manual_grid_input import manual_grid_input
+from ui.dialog.manual_grid_input import manual_grid_input
 
 
 class FileManager:

@@ -13,8 +13,7 @@ from state.state import global_state
 from config.config_manager import config # For getting available labels
 from ui.labels.label_bean_widget import LabelBeanWidget
 from ui.labels.label_selection_widget import LabelSelectionWidget
-
-logger = logging.getLogger(__name__)
+from _log.log_config import logger
 
 class ChannelWidget(QWidget):
     channel_status_changed = pyqtSignal(int, int)  # channel_idx, state (Qt.Checked/Unchecked)
@@ -30,6 +29,7 @@ class ChannelWidget(QWidget):
         self.scaled_data_slice = scaled_data_slice
         self.ylim = ylim
         self._current_labels = list(initial_labels) # Store a mutable copy
+        self._overlay_ref_signal = None
 
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(5, 5, 5, 5)
@@ -89,6 +89,7 @@ class ChannelWidget(QWidget):
         self.spectrum_button.clicked.connect(partial(self.view_spectrum_requested.emit, self.channel_idx))
         self.buttons_h_layout.addWidget(self.spectrum_button)
 
+
         global_state.channel_labels_changed.connect(self._on_label_changed)
         # Initial check for available labels to set button state
         self._check_available_labels()
@@ -147,7 +148,13 @@ class ChannelWidget(QWidget):
 
         self.figure.clear()
         ax = self.figure.add_subplot(111)
-        ax.plot(self.time_data, self.scaled_data_slice)
+        ax.plot(self.time_data, self.scaled_data_slice, color="blue", linewidth=1, label=f"Ch {self.channel_number}")
+        if self._overlay_ref_signal is not None:
+            if len(self._overlay_ref_signal) == len(self.time_data):
+                ax.plot(self.time_data, self._overlay_ref_signal, color="grey", linewidth=1, label="Reference")
+                ax.legend(loc='upper right', frameon=False, fontsize='small')
+            else:
+                logger.warning(f"Reference signal length does not match time data length for Channel {self.channel_number}")
         ax.set_ylim(self.ylim)
         ax.axis('off')
         self.figure.tight_layout(pad=0)
@@ -181,3 +188,13 @@ class ChannelWidget(QWidget):
     def _on_label_changed(self, ch_idx: int, new_labels: list):
         if ch_idx == self.channel_idx:
             self.update_labels_display(new_labels)
+
+    def set_overlay_signal(self, overlay_signal):
+        """
+        Set the overlay reference signal for the channel plot.
+        :param overlay_signal: The reference signal to overlay on the channel plot.
+        """
+        self._overlay_ref_signal = overlay_signal
+        self._draw_plot()
+        self.canvas.draw_idle()
+        self.update()

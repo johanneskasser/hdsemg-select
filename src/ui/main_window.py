@@ -4,7 +4,7 @@ import numpy as np
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon, QFont
 from PyQt5.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QFrame, QVBoxLayout, QLabel, QScrollArea, QGridLayout, \
-    QPushButton, QStyle, QCheckBox, QFileDialog, QDialog, QComboBox, QMessageBox
+    QPushButton, QStyle, QCheckBox, QFileDialog, QMessageBox, QComboBox
 
 from _log.log_config import logger
 from config.config_enums import Settings
@@ -15,10 +15,9 @@ from select_logic.auto_flagger import AutoFlagger
 from select_logic.channel_management import select_all_channels, update_channel_status_single, count_selected_channels
 from settings.settings_dialog import SettingsDialog
 from settings.tabs.auto_flagger_settings_tab import validate_auto_flagger_settings
-from state.enum.layout_mode_enums import FiberMode
 from state.state import global_state
-from ui.channel_details import ChannelDetailWindow
-from ui.channel_spectrum import ChannelSpectrum
+from ui.dialog.channel_details import ChannelDetailWindow
+from ui.dialog.channel_spectrum import ChannelSpectrum
 from ui.dialog.grid_orientation_dialog import GridOrientationDialog
 from ui.plot.channel_widget import ChannelWidget
 from ui.electrode_widget import ElectrodeWidget
@@ -124,10 +123,30 @@ class ChannelSelector(QMainWindow):
         self.grid_label.setFont(font)
         self.header_layout.addWidget(self.grid_label)
 
+        checkbox_v_layout = QVBoxLayout()
         self.select_all_checkbox = QCheckBox("Select All")
         self.select_all_checkbox.stateChanged.connect(self.toggle_select_all)
         self.select_all_checkbox.setEnabled(False)
-        self.header_layout.addWidget(self.select_all_checkbox)
+
+        self.show_ref_signals = QCheckBox("Show Reference Signal")
+        self.show_ref_signals.setChecked(False)
+        self.show_ref_signals.stateChanged.connect(self.ref_sig_signal_changed)
+        self.show_ref_signals.setEnabled(False)
+
+        ref_signals_h_layout = QHBoxLayout()
+
+        self.select_ref_signal = QComboBox()
+        self.select_ref_signal.setEnabled(self.show_ref_signals.isChecked())
+        self.select_ref_signal.currentIndexChanged.connect(self.ref_sig_signal_changed)
+        self.populate_ref_signal_dropdown()
+
+        ref_signals_h_layout.addWidget(self.show_ref_signals)
+        ref_signals_h_layout.addWidget(self.select_ref_signal)
+
+        checkbox_v_layout.addWidget(self.select_all_checkbox)
+        checkbox_v_layout.addLayout(ref_signals_h_layout)
+
+        self.header_layout.addLayout(checkbox_v_layout)
 
     def create_menus(self):
         """Delegates menu creation to the MenuManager."""
@@ -139,6 +158,56 @@ class ChannelSelector(QMainWindow):
         self.change_grid_action = self.menu_manager.get_change_grid_action()
         self.amplidude_menu = self.menu_manager.get_amplitude_menu()
         self.suggest_flags_action = self.menu_manager.get_suggest_flags_action()
+
+    def ref_sig_signal_changed(self):
+        """Handles changes in the reference signal checkbox."""
+        if self.show_ref_signals.isChecked():
+            self.select_ref_signal.setEnabled(True)
+            selected_signal = self.select_ref_signal.currentData()
+            if selected_signal is not None:
+                for channel_widget in self.channel_widgets:
+                    channel_widget.set_overlay_signal(global_state.get_scaled_data()[:, selected_signal])
+        else:
+            self.select_ref_signal.setEnabled(False)
+            logger.debug("Hiding reference signal")
+            for channel_widget in self.channel_widgets:
+                channel_widget.set_overlay_signal(None)
+
+
+    def populate_ref_signal_dropdown(self):
+        self.select_ref_signal.clear()
+        grid_info = global_state.get_grid_info()
+        if grid_info:
+            selected_grid = self.grid_setup_handler.get_selected_grid()
+            if selected_grid in grid_info:
+                ref_signals = grid_info[selected_grid]["reference_signals"]
+                req_path_idx = grid_info[selected_grid]["requested_path_idx"]
+                per_path_idx = grid_info[selected_grid]["performed_path_idx"]
+
+                # Dictionary to look up signals by index for easier access
+                signal_map = {int(s["index"]): s for s in ref_signals}
+
+                # Add requested path first, if available
+                if req_path_idx is not None and req_path_idx in signal_map:
+                    name = signal_map[req_path_idx]["name"]
+                    self.select_ref_signal.addItem(f"Requested Path – {name}", req_path_idx)
+                    self.select_ref_signal.setCurrentIndex(self.select_ref_signal.findData(req_path_idx))
+
+                # Add performed path second, if available and not same as requested
+                if per_path_idx is not None and per_path_idx in signal_map and per_path_idx != req_path_idx:
+                    name = signal_map[per_path_idx]["name"]
+                    self.select_ref_signal.addItem(f"Performed Path – {name}", per_path_idx)
+                    if req_path_idx is None:
+                        self.select_ref_signal.setCurrentIndex(self.select_ref_signal.findData(per_path_idx))
+
+                # Add all other signals, excluding ones already added
+                already_added = {req_path_idx, per_path_idx}
+                for signal in ref_signals:
+                    if signal["index"] not in already_added:
+                        self.select_ref_signal.addItem(signal["name"], int(signal["index"]))
+
+            else:
+                logger.warning(f"Selected grid '{selected_grid}' not found in grid info.")
 
     def load_file(self):
         """Opens a file dialog and triggers file loading."""
@@ -169,6 +238,7 @@ class ChannelSelector(QMainWindow):
             self.select_grid_and_orientation()
 
             self.electrode_widget.setHidden(False)
+            self.show_ref_signals.setEnabled(True)
             self.setWindowTitle(f"hdsemg-select - Amplitude over Time - {global_state.get_file_name()}")  # Use getter
         else:
             self.reset_to_start_state()
@@ -190,6 +260,7 @@ class ChannelSelector(QMainWindow):
         success = self.grid_setup_handler.apply_selection(selected_grid, orientation,
                                                           self)
         if success:
+            self.populate_ref_signal_dropdown()
             self.rows = self.grid_setup_handler.get_rows()
             self.cols = self.grid_setup_handler.get_cols()
             self.items_per_page = self.grid_setup_handler.get_items_per_page()
@@ -303,6 +374,8 @@ class ChannelSelector(QMainWindow):
         # Get the channels for the current page based on current_grid_indices
         page_channels = current_grid_indices[start_idx:end_idx]
 
+        selected_ref_signal = self.select_ref_signal.currentData()
+
         # Create and add a ChannelWidget for each channel on the page
         for page_pos, channel_idx in enumerate(page_channels):
             # channel_idx should not be None here because current_grid_indices is filtered
@@ -324,7 +397,7 @@ class ChannelSelector(QMainWindow):
                 ylim=self.ylim,  # Pass calculated ylim
                 initial_status=initial_status,  # Pass initial checkbox state
                 initial_labels=initial_labels,  # Pass initial labels
-                parent=self  # Set self as parent
+                parent=self,  # Set self as parent
             )
 
             # Connect signals from the ChannelWidget to ChannelSelector methods
@@ -503,6 +576,7 @@ class ChannelSelector(QMainWindow):
         self.electrode_widget.setHidden(True)
         self.setWindowTitle("hdsemg-select")
         self.clear_grid_display()  # Clear the visual grid layout
+        self.populate_ref_signal_dropdown()
 
         if self.amplidude_menu: self.amplidude_menu.setEnabled(False)
         if self.save_action: self.save_action.setEnabled(False)
