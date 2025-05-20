@@ -38,6 +38,7 @@ class FileManager:
             global_state.set_sampling_frequency(sampling_frequency)
             global_state.set_file_name(file_name)
             global_state.set_file_size(file_size)
+            global_state.set_grid_info(extract_grid_info(global_state.get_description()))
 
             logger.debug(f"Original Data Min: {np.min(global_state.get_data())}")
             logger.debug(f"Original Data Max: {np.max(global_state.get_data())}")
@@ -53,7 +54,6 @@ class FileManager:
             global_state.set_channel_count(global_state.get_data().shape[1])
 
             # Extract grid info and proceed, store in state
-            global_state.set_grid_info(extract_grid_info(global_state.get_description()))
             global_state.set_channel_status(_build_channel_status(global_state.get_channel_count(), global_state.get_grid_info()))
 
             if not global_state.get_grid_info():

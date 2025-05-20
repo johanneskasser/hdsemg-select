@@ -2,6 +2,7 @@
 from functools import partial
 import logging
 
+import numpy as np
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
                              QCheckBox, QMenu, QWidgetAction, QToolButton)
@@ -151,7 +152,8 @@ class ChannelWidget(QWidget):
         ax.plot(self.time_data, self.scaled_data_slice, color="blue", linewidth=1, label=f"Ch {self.channel_number}")
         if self._overlay_ref_signal is not None:
             if len(self._overlay_ref_signal) == len(self.time_data):
-                ax.plot(self.time_data, self._overlay_ref_signal, color="grey", linewidth=1, label="Reference")
+                self._overlay_ref_signal = self.scale_ref_signal()
+                ax.plot(self.time_data, self._overlay_ref_signal, color="black", linewidth=1, label="Reference")
                 ax.legend(loc='upper right', frameon=False, fontsize='small')
             else:
                 logger.warning(f"Reference signal length does not match time data length for Channel {self.channel_number}")
@@ -198,3 +200,32 @@ class ChannelWidget(QWidget):
         self._draw_plot()
         self.canvas.draw_idle()
         self.update()
+
+    def scale_ref_signal(self):
+        """
+        Centers the reference signal around 0 and scales the peak amplitude to the maximum amplitude of the data.
+        """
+        sig = self._overlay_ref_signal
+        if sig is None:
+            logger.warning("No reference signal set.")
+            return None
+
+        # 1) Remove offset
+        sig_centered = sig - np.mean(sig)
+
+        # 2) Max amplitude of the data
+        data_max_amp = global_state.get_max_amplitude()
+        if data_max_amp is None:
+            logger.warning("No data available to scale reference signal!")
+            return sig_centered
+
+        peak_ref = np.max(np.abs(sig_centered))
+        if peak_ref == 0 or data_max_amp == 0:
+            logger.warning("Reference or Data Amplitude is 0, return unscaled signal.")
+            return sig_centered
+
+        factor = peak_ref / data_max_amp
+
+        return sig_centered / factor
+
+
