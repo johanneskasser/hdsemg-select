@@ -2,6 +2,7 @@ from typing import Dict
 
 from PyQt5.QtCore import QObject
 from PyQt5.QtCore import pyqtSignal
+import numpy as np
 
 from _log.log_config import logger
 from state.enum.layout_mode_enums import FiberMode, LayoutMode
@@ -34,6 +35,7 @@ class State(QObject):
         self._channel_labels = {}
         self._input_file = None
         self._output_file = None
+        self.max_amplitude = None
         # default fallback
         self._fiber_to_layout: Dict[FiberMode, LayoutMode] = {
             FiberMode.PARALLEL: LayoutMode.COLS,
@@ -66,6 +68,9 @@ class State(QObject):
 
     def get_file_name(self) -> str:
         return self._file_name
+
+    def get_max_amplitude(self):
+        return self.max_amplitude
 
     def get_file_path(self) -> str:
         return self._file_path
@@ -122,6 +127,8 @@ class State(QObject):
         self._channel_count = value
 
     def set_scaled_data(self, value):
+        all_emg_idx = [idx for cfg in self._grid_info.values() for idx in cfg['indices']]
+        self.max_amplitude = np.abs(value[:, all_emg_idx]).max()
         self._scaled_data = value
 
     def set_description(self, value):
