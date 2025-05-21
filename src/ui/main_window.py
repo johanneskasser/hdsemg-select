@@ -187,18 +187,18 @@ class ChannelSelector(QMainWindow):
                 # Dictionary to look up signals by index for easier access
                 signal_map = {int(s["index"]): s for s in ref_signals}
 
-                # Add requested path first, if available
-                if req_path_idx is not None and req_path_idx in signal_map:
-                    name = signal_map[req_path_idx]["name"]
-                    self.select_ref_signal.addItem(f"Requested Path – {name}", req_path_idx)
-                    self.select_ref_signal.setCurrentIndex(self.select_ref_signal.findData(req_path_idx))
-
-                # Add performed path second, if available and not same as requested
-                if per_path_idx is not None and per_path_idx in signal_map and per_path_idx != req_path_idx:
+                # Add performed path first, if available
+                if per_path_idx is not None and per_path_idx in signal_map:
                     name = signal_map[per_path_idx]["name"]
                     self.select_ref_signal.addItem(f"Performed Path – {name}", per_path_idx)
-                    if req_path_idx is None:
-                        self.select_ref_signal.setCurrentIndex(self.select_ref_signal.findData(per_path_idx))
+                    self.select_ref_signal.setCurrentIndex(self.select_ref_signal.findData(per_path_idx))
+
+                # Add requested path second, if available and not same as requested
+                if req_path_idx is not None and req_path_idx in signal_map and req_path_idx != req_path_idx:
+                    name = signal_map[req_path_idx]["name"]
+                    self.select_ref_signal.addItem(f"Requested Path – {name}", req_path_idx)
+                    if per_path_idx is None:
+                        self.select_ref_signal.setCurrentIndex(self.select_ref_signal.findData(req_path_idx))
 
                 # Add all other signals, excluding ones already added
                 already_added = {req_path_idx, per_path_idx}
