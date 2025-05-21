@@ -375,7 +375,7 @@ class ChannelSelector(QMainWindow):
         # Get the channels for the current page based on current_grid_indices
         page_channels = current_grid_indices[start_idx:end_idx]
 
-        selected_ref_signal = self.select_ref_signal.currentData()
+        selected_ref_signal = self.get_selected_ref_signal()
 
         # Create and add a ChannelWidget for each channel on the page
         for page_pos, channel_idx in enumerate(page_channels):
@@ -399,6 +399,7 @@ class ChannelSelector(QMainWindow):
                 initial_status=initial_status,  # Pass initial checkbox state
                 initial_labels=initial_labels,  # Pass initial labels
                 parent=self,  # Set self as parent
+                _overlay_ref_signal=selected_ref_signal
             )
 
             # Connect signals from the ChannelWidget to ChannelSelector methods
@@ -423,6 +424,12 @@ class ChannelSelector(QMainWindow):
             self.grid_setup_handler.get_orientation(),
             self.grid_setup_handler.get_current_page()  # Use handler's current page
         )
+
+    def get_selected_ref_signal(self):
+        selected_ref_signal = self.select_ref_signal.currentData() if self.show_ref_signals.isChecked() else None
+        selected_ref_signal = ChannelWidget.scale_ref_signal(
+            global_state.get_scaled_data()[:, selected_ref_signal]) if selected_ref_signal is not None else None
+        return selected_ref_signal
 
     def handle_single_channel_update(self, idx, state):
         """Handles state change for a single channel checkbox."""
@@ -462,7 +469,7 @@ class ChannelSelector(QMainWindow):
         """Opens a detailed time series view for a channel."""
         # Use data from state
         if global_state.get_data() is not None:
-            self.detail_window = ChannelDetailWindow(self, global_state.get_data(), channel_idx)
+            self.detail_window = ChannelDetailWindow(self, global_state.get_data(), channel_idx, self.get_selected_ref_signal())
             self.detail_window.show()
         else:
             logger.warning("Cannot view channel detail: No data loaded.")

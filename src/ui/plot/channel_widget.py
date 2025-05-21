@@ -1,6 +1,5 @@
 # ui/channel_widget.py
 from functools import partial
-import logging
 
 import numpy as np
 from PyQt5.QtGui import QIcon
@@ -22,7 +21,7 @@ class ChannelWidget(QWidget):
     view_spectrum_requested = pyqtSignal(int)  # channel_idx
 
     def __init__(self, channel_idx: int, time_data, scaled_data_slice, ylim: tuple,
-                 initial_status: bool, initial_labels: list, parent=None):
+                 initial_status: bool, initial_labels: list, parent=None, _overlay_ref_signal=None):
         super().__init__(parent)
         self.channel_idx = channel_idx
         self.channel_number = channel_idx + 1
@@ -30,7 +29,7 @@ class ChannelWidget(QWidget):
         self.scaled_data_slice = scaled_data_slice
         self.ylim = ylim
         self._current_labels = list(initial_labels) # Store a mutable copy
-        self._overlay_ref_signal = None
+        self._overlay_ref_signal = _overlay_ref_signal
 
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(5, 5, 5, 5)
@@ -152,7 +151,7 @@ class ChannelWidget(QWidget):
         ax.plot(self.time_data, self.scaled_data_slice, color="blue", linewidth=1, label=f"Ch {self.channel_number}")
         if self._overlay_ref_signal is not None:
             if len(self._overlay_ref_signal) == len(self.time_data):
-                ax.plot(self.time_data, self._overlay_ref_signal, color="black", linewidth=1, label="Reference")
+                ax.plot(self.time_data, self._overlay_ref_signal, color="black", linewidth=1, label="Reference", linestyle="--")
                 ax.legend(loc='upper right', frameon=False, fontsize='small')
             else:
                 logger.warning(f"Reference signal length does not match time data length for Channel {self.channel_number}")
