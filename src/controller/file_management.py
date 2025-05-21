@@ -25,6 +25,7 @@ class FileManager:
             return False
 
         try:
+            global_state.reset()
             global_state.set_file_path(file_path)
             logger.info(f"Loading file {global_state.get_file_path()}")
 
