@@ -36,6 +36,13 @@ class SignalPlotDialog(QDialog):
         super().__init__(parent)
         self.currently_selected_fiber_mode = grid_handler.get_orientation()
 
+        flags = self.windowFlags()
+        flags |= Qt.Window
+        flags |= Qt.WindowMinimizeButtonHint
+        flags |= Qt.WindowMaximizeButtonHint
+        flags |= Qt.WindowCloseButtonHint
+        self.setWindowFlags(flags)
+
         self._layout_mode = global_state.get_layout_for_fiber(self.currently_selected_fiber_mode)
         logger.debug(f"SignalPlotDialog initialized with layout mode: {self._layout_mode.name.title()}")
         self.setWindowTitle("Full Grid Signal Viewer")
