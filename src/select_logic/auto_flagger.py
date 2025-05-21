@@ -2,7 +2,6 @@ import sys
 
 import numpy as np
 from scipy.fft import rfft, rfftfreq
-from scipy.signal import find_peaks  # requires scipy >=1.1.0
 
 from _log.log_config import logger
 from state.state import global_state
@@ -14,10 +13,10 @@ class AutoFlagger:
         pass
 
     def suggest_flags(
-        self,
-        data: np.ndarray | None,
-        sampling_frequency: float | None,
-        settings: dict
+            self,
+            data: np.ndarray | None,
+            sampling_frequency: float | None,
+            settings: dict
     ) -> tuple[dict[int, list[str]], int, int]:
         """
         Analyzes channel data to suggest artifact flags (Noise, Artifact),
@@ -116,30 +115,24 @@ class AutoFlagger:
         return freqs
 
     def _detect_noise(
-        self,
-        channel_data: np.ndarray,
-        sampling_frequency: float,
-        target_freqs: list[float],
-        noise_settings: dict
+            self,
+            channel_data: np.ndarray,
+            sampling_frequency: float,
+            target_freqs: list[float],
+            noise_settings: dict
     ) -> list[str]:
         flags: list[str] = []
         try:
+            # 1) FFT
             num_samples = channel_data.size
             fft_vals = rfft(channel_data)
             fft_freqs = rfftfreq(num_samples, 1.0 / sampling_frequency)
             power_spec = np.abs(fft_vals) ** 2
 
-            # compute global average power excluding DC
-            valid_mask = fft_freqs > 0
-            avg_power = np.mean(power_spec[valid_mask]) if np.any(valid_mask) else 0
-
+            # 2) check each target
             for freq in target_freqs:
                 flag = self._check_frequency_peak(
-                    fft_freqs,
-                    power_spec,
-                    freq,
-                    avg_power,
-                    noise_settings
+                    fft_freqs, power_spec, freq, noise_settings
                 )
                 if flag:
                     flags.append(flag)
@@ -148,56 +141,58 @@ class AutoFlagger:
         return flags
 
     def _check_frequency_peak(
-        self,
-        freqs: np.ndarray,
-        power_spec: np.ndarray,
-        target_freq: float,
-        avg_power: float,
-        noise_settings: dict
+            self,
+            freqs: np.ndarray,
+            power_spec: np.ndarray,
+            target_freq: float,
+            noise_settings: dict
     ) -> str | None:
-        idx = np.argmin(np.abs(freqs - target_freq))
-        if idx == 0:
+
+        # Build ±band mask
+        band = noise_settings.get('band_hz', 2.0)
+        # Background: all bins outside ±band (and above DC)
+        mask_bg = (freqs > 0) & (np.abs(freqs - target_freq) > band)
+        bg_vals = power_spec[mask_bg]
+        med_bkgd = np.median(bg_vals) if bg_vals.size else 0.0
+
+        # Local window: ±band around target
+        mask_local = np.abs(freqs - target_freq) <= band
+        local_vals = power_spec[mask_local]
+        local_freqs = freqs[mask_local]
+
+        if local_vals.size == 0:
             return None
-        peak = power_spec[idx]
-        ratio = peak / (avg_power + sys.float_info.epsilon)
-        is_local_max = (peak >= power_spec[idx - 1]) and (peak >= power_spec[idx + 1])
 
-        use_find_peaks = False
-        try:
-            from scipy import __version__ as v
-            major, minor, *_ = map(int, v.split('.'))
-            use_find_peaks = (major > 1 or (major == 1 and minor >= 1))
-        except Exception:
-            pass
+        # Find the single largest peak in that window
+        local_peak_idx = np.argmax(local_vals)
+        peak_val = local_vals[local_peak_idx]
+        peak_freq = local_freqs[local_peak_idx]
 
-        if use_find_peaks:
-            band = noise_settings.get('band_hz', 0)
-            mask = (freqs >= target_freq - band) & (freqs <= target_freq + band)
-            if np.any(mask):
-                local = power_spec[mask]
-                peaks, _ = find_peaks(local)
-                if peaks.size:
-                    is_local_max = (peak >= power_spec[idx - 1]) and (peak >= power_spec[idx + 1])
+        # Ratio test against median background
+        ratio = peak_val / (med_bkgd + sys.float_info.epsilon)
 
-        if is_local_max and ratio > noise_settings.get('threshold', 0):
+        if ratio > noise_settings.get('threshold', 1.0):
             label = (
                 BaseChannelLabel.NOISE_50.value
                 if target_freq == 50.0
                 else BaseChannelLabel.NOISE_60.value
             )
             logger.debug(
-                f"Flagged Noise {target_freq}Hz: Ratio={ratio:.2f}, LocalMax={is_local_max}"
+                f"Flagged Noise {target_freq}Hz (actual at {peak_freq:.2f}Hz): "
+                f"Peak={peak_val:.1f}, MedianBkgd={med_bkgd:.1f}, Ratio={ratio:.1f}"
             )
             return label
+
         logger.debug(
-            f"No Noise {target_freq}Hz: Ratio={ratio:.2f}, LocalMax={is_local_max}"
+            f"No Noise {target_freq}Hz: BestLocalFreq={peak_freq:.2f}Hz, "
+            f"Peak={peak_val:.1f}, MedianBkgd={med_bkgd:.1f}, Ratio={ratio:.1f}"
         )
         return None
 
     @staticmethod
     def _detect_artifact(
-        channel_data: np.ndarray,
-        threshold: float
+            channel_data: np.ndarray,
+            threshold: float
     ) -> str | None:
         try:
             var = np.var(channel_data)
