@@ -152,7 +152,6 @@ class ChannelWidget(QWidget):
         ax.plot(self.time_data, self.scaled_data_slice, color="blue", linewidth=1, label=f"Ch {self.channel_number}")
         if self._overlay_ref_signal is not None:
             if len(self._overlay_ref_signal) == len(self.time_data):
-                self._overlay_ref_signal = self.scale_ref_signal()
                 ax.plot(self.time_data, self._overlay_ref_signal, color="black", linewidth=1, label="Reference")
                 ax.legend(loc='upper right', frameon=False, fontsize='small')
             else:
@@ -201,17 +200,17 @@ class ChannelWidget(QWidget):
         self.canvas.draw_idle()
         self.update()
 
-    def scale_ref_signal(self):
+    @staticmethod
+    def scale_ref_signal(ref_sig):
         """
         Centers the reference signal around 0 and scales the peak amplitude to the maximum amplitude of the data.
         """
-        sig = self._overlay_ref_signal
-        if sig is None:
-            logger.warning("No reference signal set.")
+        if ref_sig is None:
+            logger.warning("No reference signal passed.")
             return None
 
         # 1) Remove offset
-        sig_centered = sig - np.mean(sig)
+        sig_centered = ref_sig - np.mean(ref_sig)
 
         # 2) Max amplitude of the data
         data_max_amp = global_state.get_max_amplitude()

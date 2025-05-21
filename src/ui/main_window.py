@@ -164,9 +164,10 @@ class ChannelSelector(QMainWindow):
         if self.show_ref_signals.isChecked():
             self.select_ref_signal.setEnabled(True)
             selected_signal = self.select_ref_signal.currentData()
+            ref_sig_scaled = ChannelWidget.scale_ref_signal(global_state.get_scaled_data()[:, selected_signal])
             if selected_signal is not None:
                 for channel_widget in self.channel_widgets:
-                    channel_widget.set_overlay_signal(global_state.get_scaled_data()[:, selected_signal])
+                    channel_widget.set_overlay_signal(ref_sig_scaled)
         else:
             self.select_ref_signal.setEnabled(False)
             logger.debug("Hiding reference signal")
