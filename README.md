@@ -35,6 +35,7 @@ helps identify and exclude faulty channels (e.g., due to electrode misplacement 
     - Electrode Widget with numbered and selectable channels.
     - Overview with page navigation and signal thumbnails.
     - Detailed viewer with time-domain and frequency spectrum plots.
+    - Get the reference signal from the specific grid as an overlay in the dashboard view.
 - ✅ Manual and automatic channel selection.
     - 📈 Amplitude-based selection with configurable thresholds.
 - ⚡️ **Automatic Artifact Flagging:** Identify potential ECG contamination, power line noise (50Hz/60Hz), or general artifacts based on configurable thresholds (Frequency Threshold, Variance Threshold, Frequency Band). Suggested flags are added as channel labels.

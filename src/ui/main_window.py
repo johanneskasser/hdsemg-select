@@ -468,8 +468,8 @@ class ChannelSelector(QMainWindow):
     def view_channel_in_detail(self, channel_idx):
         """Opens a detailed time series view for a channel."""
         # Use data from state
-        if global_state.get_data() is not None:
-            self.detail_window = ChannelDetailWindow(self, global_state.get_data(), channel_idx, self.get_selected_ref_signal())
+        if global_state.get_scaled_data() is not None:
+            self.detail_window = ChannelDetailWindow(self, global_state.get_scaled_data(), channel_idx, self.get_selected_ref_signal())
             self.detail_window.show()
         else:
             logger.warning("Cannot view channel detail: No data loaded.")
