@@ -1,7 +1,7 @@
 # main_window.py
 
 import numpy as np
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QSignalBlocker
 from PyQt5.QtGui import QIcon, QFont
 from PyQt5.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QFrame, QVBoxLayout, QLabel, QScrollArea, QGridLayout, \
     QPushButton, QStyle, QCheckBox, QFileDialog, QMessageBox, QComboBox
@@ -289,10 +289,16 @@ class ChannelSelector(QMainWindow):
             dialog.reject()
             pass
 
-    def toggle_select_all(self):
+    def toggle_select_all(self, shortcut=False):
         """Toggles selection status for all channels."""
         # Get channel status from state
         channel_status = global_state.get_channel_status()
+
+        if shortcut:
+            # If called from shortcut, toggle the checkbox state and prevent firing stateChanged signal
+            blocker = QSignalBlocker(self.select_all_checkbox)
+            self.select_all_checkbox.setChecked(not self.select_all_checkbox.isChecked())
+            del blocker
 
         if self.select_all_checkbox.isChecked():
             # Update status in state

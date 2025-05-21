@@ -93,7 +93,7 @@ class AutomaticAmplitudeSelection:
 
         layout.addLayout(button_layout)
         dialog.setLayout(layout)
-        dialog.exec_()
+        return dialog.exec_()
 
     def save_thresholds(self, dialog, lower_input, upper_input):
         try:
@@ -108,6 +108,14 @@ class AutomaticAmplitudeSelection:
             dialog.accept()
         except ValueError:
             QMessageBox.warning(self.parent, "Invalid Input", "Please enter valid integer thresholds.")
+
+    def is_threshold_valid(self):
+        """
+        Check if the thresholds are valid (lower < upper).
+        """
+        if self.lower_threshold >= self.upper_threshold:
+            return False
+        return True
 
     def perform_selection(self):
         """

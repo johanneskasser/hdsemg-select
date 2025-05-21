@@ -3,7 +3,7 @@ from functools import partial
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QKeySequence
-from PyQt5.QtWidgets import QAction, QMenu, QLabel  # Import QMenu
+from PyQt5.QtWidgets import QAction, QMenu, QLabel, QDialog  # Import QMenu
 
 from controller.file_management import save_selection
 from state.state import global_state
@@ -71,20 +71,19 @@ class MenuManager:
         self.amplitude_menu = auto_select_menu.addMenu("Amplitude Based")
         self.amplitude_menu.setEnabled(False)  # Enabled when data is loaded
 
-        start_action = QAction("Start", parent_window)
-        start_action.setStatusTip("Start automatic channel selection based on thresholds")
-        start_action.triggered.connect(parent_window.automatic_selection.perform_selection)
-        self.amplitude_menu.addAction(start_action)
+        self.start_action = QAction("Start", parent_window)
+        self.start_action.setStatusTip("Start automatic channel selection based on thresholds")
+        self.start_action.triggered.connect(parent_window.automatic_selection.perform_selection)
+        self.start_action.setEnabled(parent_window.automatic_selection.is_threshold_valid())
+        self.amplitude_menu.addAction(self.start_action)
 
         settings_action = QAction("Settings", parent_window)
         settings_action.setStatusTip("Configure thresholds for automatic selection")
-        # This action likely needs access to the settings dialog instance
-        settings_action.triggered.connect(parent_window.automatic_selection.open_settings_dialog)
+        settings_action.triggered.connect(partial(self.on_auto_settings_, parent_window))
         self.amplitude_menu.addAction(settings_action)
 
         auto_select_menu.addSeparator()  # Add a separator before the new flag action
 
-        # New Action: Suggest Artifact Flags
         self.suggest_flags_action = QAction("Suggest Artifact Flags...", parent_window)
         self.suggest_flags_action.setStatusTip("Automatically suggest ECG, Noise, or Artifact flags")
         self.suggest_flags_action.setEnabled(False)  # Enabled when data is loaded
@@ -93,6 +92,12 @@ class MenuManager:
         auto_select_menu.addAction(self.suggest_flags_action)
 
         return auto_select_menu  # Return the created menu
+
+    def on_auto_settings_(self, parent_window):
+        result = parent_window.automatic_selection.open_settings_dialog()
+        if result == QDialog.Accepted:
+            valid = parent_window.automatic_selection.is_threshold_valid()
+            self.start_action.setEnabled(valid)
 
     def _add_version_to_statusbar(self, parent_window):
         version_label = QLabel(
@@ -144,6 +149,11 @@ class MenuManager:
         self.go_right_action.setShortcut(QKeySequence(Qt.Key_Right))
         self.go_right_action.triggered.connect(parent_window.next_page)
         parent_window.addAction(self.go_right_action)
+
+        self.select_all_action = QAction('Select All', parent_window)
+        self.select_all_action.setShortcut(QKeySequence("Ctrl+A"))
+        self.select_all_action.triggered.connect(partial(parent_window.toggle_select_all, True))
+        parent_window.addAction(self.select_all_action)
 
 
     # Methods to access the created actions/menus if needed by the parent window
