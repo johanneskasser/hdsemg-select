@@ -38,7 +38,7 @@ class State(QObject):
         self.max_amplitude = None
         # default fallback
         self._fiber_to_layout: Dict[FiberMode, LayoutMode] = {
-            FiberMode.PARALLEL: LayoutMode.COLS,
+            FiberMode.PARALLEL: LayoutMode.COLUMNS,
             FiberMode.PERPENDICULAR: LayoutMode.ROWS
         }
         self._fiber_to_layout_user_set = False # dirty flag to check if the layout was set by the user - important for the json metdata

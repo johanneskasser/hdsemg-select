@@ -330,8 +330,6 @@ class ChannelSelector(QMainWindow):
         total_pages = self.grid_setup_handler.get_total_pages()
         items_per_page = self.grid_setup_handler.get_items_per_page()
         current_grid_indices = self.grid_setup_handler.get_current_grid_indices()
-        rows = self.grid_setup_handler.get_rows()  # Needed for potential full grid calculations
-        cols = self.grid_setup_handler.get_cols()  # Needed for potential full grid calculations
         selected_grid_key = self.grid_setup_handler.get_selected_grid()  # Needed for grid info lookup
 
         self.page_label.setText(f"Page {current_page + 1}/{total_pages}")

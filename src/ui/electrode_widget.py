@@ -149,7 +149,7 @@ class ElectrodeWidget(QWidget):
             painter.fillRect(span, yellow)
 
         # 2) Highlight a full COLUMN
-        elif self.grid_orientation == LayoutMode.COLS and 0 <= self.highlight_index < cols:
+        elif self.grid_orientation == LayoutMode.COLUMNS and 0 <= self.highlight_index < cols:
             c = self.highlight_index
             a = self.electrode_labels[0][c].geometry()
             b = self.electrode_labels[rows - 1][c].geometry()

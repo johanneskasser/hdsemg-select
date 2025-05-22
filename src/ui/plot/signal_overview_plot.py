@@ -56,7 +56,6 @@ class SignalPlotDialog(QDialog):
                                  "Currently, there is no grid selected. Please select a grid first.")
 
         self._create_widgets()
-        self._wire_signals()
         self.showMaximized()
         if self.grid_handler.get_selected_grid():
              self.update_plot()
@@ -94,87 +93,63 @@ class SignalPlotDialog(QDialog):
         box = QGroupBox("View Settings")
         box.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
 
-        grid = QGridLayout()
-        grid.setContentsMargins(8, 8, 8, 8)
-        grid.setHorizontalSpacing(12)
-        grid.setVerticalSpacing(6)
+        # horizontal layout: [toggle button] are <b>parallel</b> to muscle fibers.
+        hl = QHBoxLayout()
+        hl.setContentsMargins(8, 8, 8, 8)
+        hl.setSpacing(6)
 
-        # Column indices:
-        # 0 = text label, 1 = info-icon, 2 = control that expands, 3 = tight control
-        grid.setColumnStretch(2, 1)
+        # Info icon
+        info = QPushButton()
+        info.setIcon(self.style().standardIcon(QStyle.SP_MessageBoxInformation))
+        info.setFixedSize(20, 20)
+        info.setToolTip("Choose whether Rows or Columns run parallel to fibers")
+        info.clicked.connect(lambda: QMessageBox.information(
+            self, "Orientation Info",
+            "Toggle to select which grid axis (Rows or Columns) is parallel to the muscle fibers."
+        ))
 
-        # --- ROW 0: Layout ---
-        lbl_layout = QLabel("<b>Layout:</b>")
-        btn_info_layout = QPushButton()
-        btn_info_layout.setIcon(self.style().standardIcon(QStyle.SP_MessageBoxInformation))
-        btn_info_layout.setFixedSize(20, 20)
-        btn_info_layout.setToolTip("What is Layout?")
-        btn_info_layout.clicked.connect(lambda:
-                                        QMessageBox.information(
-                                            self, "Layout Info",
-                                            "Rotate the grid between row-major (Rows) or column-major (Cols) view."
-                                        )
-                                        )
+        # The toggle button itself
+        rows, cols = self.grid_handler.get_rows(), self.grid_handler.get_cols()
+        self.layout_toggle = QPushButton(QApplication.style().standardIcon(QStyle.SP_BrowserReload), "")
+        self.layout_toggle.setCheckable(True)
+        # initial state: if current layout is ROWS, show “n Rows” (unchecked)
+        if self._layout_mode == LayoutMode.ROWS:
+            self.layout_toggle.setChecked(False)
+            self.layout_toggle.setText(f"{rows} Rows")
+        else:
+            self.layout_toggle.setChecked(True)
+            self.layout_toggle.setText(f"{cols} Columns")
+        self.layout_toggle.clicked.connect(self._on_layout_toggled)
 
-        self.layout_label = QLabel(self._layout_mode.name.title())
-        self.layout_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        # Static label
+        lbl = QLabel("are <b>parallel</b> to muscle fibers.")
+        lbl.setTextFormat(Qt.RichText)
 
-        self.rotate_btn = QPushButton(
-            self.style().standardIcon(QStyle.SP_BrowserReload), ""
-        )
-        self.rotate_btn.setToolTip("Rotate view")
-        self.rotate_btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        # assemble
+        hl.addWidget(info)
+        hl.addWidget(self.layout_toggle)
+        hl.addWidget(lbl)
+        hl.addStretch()
 
-        grid.addWidget(lbl_layout, 0, 0, Qt.AlignLeft)
-        grid.addWidget(btn_info_layout, 0, 1, Qt.AlignLeft)
-        grid.addWidget(self.layout_label, 0, 2)
-        grid.addWidget(self.rotate_btn, 0, 3, Qt.AlignRight)
-
-        # --- ROW 1: Fibers ---
-        lbl_fibers = QLabel("<b>Fibers:</b>")
-        btn_info_fibers = QPushButton()
-        btn_info_fibers.setIcon(self.style().standardIcon(QStyle.SP_MessageBoxInformation))
-        btn_info_fibers.setFixedSize(20, 20)
-        btn_info_fibers.setToolTip("What are Fibers?")
-        btn_info_fibers.clicked.connect(lambda:
-                                        QMessageBox.information(
-                                            self, "Fibers Info",
-                                            "Choose whether to display electrodes parallel or perpendicular to the fiber direction."
-                                        )
-                                        )
-
-        self.fiber_combo = QComboBox()
-        for mode in FiberMode:
-            self.fiber_combo.addItem(mode.name.title(), mode)
-        # select current
-        idx = self.fiber_combo.findData(self.currently_selected_fiber_mode)
-        if idx >= 0:
-            self.fiber_combo.setCurrentIndex(idx)
-
-        grid.addWidget(lbl_fibers, 1, 0, Qt.AlignLeft)
-        grid.addWidget(btn_info_fibers, 1, 1, Qt.AlignLeft)
-        grid.addWidget(self.fiber_combo, 1, 2, 1, 2)
-
-        # --- ROW 2: Apply ---
-        self.apply_btn = QPushButton(
-            self.style().standardIcon(QStyle.SP_DialogApplyButton), ""
-        )
-        self.apply_btn.setToolTip("Apply changes")
-        self.apply_btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        grid.addWidget(self.apply_btn, 2, 0, 1, 4, Qt.AlignLeft)
-
-        box.setLayout(grid)
+        box.setLayout(hl)
         box.setMaximumHeight(box.sizeHint().height())
         return box
 
-    def _wire_signals(self):
-        self.rotate_btn.clicked.connect(self._rotate_view)
-        self.apply_btn.clicked.connect(self._apply_orientation_selection)
+    def _on_layout_toggled(self):
+        # flip internal layout_mode
+        rows, cols = self.grid_handler.get_rows(), self.grid_handler.get_cols()
+        if self.layout_toggle.isChecked():
+            self._layout_mode = LayoutMode.COLUMNS
+            self.layout_toggle.setText(f"{cols} Columns")
+        else:
+            self._layout_mode = LayoutMode.ROWS
+            self.layout_toggle.setText(f"{rows} Rows")
+        self.update_plot()
 
     def _rotate_view(self):
         """Flip between row and column major view and redraw"""
         if self._layout_mode == LayoutMode.ROWS:
-            self._layout_mode = LayoutMode.COLS
+            self._layout_mode = LayoutMode.COLUMNS
         else:
             self._layout_mode = LayoutMode.ROWS
         self.layout_label.setText(self._layout_mode.name.title())
@@ -182,16 +157,20 @@ class SignalPlotDialog(QDialog):
 
     def _apply_orientation_selection(self):
         """Applies the currently selected orientation selection (combination layout/fiber)"""
-        selected_fiber_mode: FiberMode = self.fiber_combo.currentData()
+        selected_fiber_mode: FiberMode = FiberMode.PARALLEL # default
         selected_layout_mode = self._layout_mode
+
+        if global_state.get_layout_for_fiber(selected_fiber_mode) == selected_layout_mode:
+            # no change needed
+            logger.debug("No change in layout mode needed.")
+            return False
 
         logger.debug(f"Selected orientation: {selected_fiber_mode.name.title()} -> {selected_layout_mode.name.title()}")
 
         global_state.set_fiber_layout(selected_fiber_mode, selected_layout_mode)
 
         self.orientation_applied.emit()
-
-        self.close()
+        return True
 
     def _show_no_grid_message(self):
         self.ax.clear()
@@ -202,6 +181,11 @@ class SignalPlotDialog(QDialog):
         self.ax.set_xlabel("")
         self.ax.set_ylabel("")
         self.canvas.draw_idle()
+
+    def closeEvent(self, a0):
+        if self._apply_orientation_selection():
+            QMessageBox.information(self, "Orientation selection updated successfully", f"<b>{self._layout_mode.name.title()}</b> are <b>parallel</b> to muscle fibers.")
+        super().closeEvent(a0)
 
     def update_plot(self):
         """Aktualisiert den Plot, um alle Kanäle des aktuell ausgewählten Grids anzuzeigen."""
@@ -286,7 +270,7 @@ class SignalPlotDialog(QDialog):
             self.ax.plot(time,
                          normalized + offset,
                          color=self._COLORS[i % len(self._COLORS)],
-                         linestyle="-" if global_state.get_channel_status(ch) else ":",
+                         linestyle="-" if global_state.get_channel_status(ch) else "--",
                          linewidth=1.0)
             # draw separator lines
             if (i + 1) % separator_interval == 0 and (i + 1) < len(ch_indices):

@@ -35,7 +35,6 @@ class GridOrientationDialog(QDialog):
         layout.addWidget(orientation_label)
 
         self.orientation_combo = QComboBox()
-        # Assuming FiberMode is imported
         self.orientation_combo.addItem("Parallel to fibers", FiberMode.PARALLEL)
         self.orientation_combo.addItem("Perpendicular to fibers", FiberMode.PERPENDICULAR)
 
