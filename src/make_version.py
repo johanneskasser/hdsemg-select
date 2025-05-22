@@ -41,7 +41,7 @@ string_table = StringTable(
         StringStruct('OriginalFilename', f'hdsemg-select.exe'),
         StringStruct('ProductName', 'hdsemg-select'),
         StringStruct('ProductVersion', __version__),
-        StringStruct('CompanyName', 'University of Applied Sciences Vienna - Department Physiotherapy'),
+        StringStruct('CompanyName', 'University of Applied Sciences Campus Wien - Physiotherapy'),
     ],
 )
 

@@ -44,7 +44,7 @@ helps identify and exclude faulty channels (e.g., due to electrode misplacement 
 - 💾 Save selections and **artifact flags** in structured `.json` files and automatically generate cleaned `.mat` files (excluding selected/flagged channels if desired).
 - 🖥 Dashboard with file metadata: filename, number of channels, sampling rate, size, selection count.
 - ⏱ Efficient loading with warnings and abort option for large data.
-- 🔍 Analyse the action potential propagation of the selected grid and apply the orientation (row/col) to grid position relative to muscle fibers.
+- 🔍 The overview of all amplitude-normalized channels over time allows for the inspection of action potential propagation per row or column (bold lines).
 
 ---
 

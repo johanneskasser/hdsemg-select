@@ -101,7 +101,7 @@ class MenuManager:
 
     def _add_version_to_statusbar(self, parent_window):
         version_label = QLabel(
-            f"hdsemg-select | University of Applied Sciences Vienna - Department Physiotherapy | Version: {__version__}")
+            f"hdsemg-select | University of Applied Sciences Campus Wien - Physiotherapy | Version: {__version__}")
         version_label.setStyleSheet("padding-right: 10px;")
         parent_window.statusBar().addPermanentWidget(version_label)
 
