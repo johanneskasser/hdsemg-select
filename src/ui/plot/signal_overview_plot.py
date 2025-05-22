@@ -110,7 +110,7 @@ class SignalPlotDialog(QDialog):
 
         # The toggle button itself
         rows, cols = self.grid_handler.get_rows(), self.grid_handler.get_cols()
-        self.layout_toggle = QPushButton(self)
+        self.layout_toggle = QPushButton(QApplication.style().standardIcon(QStyle.SP_BrowserReload), "")
         self.layout_toggle.setCheckable(True)
         # initial state: if current layout is ROWS, show “n Rows” (unchecked)
         if self._layout_mode == LayoutMode.ROWS:
@@ -139,7 +139,7 @@ class SignalPlotDialog(QDialog):
         # flip internal layout_mode
         rows, cols = self.grid_handler.get_rows(), self.grid_handler.get_cols()
         if self.layout_toggle.isChecked():
-            self._layout_mode = LayoutMode.COLS
+            self._layout_mode = LayoutMode.COLUMNS
             self.layout_toggle.setText(f"{cols} Columns")
         else:
             self._layout_mode = LayoutMode.ROWS
@@ -149,7 +149,7 @@ class SignalPlotDialog(QDialog):
     def _rotate_view(self):
         """Flip between row and column major view and redraw"""
         if self._layout_mode == LayoutMode.ROWS:
-            self._layout_mode = LayoutMode.COLS
+            self._layout_mode = LayoutMode.COLUMNS
         else:
             self._layout_mode = LayoutMode.ROWS
         self.layout_label.setText(self._layout_mode.name.title())
@@ -160,13 +160,17 @@ class SignalPlotDialog(QDialog):
         selected_fiber_mode: FiberMode = FiberMode.PARALLEL # default
         selected_layout_mode = self._layout_mode
 
+        if global_state.get_layout_for_fiber(selected_fiber_mode) == selected_layout_mode:
+            # no change needed
+            logger.debug("No change in layout mode needed.")
+            return False
+
         logger.debug(f"Selected orientation: {selected_fiber_mode.name.title()} -> {selected_layout_mode.name.title()}")
 
         global_state.set_fiber_layout(selected_fiber_mode, selected_layout_mode)
 
         self.orientation_applied.emit()
-
-        self.close()
+        return True
 
     def _show_no_grid_message(self):
         self.ax.clear()
@@ -179,7 +183,8 @@ class SignalPlotDialog(QDialog):
         self.canvas.draw_idle()
 
     def closeEvent(self, a0):
-        self._apply_orientation_selection()
+        if self._apply_orientation_selection():
+            QMessageBox.information(self, "Orientation selection updated successfully", f"<b>{self._layout_mode.name.title()}</b> are <b>parallel</b> to muscle fibers.")
         super().closeEvent(a0)
 
     def update_plot(self):
