@@ -3,5 +3,6 @@
     <file>./resources/extend.png</file>
     <file>./resources/frequency.png</file>
     <file>./resources/icon.png</file>
+    <file>./resources/settings.png</file>
 </qresource>
 </RCC>

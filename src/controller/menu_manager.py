@@ -2,11 +2,12 @@
 from functools import partial
 
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QKeySequence
+from PyQt5.QtGui import QKeySequence, QIcon
 from PyQt5.QtWidgets import QAction, QMenu, QLabel, QDialog  # Import QMenu
 
 from controller.file_management import save_selection
 from state.state import global_state
+from ui.icons.custom_icon_enum import CustomIcon
 from version import __version__
 
 
@@ -48,6 +49,7 @@ class MenuManager:
 
         app_settings_menu = QAction("Settings", parent_window)
         app_settings_menu.setStatusTip("Open application settings")
+        app_settings_menu.setIcon(QIcon(CustomIcon.SETTINGS.value))
         app_settings_menu.triggered.connect(parent_window.openAppSettings)
         file_menu.addAction(app_settings_menu)
 
