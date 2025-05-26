@@ -11,10 +11,11 @@ from controller.grid_setup_handler import GridSetupHandler
 from state.enum.layout_mode_enums import LayoutMode, FiberMode
 from state.state import global_state
 from _log.log_config import logger
+from hdsemg_shared.preprocessing.differential import to_differential
+
 
 def _normalize_trace(trace: np.ndarray, max_amp: float = 1.1) -> np.ndarray:
     """Skaliert *trace*, um eine Spitzenamplitude von *max_amp* (a.u.) zu haben."""
-    # Sicherstellen, dass trace nicht leer ist
     if trace.size == 0:
         return trace
     peak = np.max(np.abs(trace))
@@ -22,19 +23,17 @@ def _normalize_trace(trace: np.ndarray, max_amp: float = 1.1) -> np.ndarray:
         return np.copy(trace)
     return trace * (max_amp / peak)
 
-class SignalPlotDialog(QDialog):
-    """
-    Vollbild-EMG-Viewer für das aktuell im GridSetupHandler ausgewählte Grid.
-    Zeigt alle Kanäle des Grids über die gesamte Signallänge an,
-    mit interaktivem Zoom/Pan über die Matplotlib-Toolbar und Kanalindizes auf der Y-Achse.
-    """
-    orientation_applied = pyqtSignal()
 
+class SignalPlotDialog(QDialog):
+    orientation_applied = pyqtSignal()
     _COLORS = plt.get_cmap("tab10").colors
+    _DIFFERENTIAL_FILTER_PARAMS = {'n': 4, 'low': 20, 'up': 450}
 
     def __init__(self, grid_handler: GridSetupHandler, parent=None):
         super().__init__(parent)
         self.currently_selected_fiber_mode = grid_handler.get_orientation()
+
+        self._plot_generation_count = 0
 
         flags = self.windowFlags()
         flags |= Qt.Window
@@ -44,45 +43,34 @@ class SignalPlotDialog(QDialog):
         self.setWindowFlags(flags)
 
         self._layout_mode = global_state.get_layout_for_fiber(self.currently_selected_fiber_mode)
+        self._signal_mode = "MP"  # Default signal mode: Monopolar
         logger.debug(f"SignalPlotDialog initialized with layout mode: {self._layout_mode.name.title()}")
         self.setWindowTitle("Full Grid Signal Viewer")
         if not isinstance(grid_handler, GridSetupHandler):
-             raise TypeError("grid_handler must be an instance of GridSetupHandler")
+            raise TypeError("grid_handler must be an instance of GridSetupHandler")
         self.grid_handler = grid_handler
 
         if not self.grid_handler.get_selected_grid():
-             logger.warning("Warning: SignalPlotDialog opened, but no grid is currently selected in the handler.")
-             QMessageBox.warning(self, "No Grid Selected",
-                                 "Currently, there is no grid selected. Please select a grid first.")
+            logger.warning("Warning: SignalPlotDialog opened, but no grid is currently selected in the handler.")
+            QMessageBox.warning(self, "No Grid Selected",
+                                "Currently, there is no grid selected. Please select a grid first.")
 
         self._create_widgets()
         self.showMaximized()
         if self.grid_handler.get_selected_grid():
-             self.update_plot()
+            self.update_plot()
         else:
-             self._show_no_grid_message()
+            self._show_no_grid_message()
 
     def _create_widgets(self):
-        """Creates the widgets for the dialog, including toolbar and settings form."""
-
-        # -- Rotate button (upper right) --
-        self.rotate_btn = QPushButton(
-            QApplication.style().standardIcon(QStyle.SP_BrowserReload), ""
-        )
-        self.rotate_btn.setToolTip("Rotate view")
-        self.rotate_btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-
-        # -- Top controls layout --
         controls = QHBoxLayout()
         controls.addStretch()
         controls.addWidget(self._create_view_settings())
 
-        # -- Matplotlib canvas + toolbar --
         self.canvas = FigureCanvas(Figure(figsize=(15, 10)))
         self.ax = self.canvas.figure.add_subplot(111)
         self.toolbar = NavigationToolbar(self.canvas, self)
 
-        # -- Main dialog layout --
         root = QVBoxLayout(self)
         root.addLayout(controls)
         root.addWidget(self.toolbar)
@@ -93,26 +81,23 @@ class SignalPlotDialog(QDialog):
         box = QGroupBox("View Settings")
         box.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
 
-        # horizontal layout: [toggle button] are <b>parallel</b> to muscle fibers.
-        hl = QHBoxLayout()
-        hl.setContentsMargins(8, 8, 8, 8)
-        hl.setSpacing(6)
+        settings_layout = QHBoxLayout()
+        settings_layout.setContentsMargins(8, 8, 8, 8)
+        settings_layout.setSpacing(10)
 
-        # Info icon
-        info = QPushButton()
-        info.setIcon(self.style().standardIcon(QStyle.SP_MessageBoxInformation))
-        info.setFixedSize(20, 20)
-        info.setToolTip("Choose whether Rows or Columns run parallel to fibers")
-        info.clicked.connect(lambda: QMessageBox.information(
+        # --- Orientation Toggle ---
+        info_orient = QPushButton()
+        info_orient.setIcon(self.style().standardIcon(QStyle.SP_MessageBoxInformation))
+        info_orient.setFixedSize(20, 20)
+        info_orient.setToolTip("Choose whether Rows or Columns run parallel to fibers")
+        info_orient.clicked.connect(lambda: QMessageBox.information(
             self, "Orientation Info",
             "Toggle to select which grid axis (Rows or Columns) is parallel to the muscle fibers."
         ))
 
-        # The toggle button itself
         rows, cols = self.grid_handler.get_rows(), self.grid_handler.get_cols()
         self.layout_toggle = QPushButton(QApplication.style().standardIcon(QStyle.SP_BrowserReload), "")
         self.layout_toggle.setCheckable(True)
-        # initial state: if current layout is ROWS, show “n Rows” (unchecked)
         if self._layout_mode == LayoutMode.ROWS:
             self.layout_toggle.setChecked(False)
             self.layout_toggle.setText(f"{rows} Rows")
@@ -121,22 +106,29 @@ class SignalPlotDialog(QDialog):
             self.layout_toggle.setText(f"{cols} Columns")
         self.layout_toggle.clicked.connect(self._on_layout_toggled)
 
-        # Static label
-        lbl = QLabel("are <b>parallel</b> to muscle fibers.")
-        lbl.setTextFormat(Qt.RichText)
+        lbl_orient = QLabel("are <b>parallel</b> to muscle fibers.")
+        lbl_orient.setTextFormat(Qt.RichText)
 
-        # assemble
-        hl.addWidget(info)
-        hl.addWidget(self.layout_toggle)
-        hl.addWidget(lbl)
-        hl.addStretch()
+        settings_layout.addWidget(info_orient)
+        settings_layout.addWidget(self.layout_toggle)
+        settings_layout.addWidget(lbl_orient)
+        settings_layout.addSpacing(25)  # Spacer
 
-        box.setLayout(hl)
-        box.setMaximumHeight(box.sizeHint().height())
+        # --- Signal Mode Selection ---
+        lbl_signal_type = QLabel("Signal Type:")
+        self.signal_mode_combo = QComboBox()
+        self.signal_mode_combo.addItems(["Monopolar (MP)", "Single Differential (SD)", "Double Differential (DD)"])
+        self.signal_mode_combo.currentTextChanged.connect(self._on_signal_mode_changed)
+
+        settings_layout.addWidget(lbl_signal_type)
+        settings_layout.addWidget(self.signal_mode_combo)
+        settings_layout.addStretch()
+
+        box.setLayout(settings_layout)
+        box.setMaximumHeight(box.sizeHint().height() + 10)
         return box
 
     def _on_layout_toggled(self):
-        # flip internal layout_mode
         rows, cols = self.grid_handler.get_rows(), self.grid_handler.get_cols()
         if self.layout_toggle.isChecked():
             self._layout_mode = LayoutMode.COLUMNS
@@ -146,35 +138,27 @@ class SignalPlotDialog(QDialog):
             self.layout_toggle.setText(f"{rows} Rows")
         self.update_plot()
 
-    def _rotate_view(self):
-        """Flip between row and column major view and redraw"""
-        if self._layout_mode == LayoutMode.ROWS:
-            self._layout_mode = LayoutMode.COLUMNS
-        else:
-            self._layout_mode = LayoutMode.ROWS
-        self.layout_label.setText(self._layout_mode.name.title())
+    def _on_signal_mode_changed(self, text: str):
+        if "Monopolar" in text:
+            self._signal_mode = "MP"
+        elif "Single Differential" in text:
+            self._signal_mode = "SD"
+        elif "Double Differential" in text:
+            self._signal_mode = "DD"
         self.update_plot()
 
     def _apply_orientation_selection(self):
-        """Applies the currently selected orientation selection (combination layout/fiber)"""
-        selected_fiber_mode: FiberMode = FiberMode.PARALLEL # default
+        selected_fiber_mode: FiberMode = FiberMode.PARALLEL
         selected_layout_mode = self._layout_mode
-
         if global_state.get_layout_for_fiber(selected_fiber_mode) == selected_layout_mode:
-            # no change needed
-            logger.debug("No change in layout mode needed.")
             return False
-
-        logger.debug(f"Selected orientation: {selected_fiber_mode.name.title()} -> {selected_layout_mode.name.title()}")
-
         global_state.set_fiber_layout(selected_fiber_mode, selected_layout_mode)
-
         self.orientation_applied.emit()
         return True
 
-    def _show_no_grid_message(self):
+    def _show_no_grid_message(self, message="No grid selected"):
         self.ax.clear()
-        self.ax.text(0.5, 0.5, "No grid selected", ha='center', va='center',
+        self.ax.text(0.5, 0.5, message, ha='center', va='center',
                      transform=self.ax.transAxes, fontsize=12, color='red')
         self.ax.set_yticks([])
         self.ax.set_xticks([])
@@ -184,119 +168,231 @@ class SignalPlotDialog(QDialog):
 
     def closeEvent(self, a0):
         if self._apply_orientation_selection():
-            QMessageBox.information(self, "Orientation selection updated successfully", f"<b>{self._layout_mode.name.title()}</b> are <b>parallel</b> to muscle fibers.")
+            QMessageBox.information(self, "Orientation selection updated successfully",
+                                    f"<b>{self._layout_mode.name.title()}</b> are <b>parallel</b> to muscle fibers.")
         super().closeEvent(a0)
 
     def update_plot(self):
-        """Aktualisiert den Plot, um alle Kanäle des aktuell ausgewählten Grids anzuzeigen."""
-        logger.debug("Updating Signal Plot Dialog...")
+        """ Updates the plot based on the current grid and signal mode."""
+        # Store the current plot orientation
+        stored_xlim = None
+        stored_ylim = None
+        if self._plot_generation_count > 0 and self.ax and self.ax.lines:
+            stored_xlim = self.ax.get_xlim()
+            stored_ylim = self.ax.get_ylim()
+            logger.debug(f"Stored xlim: {stored_xlim}, ylim: {stored_ylim}")
+
+        logger.debug(f"Updating Signal Plot Dialog. Mode: {self._signal_mode}, Layout: {self._layout_mode.name}")
         selected_grid_name = self.grid_handler.get_selected_grid()
         if not selected_grid_name:
             self._show_no_grid_message()
             logger.warning("Plot update skipped: No grid selected.")
             return
 
-        # --- get and validate channel indices ---
-        ch_indices = self.grid_handler.get_current_grid_indices()
-        if not ch_indices:
-            self.ax.clear()
-            self.ax.text(0.5, 0.5,
-                         f"No channels found for grid '{selected_grid_name}'",
-                         ha='center', va='center',
-                         transform=self.ax.transAxes,
-                         fontsize=12, color='orange')
-            self.ax.set_yticks([]);
-            self.ax.set_xticks([])
-            self.ax.set_xlabel("");
-            self.ax.set_ylabel("")
-            self.canvas.draw_idle()
+        ch_indices_orig = self.grid_handler.get_current_grid_indices()
+        if not ch_indices_orig:
+            self._show_no_grid_message(f"No channels found for grid '{selected_grid_name}'")
             logger.warning(f"Plot update skipped: No channels for grid '{selected_grid_name}'.")
             return
 
-        # --- grab data + timebase + sanity checks ---
-        data = global_state.get_data()
+        source_data = global_state.get_data()
         fs = global_state.get_sampling_frequency()
-        if data is None or data.ndim != 2 or data.size == 0:
-            self.ax.clear()
-            self.ax.text(0.5, 0.5, "No valid signal data available",
-                         ha='center', va='center',
-                         transform=self.ax.transAxes,
-                         fontsize=12, color='red')
-            self.canvas.draw_idle()
+
+        if source_data is None or source_data.ndim != 2 or source_data.size == 0:
+            self._show_no_grid_message("No valid signal data available")
             logger.warning("Plot update skipped: No valid signal data.")
             return
         if fs is None or not isinstance(fs, (int, float)) or fs <= 0:
             logger.error(f"Invalid sampling frequency: {fs}. Cannot plot.")
-            QMessageBox.critical(self, "Error",
-                                 f"Invalid sampling frequency ({fs}).")
+            QMessageBox.critical(self, "Error", f"Invalid sampling frequency ({fs}).")
             return
 
-        time = global_state.get_time()
-        data = np.asarray(data, dtype=float)
-        n_channels_total = data.shape[1]
+        time_vector = global_state.get_time()
+        if time_vector is None or time_vector.size == 0:
+            self._show_no_grid_message("Time vector not available or empty.")
+            logger.warning("Plot update skipped: Time vector not available.")
+            return
 
-        # --- reshape & rotate channel layout ---
-        rows = self.grid_handler.get_rows()
-        cols = self.grid_handler.get_cols()
+        source_data = np.asarray(source_data, dtype=float)
+        n_channels_total_in_file = source_data.shape[1]
+
+        # --- Reshape channel layout based on _layout_mode ---
+        rows_orig = self.grid_handler.get_rows()
+        cols_orig = self.grid_handler.get_cols()
         try:
-            grid_arr = np.array(ch_indices).reshape(cols, rows)
-        except ValueError:
-            grid_arr = np.array(ch_indices)[None, :]
+            # grid_arr has channel INDICES. Shape is (cols_orig, rows_orig) initially.
+            grid_arr_indices = np.array(ch_indices_orig).reshape(cols_orig, rows_orig)
+        except ValueError as e:
+            logger.error(
+                f"Error reshaping grid indices: {e}. Indices: {ch_indices_orig}, Shape: ({cols_orig},{rows_orig})")
+            self._show_no_grid_message(f"Error in grid configuration for '{selected_grid_name}'.")
+            return
+
         if self._layout_mode == LayoutMode.ROWS:
-            grid_arr = grid_arr.T
-        ch_indices = grid_arr.flatten().tolist()
-        rows, cols = grid_arr.shape
+            grid_arr_indices = grid_arr_indices.T  # Now shape (rows_orig, cols_orig)
 
-        separator_interval = cols
+        traces_to_plot = []
+        labels_for_plot = []
+        original_mp_indices_for_status = []  # For MP mode linestyle
 
-        # --- plotting ---
+        # --- Data Preparation based on Signal Mode ---
+        num_fiber_lines = grid_arr_indices.shape[0]
+        num_mp_along_fiber = grid_arr_indices.shape[1]
+
+        if self._signal_mode == "MP":
+            for r_idx in range(num_fiber_lines):
+                for c_idx in range(num_mp_along_fiber):
+                    ch_idx = grid_arr_indices[r_idx, c_idx]
+                    if ch_idx is not None and 0 <= ch_idx < n_channels_total_in_file:
+                        if source_data[:, ch_idx].shape[0] != time_vector.shape[0]:
+                            logger.error(
+                                f"Sample mismatch for MP Ch {ch_idx + 1}. Data: {source_data[:, ch_idx].shape[0]}, Time: {time_vector.shape[0]}")
+                            continue
+                        traces_to_plot.append(source_data[:, ch_idx])
+                        labels_for_plot.append(f"{ch_idx + 1}")  # Original label style
+                        original_mp_indices_for_status.append(ch_idx)
+            if not traces_to_plot:
+                self._show_no_grid_message(f"No valid MP channels to display for '{selected_grid_name}'.")
+                return
+
+        else:  # SD or DD
+            min_ch_for_sd = 2
+            min_ch_for_dd = 3  # (needs 2 SD channels, which needs 3 MP channels)
+
+            if self._signal_mode == "SD" and num_mp_along_fiber < min_ch_for_sd:
+                self._show_no_grid_message(
+                    f"Not enough channels along fibers ({num_mp_along_fiber}) for SD. Need at least {min_ch_for_sd}.")
+                return
+            if self._signal_mode == "DD" and num_mp_along_fiber < min_ch_for_dd:
+                self._show_no_grid_message(
+                    f"Not enough channels along fibers ({num_mp_along_fiber}) for DD. Need at least {min_ch_for_dd}.")
+                return
+
+            for line_idx in range(num_fiber_lines):
+                mp_indices_this_line = grid_arr_indices[line_idx, :]
+
+                valid_mp_data_this_line = []
+                for ch_idx in mp_indices_this_line:
+                    if ch_idx is not None and 0 <= ch_idx < n_channels_total_in_file:
+                        if source_data[:, ch_idx].shape[0] != time_vector.shape[0]:
+                            logger.error(
+                                f"Sample mismatch for MP Ch {ch_idx + 1} in line {line_idx + 1}. Data: {source_data[:, ch_idx].shape[0]}, Time: {time_vector.shape[0]}")
+                            # Skip this channel, potentially making the line unusable for SD/DD
+                            continue
+                        valid_mp_data_this_line.append(source_data[:, ch_idx])
+
+                if not valid_mp_data_this_line or len(valid_mp_data_this_line) < (
+                min_ch_for_sd if self._signal_mode == "SD" else min_ch_for_dd):
+                    continue  # Not enough valid MP channels in this line
+
+                mp_mat_this_line = np.array(valid_mp_data_this_line)  # Shape: (n_valid_mp_in_line, T)
+
+                if self._signal_mode == "SD":
+                    if mp_mat_this_line.shape[0] >= min_ch_for_sd:
+                        sd_filtered, _ = to_differential([mp_mat_this_line], fs, self._DIFFERENTIAL_FILTER_PARAMS)
+                        if sd_filtered and sd_filtered[0].shape[0] > 0:
+                            sd_data_for_line = sd_filtered[0]
+                            for sd_ch_idx in range(sd_data_for_line.shape[0]):
+                                traces_to_plot.append(sd_data_for_line[sd_ch_idx, :])
+                                labels_for_plot.append(f"L{line_idx + 1}:SD{sd_ch_idx + 1}")
+
+                elif self._signal_mode == "DD":
+                    if mp_mat_this_line.shape[0] >= min_ch_for_dd:  # Need 3 MP for at least 1 DD
+                        # First differential (SD)
+                        sd_filtered, _ = to_differential([mp_mat_this_line], fs, self._DIFFERENTIAL_FILTER_PARAMS)
+                        if sd_filtered and sd_filtered[0].shape[
+                            0] >= min_ch_for_sd:  # Need at least 2 SD channels for DD
+                            sd_mat_for_dd = sd_filtered[0]
+                            # Second differential (DD)
+                            dd_filtered, _ = to_differential([sd_mat_for_dd], fs, self._DIFFERENTIAL_FILTER_PARAMS)
+                            if dd_filtered and dd_filtered[0].shape[0] > 0:
+                                dd_data_for_line = dd_filtered[0]
+                                for dd_ch_idx in range(dd_data_for_line.shape[0]):
+                                    traces_to_plot.append(dd_data_for_line[dd_ch_idx, :])
+                                    labels_for_plot.append(f"L{line_idx + 1}:DD{dd_ch_idx + 1}")
+
+            if not traces_to_plot:
+                self._show_no_grid_message(
+                    f"No {self._signal_mode} channels could be computed for '{selected_grid_name}'. Check channel count per fiber line.")
+                return
+
+        # --- Plotting ---
         self.ax.clear()
         offset = 0.0
-        valid_ch_plot = []
 
-        for i, ch in enumerate(ch_indices):
-            if ch is None or not (0 <= ch < n_channels_total):
-                logger.warning(f"Invalid channel index {ch} skipped.")
-                continue
-            valid_ch_plot.append(ch)
-            trace = data[:, ch]
-            if trace.shape[0] != time.shape[0]:
-                logger.error(f"Sample mismatch Ch {ch}.")
-                valid_ch_plot.pop()
-                continue
-            normalized = (_normalize_trace(trace)
-                          if not np.all(np.isnan(trace))
-                          else np.zeros_like(time))
-            self.ax.plot(time,
+        if not traces_to_plot:  # Should be caught earlier, but as a safeguard
+            self._show_no_grid_message(f"No data to plot for {self._signal_mode} mode.")
+            return
+
+        for i, trace_data in enumerate(traces_to_plot):
+            if trace_data.shape[0] != time_vector.shape[0]:
+                logger.warning(
+                    f"Plotting trace {i} with mismatched length. Trace: {trace_data.shape[0]}, Time: {time_vector.shape[0]}. Skipping.")
+                # Potentially add a NaN trace of correct length or skip
+                empty_trace = np.full_like(time_vector, np.nan)
+                normalized = np.zeros_like(time_vector)  # Plot flat line
+            else:
+                normalized = (_normalize_trace(trace_data)
+                              if not np.all(np.isnan(trace_data)) else np.zeros_like(time_vector))
+
+            linestyle = "-"
+            if self._signal_mode == "MP":
+                # original_mp_indices_for_status should align with traces_to_plot for MP mode
+                ch_original_idx = original_mp_indices_for_status[i]
+                linestyle = "-" if global_state.get_channel_status(ch_original_idx) else "--"
+
+            self.ax.plot(time_vector,
                          normalized + offset,
                          color=self._COLORS[i % len(self._COLORS)],
-                         linestyle="-" if global_state.get_channel_status(ch) else "--",
+                         linestyle=linestyle,
                          linewidth=1.0)
-            # draw separator lines
-            if (i + 1) % separator_interval == 0 and (i + 1) < len(ch_indices):
-                self.ax.axhline(offset + 0.5,
-                                color='black', linewidth=1.5, alpha=0.4)
+
+            # Separator lines
+            if self._signal_mode == "MP":
+                # num_mp_along_fiber is the number of channels per original fiber line in the view
+                if (i + 1) % num_mp_along_fiber == 0 and (i + 1) < len(traces_to_plot):
+                    self.ax.axhline(offset + 0.55, color='black', linewidth=1.5, alpha=0.4)
+            elif i > 0:  # For SD/DD
+                current_label_prefix = labels_for_plot[i].split(':')[0]  # e.g., "L1" from "L1:SD1"
+                prev_label_prefix = labels_for_plot[i - 1].split(':')[0]
+                if current_label_prefix != prev_label_prefix:
+                    self.ax.axhline(offset - 0.45, color='black', linewidth=1.5, alpha=0.4)
             offset += 1.0
 
-        # --- finalize axes ---
-        n_plotted = len(valid_ch_plot)
-        if n_plotted:
+        if traces_to_plot:
+            self._plot_generation_count += 1 #increment plot generation count
+
+        # --- Finalize Axes ---
+        n_plotted = len(traces_to_plot)
+        if n_plotted > 0:
             self.ax.set_ylim(-0.5, n_plotted - 0.5)
             yt = np.arange(n_plotted)
-            labels = [str(c + 1) for c in valid_ch_plot]
             self.ax.set_yticks(yt)
-            self.ax.set_yticklabels(labels, fontsize=8)
-        else:
+            self.ax.set_yticklabels(labels_for_plot, fontsize=8)
+        else:  # Should not happen if checks above are correct
             self.ax.set_ylim(-0.5, 0.5)
             self.ax.set_yticks([])
 
-        if time.size:
-            self.ax.set_xlim(time[0], time[-1])
+        if time_vector.size > 0:
+            self.ax.set_xlim(time_vector[0], time_vector[-1])
         else:
             self.ax.set_xlim(0, 1)
 
+        # Reapply stored limits if available
+        if stored_xlim is not None:
+            logger.debug(f"Reapplying stored xlim: {stored_xlim}")
+            self.ax.set_xlim(stored_xlim)
+        if stored_ylim is not None:
+            # Only apply stored_ylim if there are items to plot, to avoid odd states
+            if n_plotted > 0:
+                logger.debug(f"Applying stored ylim: {stored_ylim}")
+                self.ax.set_ylim(stored_ylim)
+            elif stored_xlim is None:  # If xlim was also not stored (e.g. very first empty plot)
+                self.ax.set_ylim(-0.5, 0.5)
+
         self.ax.set_xlabel("Time (s)")
-        self.ax.set_ylabel(f"Channel Index (Grid: {selected_grid_name})")
+        self.ax.set_ylabel(
+            f"{self._signal_mode} Channel (Grid: {selected_grid_name} - {self._layout_mode.name.title()} along fibers)")
 
         try:
             self.canvas.figure.tight_layout()
@@ -304,14 +400,12 @@ class SignalPlotDialog(QDialog):
             logger.warning(f"Tight layout failed: {e}")
 
         self.canvas.draw_idle()
-        logger.debug("Signal Plot update complete.")
+        logger.debug(f"Signal Plot update complete for {self._signal_mode} mode.")
 
 
 def open_signal_plot_dialog(grid_handler: GridSetupHandler, parent=None) -> SignalPlotDialog:
-    """
-    Erstellt und zeigt den 'Full Grid Signal Viewer'-Dialog an.
-    """
     if not isinstance(grid_handler, GridSetupHandler):
         raise TypeError("grid_handler must be an instance of GridSetupHandler")
     dlg = SignalPlotDialog(grid_handler, parent)
+    # dlg.show() # Dialog is shown maximized in its __init__
     return dlg
