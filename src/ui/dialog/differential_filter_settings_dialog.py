@@ -1,5 +1,6 @@
 from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QFormLayout, QLabel,
-                             QSpinBox, QDoubleSpinBox, QDialogButtonBox, QMessageBox)  # Added QMessageBox
+                             QSpinBox, QDoubleSpinBox, QDialogButtonBox, QMessageBox, QSpacerItem,
+                             QSizePolicy)  # Added QMessageBox
 
 
 class DifferentialFilterSettingsDialog(QDialog):
@@ -28,7 +29,8 @@ class DifferentialFilterSettingsDialog(QDialog):
         )
         order_help.setWordWrap(True)
         form_layout.addRow(order_help)
-        form_layout.addItem(QLabel(" "))  # Spacer
+        form_layout.addItem(QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Expanding))
+
 
         # Lower Cutoff Frequency (low)
         self.low_freq_spinbox = QDoubleSpinBox()
@@ -45,7 +47,7 @@ class DifferentialFilterSettingsDialog(QDialog):
         )
         low_freq_help.setWordWrap(True)
         form_layout.addRow(low_freq_help)
-        form_layout.addItem(QLabel(" "))  # Spacer
+        form_layout.addItem(QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Expanding))
 
         # Upper Cutoff Frequency (up)
         self.up_freq_spinbox = QDoubleSpinBox()

@@ -1,5 +1,6 @@
 import numpy as np
 from PyQt5.QtCore import pyqtSignal, Qt
+from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QDialog, QPushButton, QHBoxLayout, QLabel, QVBoxLayout, QMessageBox, QStyle, QApplication, \
     QGroupBox, QFormLayout, QComboBox, QSizePolicy, QWidget, QGridLayout
 from matplotlib import pyplot as plt
@@ -12,6 +13,9 @@ from state.enum.layout_mode_enums import LayoutMode, FiberMode
 from state.state import global_state
 from _log.log_config import logger
 from hdsemg_shared.preprocessing.differential import to_differential
+
+from ui.dialog.differential_filter_settings_dialog import DifferentialFilterSettingsDialog
+from ui.icons.custom_icon_enum import CustomIcon, set_button_icon
 
 
 def _normalize_trace(trace: np.ndarray, max_amp: float = 1.1) -> np.ndarray:
@@ -27,13 +31,15 @@ def _normalize_trace(trace: np.ndarray, max_amp: float = 1.1) -> np.ndarray:
 class SignalPlotDialog(QDialog):
     orientation_applied = pyqtSignal()
     _COLORS = plt.get_cmap("tab10").colors
-    _DIFFERENTIAL_FILTER_PARAMS = {'n': 4, 'low': 20, 'up': 450}
 
     def __init__(self, grid_handler: GridSetupHandler, parent=None):
         super().__init__(parent)
         self.currently_selected_fiber_mode = grid_handler.get_orientation()
 
         self._plot_generation_count = 0
+
+        # Initialize differential filter parameters
+        self._differential_filter_params = {'n': 4, 'low': 20.0, 'up': 450.0}
 
         flags = self.windowFlags()
         flags |= Qt.Window
@@ -81,11 +87,12 @@ class SignalPlotDialog(QDialog):
         box = QGroupBox("View Settings")
         box.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
 
-        settings_layout = QHBoxLayout()
-        settings_layout.setContentsMargins(8, 8, 8, 8)
-        settings_layout.setSpacing(10)
+        main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(8, 8, 8, 8)
+        main_layout.setSpacing(10)
 
         # --- Orientation Toggle ---
+        orientation_layout = QHBoxLayout()
         info_orient = QPushButton()
         info_orient.setIcon(self.style().standardIcon(QStyle.SP_MessageBoxInformation))
         info_orient.setFixedSize(20, 20)
@@ -109,22 +116,41 @@ class SignalPlotDialog(QDialog):
         lbl_orient = QLabel("are <b>parallel</b> to muscle fibers.")
         lbl_orient.setTextFormat(Qt.RichText)
 
-        settings_layout.addWidget(info_orient)
-        settings_layout.addWidget(self.layout_toggle)
-        settings_layout.addWidget(lbl_orient)
-        settings_layout.addSpacing(25)  # Spacer
+        orientation_layout.addWidget(info_orient)
+        orientation_layout.addWidget(self.layout_toggle)
+        orientation_layout.addWidget(lbl_orient)
+        orientation_layout.addStretch()
 
-        # --- Signal Mode Selection ---
+        main_layout.addLayout(orientation_layout)
+
+        # --- Separator Line ---
+        separator = QWidget()
+        separator.setFixedHeight(1)
+        separator.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        separator.setStyleSheet("background-color: #c0c0c0;")
+        main_layout.addWidget(separator)
+
+        # --- Filter Settings ---
+        filter_layout = QHBoxLayout()
         lbl_signal_type = QLabel("Signal Type:")
         self.signal_mode_combo = QComboBox()
         self.signal_mode_combo.addItems(["Monopolar (MP)", "Single Differential (SD)", "Double Differential (DD)"])
         self.signal_mode_combo.currentTextChanged.connect(self._on_signal_mode_changed)
 
-        settings_layout.addWidget(lbl_signal_type)
-        settings_layout.addWidget(self.signal_mode_combo)
-        settings_layout.addStretch()
+        self.filter_settings_btn = QPushButton()
+        self.filter_settings_btn.setIcon(QIcon(CustomIcon.SETTINGS.value))
+        self.filter_settings_btn.setToolTip("Configure parameters for SD and DD filters (Butterworth Bandpass)")
+        self.filter_settings_btn.clicked.connect(self._open_filter_settings_dialog)
+        self.filter_settings_btn.setEnabled(False)  # Enabled by _on_signal_mode_changed
 
-        box.setLayout(settings_layout)
+        filter_layout.addWidget(lbl_signal_type)
+        filter_layout.addWidget(self.signal_mode_combo)
+        filter_layout.addStretch()
+        filter_layout.addWidget(self.filter_settings_btn)
+
+        main_layout.addLayout(filter_layout)
+
+        box.setLayout(main_layout)
         box.setMaximumHeight(box.sizeHint().height() + 10)
         return box
 
@@ -141,10 +167,13 @@ class SignalPlotDialog(QDialog):
     def _on_signal_mode_changed(self, text: str):
         if "Monopolar" in text:
             self._signal_mode = "MP"
+            self.filter_settings_btn.setEnabled(False)
         elif "Single Differential" in text:
             self._signal_mode = "SD"
+            self.filter_settings_btn.setEnabled(True)
         elif "Double Differential" in text:
             self._signal_mode = "DD"
+            self.filter_settings_btn.setEnabled(True)
         self.update_plot()
 
     def _apply_orientation_selection(self):
@@ -289,7 +318,7 @@ class SignalPlotDialog(QDialog):
 
                 if self._signal_mode == "SD":
                     if mp_mat_this_line.shape[0] >= min_ch_for_sd:
-                        sd_filtered, _ = to_differential([mp_mat_this_line], fs, self._DIFFERENTIAL_FILTER_PARAMS)
+                        sd_filtered, _ = to_differential([mp_mat_this_line], fs, self._differential_filter_params)
                         if sd_filtered and sd_filtered[0].shape[0] > 0:
                             sd_data_for_line = sd_filtered[0]
                             for sd_ch_idx in range(sd_data_for_line.shape[0]):
@@ -299,12 +328,12 @@ class SignalPlotDialog(QDialog):
                 elif self._signal_mode == "DD":
                     if mp_mat_this_line.shape[0] >= min_ch_for_dd:  # Need 3 MP for at least 1 DD
                         # First differential (SD)
-                        sd_filtered, _ = to_differential([mp_mat_this_line], fs, self._DIFFERENTIAL_FILTER_PARAMS)
+                        sd_filtered, _ = to_differential([mp_mat_this_line], fs, self._differential_filter_params)
                         if sd_filtered and sd_filtered[0].shape[
                             0] >= min_ch_for_sd:  # Need at least 2 SD channels for DD
                             sd_mat_for_dd = sd_filtered[0]
                             # Second differential (DD)
-                            dd_filtered, _ = to_differential([sd_mat_for_dd], fs, self._DIFFERENTIAL_FILTER_PARAMS)
+                            dd_filtered, _ = to_differential([sd_mat_for_dd], fs, self._differential_filter_params)
                             if dd_filtered and dd_filtered[0].shape[0] > 0:
                                 dd_data_for_line = dd_filtered[0]
                                 for dd_ch_idx in range(dd_data_for_line.shape[0]):
@@ -402,6 +431,22 @@ class SignalPlotDialog(QDialog):
         self.canvas.draw_idle()
         logger.debug(f"Signal Plot update complete for {self._signal_mode} mode.")
 
+    def _open_filter_settings_dialog(self):
+        # Pass a copy of current params, so original is not modified if dialog is cancelled
+        dialog = DifferentialFilterSettingsDialog(dict(self._differential_filter_params), self)
+        if dialog.exec_() == QDialog.Accepted:
+            new_params = dialog.get_parameters()
+            if new_params:  # Should always be true if accepted
+                if self._differential_filter_params != new_params:
+                    self._differential_filter_params = new_params
+                    logger.info(f"Differential filter parameters updated: {self._differential_filter_params}")
+                    if self._signal_mode in ["SD", "DD"]:
+                        self.update_plot()  # Re-plot if SD/DD mode is active
+                else:
+                    logger.info("Differential filter parameters unchanged.")
+        else:
+            logger.info("Differential filter settings dialog cancelled.")
+
 
 def open_signal_plot_dialog(grid_handler: GridSetupHandler, parent=None) -> SignalPlotDialog:
     if not isinstance(grid_handler, GridSetupHandler):
@@ -409,3 +454,4 @@ def open_signal_plot_dialog(grid_handler: GridSetupHandler, parent=None) -> Sign
     dlg = SignalPlotDialog(grid_handler, parent)
     # dlg.show() # Dialog is shown maximized in its __init__
     return dlg
+

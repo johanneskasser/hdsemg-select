@@ -45,6 +45,7 @@ helps identify and exclude faulty channels (e.g., due to electrode misplacement 
 - 🖥 Dashboard with file metadata: filename, number of channels, sampling rate, size, selection count.
 - ⏱ Efficient loading with warnings and abort option for large data.
 - 🔍 The overview of all amplitude-normalized channels over time allows for the inspection of action potential propagation per row or column (bold lines).
+    - Ability to show the Monopolar (MP), Single Differential (SD), Double Differential (DD) signal view.
 
 ---
 
