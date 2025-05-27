@@ -25,6 +25,7 @@ from ui.selection.amplitude_based import AutomaticAmplitudeSelection
 from config.config_manager import config
 # noinspection PyUnresolvedReferences
 import resources_rc
+from ui.widgets.clickable_info_widget import ClickableGridInfoWidget
 
 
 class ChannelSelector(QMainWindow):
@@ -115,13 +116,12 @@ class ChannelSelector(QMainWindow):
         self.automatic_selection = AutomaticAmplitudeSelection(self)  # Keep AutomaticSelection here
         self.create_menus()  # This method now delegates to MenuManager
 
-        self.grid_label = QLabel("")
-        self.grid_label.setAlignment(Qt.AlignCenter)
-        self.grid_label.setHidden(True)
-        font = QFont()
-        font.setPointSize(10)
-        self.grid_label.setFont(font)
-        self.header_layout.addWidget(self.grid_label)
+        self.grid_label_widget = ClickableGridInfoWidget(self, width=250, height=60, boarder=False)
+        self.grid_label_widget.clicked.connect(self.select_grid_and_orientation)
+        font = QFont("Arial", 10, QFont.Bold)
+        self.grid_label_widget.setFont(font)
+        self.grid_label_widget.clearText()
+        self.header_layout.addWidget(self.grid_label_widget)
 
         checkbox_v_layout = QVBoxLayout()
         self.select_all_checkbox = QCheckBox("Select All")
@@ -240,7 +240,7 @@ class ChannelSelector(QMainWindow):
 
             self.electrode_widget.setHidden(False)
             self.show_ref_signals.setEnabled(True)
-            self.setWindowTitle(f"hdsemg-select - Amplitude over Time - {global_state.get_file_name()}")  # Use getter
+            self.setWindowTitle(f"hdsemg-select - Amplitude over Time - {global_state.get_file_name()}")
         else:
             self.reset_to_start_state()
 
@@ -282,8 +282,8 @@ class ChannelSelector(QMainWindow):
             self.save_action.setEnabled(True)
             self.select_all_checkbox.setEnabled(True)
             # Update grid label using values from handler
-            self.grid_label.setText(f"{self.rows}x{self.cols} grid - {self.grid_setup_handler.get_orientation().name.title()}")
-            self.grid_label.setHidden(False)
+            grid_text = f"({self.rows}x{self.cols}) \n {orientation.name.title()} to fibers"
+            self.grid_label_widget.setText(grid_text)
         else:
             # Grid setup failed (message box already shown by handler)
             dialog.reject()
@@ -582,7 +582,8 @@ class ChannelSelector(QMainWindow):
         self.grid_setup_handler = GridSetupHandler()
 
         self.info_label.setText("No file loaded. Use File -> Open... to load a file.")
-        self.grid_label.setHidden(True)
+        if hasattr(self, 'grid_label_widget'):
+            self.grid_label_widget.clearText()
         self.select_all_checkbox.setEnabled(False)
         self.select_all_checkbox.setChecked(False)
         self.electrode_widget.setHidden(True)

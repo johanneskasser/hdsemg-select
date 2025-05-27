@@ -210,8 +210,6 @@ A saved `.json` file includes the overall selection status and detailed informat
   ]
 }
 ```
-*(Note: Added `total_channels_summary` based on your `save_selection_to_json` code, and updated the `channels` structure within `grids` to match)*
-
 ---
 
 ## Requirements
