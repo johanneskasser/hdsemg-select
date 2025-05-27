@@ -213,7 +213,8 @@ class ChannelSelector(QMainWindow):
     def load_file(self):
         """Opens a file dialog and triggers file loading."""
         options = QFileDialog.Options()
-        file_path, _ = QFileDialog.getOpenFileName(self, "Open File", "", "MAT Files (*.mat)", options=options)
+        file_filter = "MAT/OTB Files (*.mat *.otb *.otb4 *.otb+)"
+        file_path, _ = QFileDialog.getOpenFileName(self, "Open File", "", file_filter, options=options)
         if file_path:
             self.load_file_path(file_path)
 
