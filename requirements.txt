@@ -5,5 +5,5 @@ numpy>=1.21.0
 scipy>=1.7.0
 pyinstaller>=6.11.0
 requests>=2.30.0
-hdsemg-shared>=0.0.9.1
+hdsemg-shared>=0.0.9.3
 pefile>=2023.2.7 ; sys_platform != 'win32'

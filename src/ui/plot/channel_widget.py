@@ -151,7 +151,7 @@ class ChannelWidget(QWidget):
         ax.plot(self.time_data, self.scaled_data_slice, color="blue", linewidth=1, label=f"Ch {self.channel_number}")
         if self._overlay_ref_signal is not None:
             if len(self._overlay_ref_signal) == len(self.time_data):
-                ax.plot(self.time_data, self._overlay_ref_signal, color="black", linewidth=1, label="Reference", linestyle="--")
+                ax.plot(self.time_data, self._overlay_ref_signal * 0.9, color="black", linewidth=1, label="Reference", linestyle="--")
                 ax.legend(loc='upper right', frameon=False, fontsize='small')
             else:
                 logger.warning(f"Reference signal length does not match time data length for Channel {self.channel_number}")

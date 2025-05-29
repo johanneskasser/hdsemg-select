@@ -27,7 +27,7 @@ helps identify and exclude faulty channels (e.g., due to electrode misplacement 
 
 ## Features
 
-- ✅ Load `.mat` files and visualize multi-channel HDsEMG signals.
+- ✅ Load `.mat`, `.otb+` or `.otb4` files and visualize multi-channel HDsEMG signals.
 - 🧠 Automatic detection of grid size via inter-electrode distance.
 - ✏️ Manual grid configuration when automatic detection fails.
 - 🔄 Switch between grid orientations (parallel/perpendicular to muscle fibers).
@@ -115,7 +115,7 @@ _Overview of all channels plotted underneath each other to inspect action potent
 
 ### Load a File
 
-- Click **"File" -> "Open..."** and select a `.mat` file.
+- Click **"File" -> "Open..."** and select a `.mat`, `.otb+` or `.otb4` file.
 - The app attempts to auto-detect the grid based on inter-electrode distance.
 - Alternatively, configure the grid manually.
 
@@ -134,7 +134,7 @@ _Overview of all channels plotted underneath each other to inspect action potent
 ### Automatic Artifact Flagging
 
 1.  **Configure Settings:** Go to **"File" -> "Settings"**. In the Settings dialog, select the **"Automatic Channel Flagging Settings"** tab. Adjust the thresholds and checks (e.g., for 50Hz/60Hz noise) according to your data characteristics and click **"OK"** to save.
-2.  **Run Flagger:** After loading a `.mat` file, go to the **"Automatic Selection"** menu and click **"Suggest Artifact Flags..."**.
+2.  **Run Flagger:** After loading a `.mat`, `.otb+` or `.otb4` file, go to the **"Automatic Selection"** menu and click **"Suggest Artifact Flags..."**.
 3.  The application will process the channels based on your saved settings and add suggested flags (like "ECG", "Noise", "Artifact") as labels to the corresponding channels.
 4.  Review the suggested flags on the channel widgets and in the detailed view. You can manually edit or remove these labels if needed.
 
