@@ -20,7 +20,7 @@ from ui.dialog.channel_details import ChannelDetailWindow
 from ui.dialog.channel_spectrum import ChannelSpectrum
 from ui.dialog.grid_orientation_dialog import GridOrientationDialog
 from ui.plot.channel_widget import ChannelWidget
-from ui.electrode_widget import ElectrodeWidget
+from ui.widgets.electrode_widget import ElectrodeWidget
 from ui.selection.amplitude_based import AutomaticAmplitudeSelection
 from config.config_manager import config
 # noinspection PyUnresolvedReferences
@@ -116,7 +116,7 @@ class ChannelSelector(QMainWindow):
         self.automatic_selection = AutomaticAmplitudeSelection(self)  # Keep AutomaticSelection here
         self.create_menus()  # This method now delegates to MenuManager
 
-        self.grid_label_widget = ClickableGridInfoWidget(self, width=250, height=60, boarder=False)
+        self.grid_label_widget = ClickableGridInfoWidget(self, width=400, height=60, boarder=False)
         self.grid_label_widget.clicked.connect(self.select_grid_and_orientation)
         font = QFont("Arial", 10, QFont.Bold)
         self.grid_label_widget.setFont(font)
@@ -249,14 +249,14 @@ class ChannelSelector(QMainWindow):
     def select_grid_and_orientation(self):
         """Opens dialog to select grid and orientation."""
         # Usage in your main class
-        def apply_callback(selected_grid, orientation, dialog):
-            self.apply_grid_selection(selected_grid, orientation,dialog)
+        def apply_callback(selected_grid, orientation, dialog, orientation_changed=False):
+            self.apply_grid_selection(selected_grid, orientation,dialog, orientation_changed)
 
         dialog = GridOrientationDialog(self, apply_callback)
         dialog.exec_()
 
 
-    def apply_grid_selection(self, selected_grid, orientation, dialog):
+    def apply_grid_selection(self, selected_grid, orientation, dialog=None, orientation_changed=False):
         """Applies the selected grid and orientation using the GridSetupHandler."""
 
         # Delegate the calculation and logic to the handler
@@ -270,7 +270,8 @@ class ChannelSelector(QMainWindow):
             self.total_pages = self.grid_setup_handler.get_total_pages()
             self.grid_setup_handler.set_current_page(0)  # Ensure page resets on grid change
 
-            dialog.accept()
+            if dialog is not None:
+                dialog.accept()
 
             # Update UI elements based on new grid setup
             self.electrode_widget.set_grid_shape((self.rows, self.cols))
@@ -278,13 +279,14 @@ class ChannelSelector(QMainWindow):
             self.electrode_widget.set_orientation_highlight(self.grid_setup_handler.get_orientation(),
                                                             self.grid_setup_handler.get_current_page())
 
-            self.display_page()  # Refresh the display
+            self.display_page(orientation_changed)  # Refresh the display
 
             # Enable relevant actions
             self.save_action.setEnabled(True)
             self.select_all_checkbox.setEnabled(True)
+            layout_mode = global_state.get_layout_for_fiber(orientation)
             # Update grid label using values from handler
-            grid_text = f"({self.rows}x{self.cols}) \n {orientation.name.title()} to fibers"
+            grid_text = f"({self.rows}x{self.cols}) \n {layout_mode.name.title()} {orientation.name.title()} to fibers"
             self.grid_label_widget.setText(grid_text)
         else:
             # Grid setup failed (message box already shown by handler)
@@ -296,7 +298,7 @@ class ChannelSelector(QMainWindow):
         # Get channel status from state
         channel_status = global_state.get_channel_status()
 
-        if shortcut:
+        if shortcut is True:
             # If called from shortcut, toggle the checkbox state and prevent firing stateChanged signal
             blocker = QSignalBlocker(self.select_all_checkbox)
             self.select_all_checkbox.setChecked(not self.select_all_checkbox.isChecked())

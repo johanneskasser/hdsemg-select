@@ -452,6 +452,5 @@ def open_signal_plot_dialog(grid_handler: GridSetupHandler, parent=None) -> Sign
     if not isinstance(grid_handler, GridSetupHandler):
         raise TypeError("grid_handler must be an instance of GridSetupHandler")
     dlg = SignalPlotDialog(grid_handler, parent)
-    # dlg.show() # Dialog is shown maximized in its __init__
     return dlg
 
