@@ -223,6 +223,7 @@ class ChannelSelector(QMainWindow):
         Loads a file from the provided path using the FileManager.
         """
         # Delegate file processing to the FileManager
+        self.reset_to_start_state()
         success = self.file_handler.process_file(file_path, self)  # Pass self for parent window context
 
         if success:
