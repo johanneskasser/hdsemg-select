@@ -1,9 +1,10 @@
 from PyQt5.QtCore import Qt, QRect, pyqtSignal
-from PyQt5.QtGui import QPainter, QPen, QColor, QFont
+from PyQt5.QtGui import QPainter, QPen, QColor, QFont, QIcon
 from PyQt5.QtWidgets import QWidget, QGridLayout, QLabel, QVBoxLayout, QSizePolicy, QPushButton
 from _log.log_config import logger
 from state.enum.layout_mode_enums import LayoutMode, FiberMode
 from state.state import global_state
+from ui.icons.custom_icon_enum import CustomIcon
 from ui.plot.signal_overview_plot import open_signal_plot_dialog
 
 
@@ -15,6 +16,16 @@ class ElectrodeWidget(QWidget):
         self.parent = parent
         self.layout = QVBoxLayout(self)
         self.grid_label = QLabel("")
+
+        rotate_button = QPushButton("Rotate View")
+        rotate_font = rotate_button.font()
+        rotate_font.setBold(True)
+        rotate_button.setFont(rotate_font)
+        rotate_button.setToolTip("Rotate the application view to switch between parallel and perpendicular fiber orientations.")
+        rotate_button.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+        rotate_button.setIcon(self.style().standardIcon(QPushButton().style().SP_BrowserReload))
+        rotate_button.clicked.connect(self._on_rotate_btn_pressed)
+        self.layout.addWidget(rotate_button)
 
         self.grid_layout = QGridLayout()
         self.grid_layout.addWidget(self.grid_label)
@@ -32,6 +43,8 @@ class ElectrodeWidget(QWidget):
         self.highlight_index = 0  # which row/column is currently highlighted
 
         open_signal_overview_btn = QPushButton("Open Signal Overview")
+        open_signal_overview_btn.setIcon(QIcon(CustomIcon.EXTEND.value))
+        open_signal_overview_btn.setFont(rotate_font)
         open_signal_overview_btn.setToolTip("Open signal overview window to visualize the selected grid in more detail and examine Action Potentials.")
         open_signal_overview_btn.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         open_signal_overview_btn.clicked.connect(self.open_signal_overview)
@@ -204,3 +217,16 @@ class ElectrodeWidget(QWidget):
         logger.info("Open Signal Overview Plot")
         dlg = open_signal_plot_dialog(self.parent.grid_setup_handler, self)
         dlg.orientation_applied.connect(self.signal_overview_plot_applied) # when the plot fires, immediatley re-emit it
+
+    def _on_rotate_btn_pressed(self):
+        """
+        Rotate the view to switch between parallel and perpendicular fiber orientations.
+        This will toggle the orientation and update the highlight accordingly.
+        """
+        current_orientation = self.fiber_orientation
+        current_orientation = FiberMode.PARALLEL if current_orientation == FiberMode.PERPENDICULAR else FiberMode.PERPENDICULAR
+        selected_grid = self.parent.grid_setup_handler.get_selected_grid()
+        logger.debug(f"Rotating view from {self.fiber_orientation.name} to {current_orientation.name} orientation")
+
+        self.parent.apply_grid_selection(selected_grid, current_orientation)
+

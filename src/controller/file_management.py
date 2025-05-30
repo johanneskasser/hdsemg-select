@@ -40,22 +40,7 @@ class FileManager:
             global_state.set_file_name(file_name)
             global_state.set_file_size(file_size)
             global_state.set_grid_info(extract_grid_info(global_state.get_description()))
-
-            logger.debug(f"Original Data Min: {np.min(global_state.get_data())}")
-            logger.debug(f"Original Data Max: {np.max(global_state.get_data())}")
-
-            # Perform amplitude scaling, store scaled data in state
-            self.upper_quartile = compute_upper_quartile(global_state.get_data())
-            global_state.set_scaled_data(scale_data(global_state.get_data(), self.upper_quartile))
-
-            logger.debug(f"Scaled Data Min: {np.min(global_state.get_scaled_data())}")
-            logger.debug(f"Scaled Data Max: {np.max(global_state.get_scaled_data())}")
-
-            # Initialize channel count and status, store in state
             global_state.set_channel_count(global_state.get_data().shape[1])
-
-            # Extract grid info and proceed, store in state
-            global_state.set_channel_status(_build_channel_status(global_state.get_channel_count(), global_state.get_grid_info()))
 
             if not global_state.get_grid_info():
                 QMessageBox.warning(
@@ -66,7 +51,7 @@ class FileManager:
                 manual_grid = manual_grid_input(
                     global_state.get_channel_count(),
                     global_state.get_time(),
-                    global_state.get_scaled_data()
+                    global_state.get_data()
                 )
                 global_state.set_grid_info(manual_grid)
 
@@ -78,6 +63,19 @@ class FileManager:
                     # Reset state if grid info failed
                     global_state.reset()
                     return False  # Indicate failure
+
+            logger.debug(f"Original Data Min: {np.min(global_state.get_data())}")
+            logger.debug(f"Original Data Max: {np.max(global_state.get_data())}")
+
+            # Perform amplitude scaling, store scaled data in state
+            self.upper_quartile = compute_upper_quartile(global_state.get_data())
+            global_state.set_scaled_data(scale_data(global_state.get_data(), self.upper_quartile))
+
+            logger.debug(f"Scaled Data Min: {np.min(global_state.get_scaled_data())}")
+            logger.debug(f"Scaled Data Max: {np.max(global_state.get_scaled_data())}")
+
+            # Extract grid info and proceed, store in state
+            global_state.set_channel_status(_build_channel_status(global_state.get_channel_count(), global_state.get_grid_info()))
 
             return True  # Indicate success
 

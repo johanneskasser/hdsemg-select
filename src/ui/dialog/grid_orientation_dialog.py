@@ -1,6 +1,6 @@
-from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QComboBox, QPushButton
+from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QComboBox, QPushButton, QHBoxLayout
 
-from state.enum.layout_mode_enums import FiberMode
+from state.enum.layout_mode_enums import FiberMode, LayoutMode
 from state.state import global_state
 
 
@@ -31,18 +31,27 @@ class GridOrientationDialog(QDialog):
 
         layout.addWidget(self.grid_combo)
 
-        orientation_label = QLabel("Select Orientation:")
-        layout.addWidget(orientation_label)
+        orientation_label = QLabel("Orientation (parallel to fibers):")
+        tooltip_text = "Are the HD-sEMG matrix n rows or m columns aligned in <b>parallel</b> with the muscle fibers?"
+        orientation_label.setToolTip(tooltip_text)
+        info_icon = QLabel()
+        info_icon.setPixmap(self.style().standardIcon(self.style().SP_MessageBoxInformation).pixmap(16, 16))
+        info_icon.setToolTip(tooltip_text)
+        orientation_label_layout = QHBoxLayout()
+        orientation_label_layout.addWidget(orientation_label)
+        orientation_label_layout.addWidget(info_icon)
+        orientation_label_layout.addStretch(1)
+        layout.addLayout(orientation_label_layout)
 
         self.orientation_combo = QComboBox()
-        self.orientation_combo.addItem("Parallel to fibers", FiberMode.PARALLEL)
-        self.orientation_combo.addItem("Perpendicular to fibers", FiberMode.PERPENDICULAR)
+        self.orientation_combo.addItem("Rows parallel to fibers", LayoutMode.ROWS)
+        self.orientation_combo.addItem("Columns parallel to fibers", LayoutMode.COLUMNS)
 
-        currently_selected_orientation = parent.grid_setup_handler.get_orientation()
-        if currently_selected_orientation:
-            self.orientation_combo.setCurrentIndex(self.orientation_combo.findData(currently_selected_orientation))
+        currently_selected_layout = global_state.get_layout_for_fiber(FiberMode.PARALLEL)
+        if currently_selected_layout:
+            self.orientation_combo.setCurrentIndex(self.orientation_combo.findData(currently_selected_layout))
         else:
-            self.orientation_combo.setCurrentIndex(0)
+            self.orientation_combo.setCurrentIndex(LayoutMode.COLUMNS) # default to columns if not set
 
         layout.addWidget(self.orientation_combo)
 
@@ -52,7 +61,12 @@ class GridOrientationDialog(QDialog):
 
     def on_ok(self):
         selected_grid = self.grid_combo.currentText()
-        orientation = self.orientation_combo.currentData()
-        self.apply_callback(selected_grid, orientation, self)
+        selected_layout_mode = self.orientation_combo.currentData()
+        selected_fiber_mode = FiberMode.PARALLEL
+        if global_state.get_layout_for_fiber(selected_fiber_mode) == selected_layout_mode:
+            self.apply_callback(selected_grid, selected_fiber_mode, self, orientation_changed=False)
+        else:
+            global_state.set_fiber_layout(selected_fiber_mode, selected_layout_mode)
+            self.apply_callback(selected_grid, selected_fiber_mode, self, orientation_changed=True)
 
 
