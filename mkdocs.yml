@@ -3,6 +3,7 @@ repo_name: hdsemg-select
 repo_url: https://github.com/johanneskasser/hdsemg-select
 site_url: https://johanneskasser.github.io/hdsemg-select/
 site_description: 'A Python package for cleaning and visualizing high-density surface electromyography (HDsEMG) data.'
+site_author: 'Johannes Kasser'
 
 theme:
   name: material

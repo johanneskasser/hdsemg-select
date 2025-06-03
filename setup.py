@@ -1,9 +1,15 @@
 #!/usr/bin/env python
 import os
+import re
 
 from setuptools import setup, find_packages
 
 version = os.getenv("PACKAGE_VERSION", "0.0.1")
+
+if not re.match(r"^\d+\.", version):
+    print("ERROR: PACKAGE_VERSION must be in format X.Y.Z. Setting to 0.0.1.")
+    version = "0.0.1"
+
 
 setup(
     name="hdsemg-select",
