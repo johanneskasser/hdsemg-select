@@ -42,12 +42,13 @@ jobs:
 
  # ==== Deployment für main (alias „latest“) ====
       - name: Deploy docs for branch main
-        #if: github.ref == 'refs/heads/main' TODO: REMOVE thIS COMMENT
+        if: github.ref == 'refs/heads/main'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Mike erzeugt einen Ordner „latest/“ im gh-pages-Branch
           mike deploy latest --push --update-aliases
+          mike set-default latest --push
 
       # ==== Deployment für Tags (z. B. v1.2.0) ====
       - name: Deploy docs for tagged release
@@ -60,4 +61,4 @@ jobs:
           # Deploye unter dem Ordner „1.2.0/“
           mike deploy "$VERSION" --push
           # Setze diese Version als Default (optional, falls neueste Version immer direkt geöffnet werden soll)
-          mike set-default "$VERSION"
+          mike set-default "$VERSION" --push

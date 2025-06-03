@@ -1,10 +1,13 @@
-# HDsEMG Data Cleaning Tool
-
 <div align="center">
-<img src="../src/resources/icon.png" alt="App Icon" width="100" height="100">
+<br>
+  <img src="img/favicon.ico" alt="App Icon" width="100" height="100"><br>
+    <h2 align="center">🧼 hdsemg-select 🧼</h2>
+    <h3 align="center">HDsEMG data cleaning tool</h3>
 </div>
 
 Welcome to the documentation for hdsemg-select, a sophisticated graphical user interface (GUI) application designed for selecting and analyzing HDsEMG channels from `.mat` files. This tool helps identify and exclude faulty channels (e.g., due to electrode misplacement or corrosion) and automatically flag potential artifacts like ECG contamination, power line noise (50/60Hz), or general signal anomalies.
+
+[![GitHub Repo](https://img.shields.io/badge/GitHub-hdsemg--select-blue?logo=github&style=flat-square)](https://github.com/johanneskasser/hdsemg-select)
 
 ## Key Features
 
@@ -18,7 +21,7 @@ Welcome to the documentation for hdsemg-select, a sophisticated graphical user i
 ## Quick Navigation
 
 - [Installation Guide](installation.md): Step-by-step instructions for setting up hdsemg-select
-- [Usage Guide](usage.md): Learn how to use the application effectively
+- [Usage Guide](usage/usage.md): Learn how to use the application effectively
 - [Developer Guide](developer.md): Information for contributors and developers
 
 ## Core Functionality
@@ -62,10 +65,6 @@ Welcome to the documentation for hdsemg-select, a sophisticated graphical user i
 
 ## Contributing
 
-Contributions are welcome! If you'd like to improve hdsemg-select, please feel free to:
+Contributions are welcome! If you'd like to improve hdsemg-select, please take a look at our [Contributing Guide](contributing.md) for details on how to get started.
 
-- Submit pull requests
-- Report issues
-- Suggest new features
-
-Visit our [GitHub repository](https://github.com/johanneskasser/hdsemg-select) to get started.
+> Visit our [GitHub repository](https://github.com/johanneskasser/hdsemg-select) to get started.

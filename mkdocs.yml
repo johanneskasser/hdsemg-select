@@ -2,7 +2,7 @@ site_name: hdsemg-select
 repo_name: hdsemg-select
 repo_url: https://github.com/johanneskasser/hdsemg-select
 site_url: https://johanneskasser.github.io/hdsemg-select/
-site_description: 'A Python package for cleaning and visualizing high-density surface electromyography (HDsEMG) data.'
+site_description: 'A Python application for cleaning and visualizing high-density surface electromyography (HDsEMG) data.'
 site_author: 'Johannes Kasser'
 
 theme:
@@ -23,8 +23,18 @@ extra:
 nav:
   - Home: index.md
   - Installation: installation.md
-  - Usage: usage.md
+  - Usage Documentation:
+      - Getting Started: usage/getting_started.md
+      - Overview: usage/usage.md
+      - Dashboard: usage/dashboard.md
+      - Automatic Selection: usage/automatic_selection.md
+      - Channel Flagging: usage/channel_flagging.md
+      - Signal Overview Plot: usage/signal_overview_plot.md
+      - Signal Details: usage/signal_details.md
+      - Application Output: usage/application_output.md
+      - Application Settings: usage/application_settings.md
   - Developer Guide: developer.md
+  - Contributing: contributing.md
 
 markdown_extensions:
   - admonition
