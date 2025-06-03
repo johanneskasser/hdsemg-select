@@ -1,12 +1,16 @@
 #!/usr/bin/env python
+import os
+
 from setuptools import setup, find_packages
+
+version = os.getenv("PACKAGE_VERSION", "0.0.1")
 
 setup(
     name="hdsemg-select",
-    version="0.1.0",
+    version=version,
     description="hdsemg-select package",
-    author="Your Name",
-    author_email="you@example.com",
+    author="Johannes Kasser",
+    author_email="johanneskasser@outlook.de",
     url="https://github.com/johanneskasser/hdsemg-select",
     package_dir={"": "src"},
     packages=find_packages(where="src"),
