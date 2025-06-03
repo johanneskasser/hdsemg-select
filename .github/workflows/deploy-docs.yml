@@ -34,6 +34,12 @@ jobs:
       - name: Build with MkDocs
         run: mkdocs build --strict
 
+      - name: Configure Git user
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+
  # ==== Deployment für main (alias „latest“) ====
       - name: Deploy docs for branch main
         #if: github.ref == 'refs/heads/main' TODO: REMOVE thIS COMMENT
