@@ -864,7 +864,7 @@ There is also a possibility to set custom flags, which can be used for specific 
 <tr>
 <td>1</td>
 <td><strong>Locate the channel you want to flag.</strong> Use the grid navigation buttons or arrow keys to select the desired channel.</td>
-<td><img src="../resources/channel-flagging/channel_widget.png" alt="Channel Widget" width="100%"></td>
+<td><img alt="Channel Widget" src="../../img/channel-flagging/channel_widget.png" /></td>
 </tr>
 <tr>
 <td>2</td>
@@ -874,12 +874,12 @@ There is also a possibility to set custom flags, which can be used for specific 
 <tr>
 <td>3</td>
 <td>In the dialog, <strong>select a label</strong> from the dropdown and click "Apply".</td>
-<td><img src="../resources/channel-flagging/label_dialog.png" alt="Label Dialog" width="100%"></td>
+<td><img alt="Label Dialog" src="../../img/channel-flagging/label_dialog.png" /></td>
 </tr>
 <tr>
 <td>4</td>
 <td>After applying the label, it will appear below the figure in the channel widget.</td>
-<td><img src="../resources/channel-flagging/channel_widget_flagged.png" alt="Channel Widget with Flag" width="100%"></td>
+<td><img alt="Channel Widget with Flag" src="../../img/channel-flagging/channel_widget_flagged.png" /></td>
 </tr>
 </tbody>
 </table>
@@ -888,7 +888,7 @@ There is also a possibility to set custom flags, which can be used for specific 
 <p>To run the automatic channel flag algorithm, please make sure that you have set the Automatic Channel Falgging Settings in the  <a href="../application_settings/">Application Settings</a>. Otherwise, the application will remind you.</p>
 <p>After you have set the settings, you can run the automatic channel flagging algorithm by starting it from the menu <strong>"Automatic Selection" -&gt; "Suggest Artifact Flags..."</strong>. The application will then analyze the signal and suggest flags for the channels based on the configured settings (for all interested in how we are suggesting the flags please take a look at the <a href="#automatic-channel-flagging-under-the-hood">algorithmn description</a>).
 Once the algorithm has finished, the application will indicate success by showing the following dialog and the flags will be displayed in each channel widget and the detail view. You can then review the suggested flags and adjust them manually if necessary.</p>
-<p><img src="../resources/channel-flagging/automatic_flag_dialog_success.png" alt="Automatic Flagging Success Dialog" width="45%"></p>
+<p><img alt="Automatic Flagging Success Dialog" src="../../img/channel-flagging/automatic_flag_dialog_success.png" /></p>
 <h3 id="what-happens-with-the-flags-after-you-have-set-them-and-export-your-data">What happens with the flags after you have set them and export your data?<a class="headerlink" href="#what-happens-with-the-flags-after-you-have-set-them-and-export-your-data" title="Permanent link">&para;</a></h3>
 <p>The flags you set manually or automatically will be stored in the metadata of the channel and will be included in the exported data. This allows you to keep track of the quality of each channel and to filter out channels that are not suitable for analysis.</p>
 <p>When you export the data, the flags will be included in the JSON file, allowing you to easily identify which channels are flagged as artifacts, bad channels, or reference signals. This is particularly useful for further analysis or when sharing the data with others. For more information about the JSON file export, see <a href="../application_output/">Application Output</a>.</p>
