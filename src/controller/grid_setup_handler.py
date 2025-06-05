@@ -55,25 +55,16 @@ class GridSetupHandler:
              )
              return False
 
-        # Adjust indices if electrodes are less than rows * cols
-        max_channels_in_shape = self.rows * self.cols
-        if expected_electrodes < max_channels_in_shape:
-            logger.debug(
-                f"Grid '{self.selected_grid}' has {expected_electrodes} channels but shape is {self.rows}x{self.cols}={max_channels_in_shape}. Filling the last with None.")
-            # Make a copy before extending to avoid modifying the list within grid_info
-            indices_padded = list(indices) + [None] * (max_channels_in_shape - len(indices))
-        else:
-            indices_padded = indices # Use original indices if no padding needed
-
-        try:
-            full_grid_array = np.array(indices_padded).reshape(self.rows, self.cols)
-        except ValueError as e:
-             logger.error(f"Failed to reshape grid indices for '{selected_grid}': {e}", exc_info=True)
-             QMessageBox.critical(
-                 parent_window, "Grid Error",
-                 f"Failed to reshape grid indices for '{selected_grid}'. Check grid dimensions and indices.\nError: {e}"
-             )
-             return False
+        full_grid_array = self.reshape_grid(indices, self.rows, self.cols, pad_value=None)
+        if full_grid_array is None:
+            # Either too many indices or reshape blew up
+            logger.error(f"Failed to reshape grid indices for '{selected_grid}'.")
+            QMessageBox.critical(
+                parent_window, "Grid Error",
+                f"Failed to reshape grid indices for '{selected_grid}'. "
+                "Check grid dimensions and indices."
+            )
+            return False
 
 
         if grid_layout == LayoutMode.ROWS:
@@ -101,6 +92,60 @@ class GridSetupHandler:
         # logger.debug(f"Grid channel map (first 20): {list(self.grid_channel_map.items())[:20]}") # Can be large
 
         return True # Indicate success
+
+    def reshape_grid(self, indices, n_rows, n_cols, pad_value=None):
+        """
+            Pad a flat list `indices` up to length (n_rows * n_cols) using `pad_value`,
+            then reshape into a NumPy array of shape (n_rows, n_cols). If len(indices)
+            > n_rows*n_cols, or if reshape fails, logs an error and returns None.
+
+            Parameters
+            ----------
+            indices : Sequence
+                The flat list of channel indices (or whatever) you want to lay out in a grid.
+            n_rows : int
+                Number of rows for the final 2D array.
+            n_cols : int
+                Number of columns for the final 2D array.
+            pad_value : any, optional
+                The value to insert for “empty” spots if len(indices) < n_rows*n_cols.
+                Often `None` if you want missing cells to be represented as None.
+
+            Returns
+            -------
+            np.ndarray or None
+                If successful, a (n_rows × n_cols) array. If indices are too long,
+                or reshape still fails, returns None (and logs an error).
+            """
+
+        expected = n_rows * n_cols
+
+        # 1) If there are too few indices, pad with pad_value
+        if len(indices) < expected:
+            padded = list(indices) + [pad_value] * (expected - len(indices))
+        # 2) If there are too many indices, bail out
+        elif len(indices) > expected:
+            logger.error(
+                f"safe_reshape_indices: {len(indices)} elements cannot fit into "
+                f"{n_rows}×{n_cols} = {expected} slots. "
+                "Dropping into error."
+            )
+            return None
+        else:
+            padded = indices
+
+        # 3) Try to reshape
+        try:
+            arr = np.array(padded).reshape(n_rows, n_cols)
+        except ValueError as e:
+            logger.error(
+                f"safe_reshape_indices: reshape failed for shape ({n_rows},{n_cols}): {e}"
+            )
+            return None
+
+        return arr
+
+
 
     def get_current_grid_indices(self):
         return self.current_grid_indices
