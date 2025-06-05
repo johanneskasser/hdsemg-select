@@ -1,38 +1,53 @@
 ## Getting Started with hdsemg-shared
 
-After following the installation instructions, you can start using the application to inspect and clean your HD-sEMG data. This guide will help you get started with the basic functionalities of the application.
+This guide walks you through the first steps of using the **hdsemg-shared** application to inspect and clean your high-density surface EMG (HD-sEMG) data.
+
+---
 
 ### 1. Launching the Application
 
-To launch the application, run the following command in your terminal or command prompt:
+After completing the installation, start the application with the following command:
 
 ```bash
-  python main.py
+python main.py
 ```
 
-This will open the application where you will be greeted with the dashboard.
+This will open the application window and display the dashboard interface.
 
 <img src="../resources/dashboard_empty.png" alt="Dashboard" width="100%">
 
+---
+
 ### 2. Loading Data
 
-To load your HDsEMG data, follow these steps:
+To load HD-sEMG data into the application:
 
-1. Open the explorer by clicking **File** --> **Open...** or by pressing `Ctrl + O`
-2. Select the file you want to load. The application supports the following file formats
-   1. `.mat` files
-   2. `.otb+` files
-   3. `.otb4` files
-   4. `.otb` files
-3. The application will attempt to auto-detect the grid configuration of your data. If it fails, you can manually configure the grid settings.
-4. Once the file is loaded, you will see the grid and orientation selection dialog. Here, you can select the grid you want to display and if rows or columns are parallel to the muscle fibers (this depends on your setup). If you dont know, you will be able to examine the action potential propagation in the [Signal Overview Plot](signal_overview_plot.md) and change the orientation afterwards.
+1. Open the file explorer:
+   Go to **File → Open…** or press `Ctrl + O`.
+
+2. Choose a supported file:
+   The application supports the following formats:
+
+   * `.mat`
+   * `.otb+`
+   * `.otb4`
+   * `.otb`
+
+3. The application will attempt to **auto-detect the grid configuration**.
+   If this fails, you’ll be prompted to configure the layout manually.
+
+4. Once the file is recognized, a **Grid and Orientation Selection** dialog will appear:
+
+   * Select the appropriate grid (if multiple are detected).
+   * Choose the fiber orientation (whether rows or columns are aligned with the muscle fibers).
+     If you're unsure, you can evaluate the orientation later by observing propagation patterns in the [Signal Overview Plot](signal_overview_plot.md) and adjust it if needed.
 
 <img src="../resources/grid_orientation_dialog.png" alt="Grid Orientation Dialog">
 
-6. After selecting grid and orientation, the application will display the dashboard.
+5. After confirming grid and orientation, the main dashboard will be displayed.
 
 <img src="../resources/dashboard.png" alt="Dashboard" width="100%">
 
-Here you can see the loaded data and navigate through the rows/columns of the grid by pressing either the buttons on the bottom or by pressing the left/right arrow keys. 
+You can now navigate the grid using the bottom navigation buttons or your keyboard’s left/right arrow keys.
 
-> To find out what else can be done in the dashboard, please refer to the [Dashboard Guide](dashboard.md).
+> For a detailed overview of the dashboard features, see the [Dashboard Guide](dashboard.md).

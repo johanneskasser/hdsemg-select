@@ -25,7 +25,6 @@ nav:
   - Installation: installation.md
   - Usage Documentation:
       - Getting Started: usage/getting_started.md
-      - Overview: usage/usage.md
       - Dashboard: usage/dashboard.md
       - Automatic Selection: usage/automatic_selection.md
       - Channel Flagging: usage/channel_flagging.md

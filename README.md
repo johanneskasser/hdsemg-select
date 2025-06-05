@@ -51,7 +51,7 @@ helps identify and exclude faulty channels and automatically flag potential arti
 
 <div align="center">
   <img src="docs/resources/dashboard.png" alt="Dashboard" width="100%">
-  <img src="docs/resources/signal_overview_plot.png" alt="Signal Overview Plot" width="100%">
+  <img src="docs/resources/signal_overview_plot/signal_overview_plot.png" alt="Signal Overview Plot" width="100%">
 </div>
 
 ## Requirements

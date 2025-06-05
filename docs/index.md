@@ -21,7 +21,7 @@ Welcome to the documentation for hdsemg-select, a sophisticated graphical user i
 ## Quick Navigation
 
 - [Installation Guide](installation.md): Step-by-step instructions for setting up hdsemg-select
-- [Usage Guide](usage/usage.md): Learn how to use the application effectively
+- [Getting Started](usage/getting_started.md): Learn how to get started with the application. The documentation will guide you through the first steps of using the hdsemg-select application to inspect and clean your high-density surface EMG (HD-sEMG) data.
 - [Developer Guide](developer.md): Information for contributors and developers
 
 ## Core Functionality
