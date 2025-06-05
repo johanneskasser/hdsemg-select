@@ -248,15 +248,18 @@ class SignalPlotDialog(QDialog):
         # --- Reshape channel layout based on _layout_mode ---
         rows_orig = self.grid_handler.get_rows()
         cols_orig = self.grid_handler.get_cols()
-        try:
-            # grid_arr has channel INDICES. Shape is (cols_orig, rows_orig) initially.
-            grid_arr_indices = np.array(ch_indices_orig).reshape(cols_orig, rows_orig)
-        except ValueError as e:
+        grid_arr_tmp = self.grid_handler.reshape_grid(ch_indices_orig, cols_orig, rows_orig, pad_value=None)
+        if grid_arr_tmp is None:
             logger.error(
-                f"Error reshaping grid indices: {e}. Indices: {ch_indices_orig}, Shape: ({cols_orig},{rows_orig})")
-            self._show_no_grid_message(f"Error in grid configuration for '{selected_grid_name}'.")
+                f"Error reshaping grid indices into ({cols_orig},{rows_orig}). "
+                f"Indices: {ch_indices_orig}"
+            )
+            self._show_no_grid_message(
+                f"Error in grid configuration for '{selected_grid_name}'."
+            )
             return
 
+        grid_arr_indices = grid_arr_tmp
         if self._layout_mode == LayoutMode.ROWS:
             grid_arr_indices = grid_arr_indices.T  # Now shape (rows_orig, cols_orig)
 
