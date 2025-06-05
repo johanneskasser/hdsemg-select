@@ -21,12 +21,12 @@ There is also a possibility to set custom flags, which can be used for specific 
 
 If you want to manually set flags for a channel, follow these steps:
 
-| Step | Description                                                                                                           | Image                                                                                                            |
-|------|-----------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------|
-| 1    | **Locate the channel you want to flag.** Use the grid navigation buttons or arrow keys to select the desired channel. | <img src="../resources/channel-flagging/channel_widget.png" alt="Channel Widget" width="100%">                   |
-| 2    | **Click the "+" button** below the figure to open the label dialog.                                                   |                                                                                                                  |
-| 3    | In the dialog, **select a label** from the dropdown and click "Apply".                                                | <img src="../resources/channel-flagging/label_dialog.png" alt="Label Dialog" width="100%">                       |
-| 4    | After applying the label, it will appear below the figure in the channel widget.                                      | <img src="../resources/channel-flagging/channel_widget_flagged.png" alt="Channel Widget with Flag" width="100%"> |
+| Step | Description                                                                                                           | Image                                                                           |
+|------|-----------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------|
+| 1    | **Locate the channel you want to flag.** Use the grid navigation buttons or arrow keys to select the desired channel. | ![Channel Widget](../img/channel-flagging/channel_widget.png)                   |
+| 2    | **Click the "+" button** below the figure to open the label dialog.                                                   |                                                                                 |
+| 3    | In the dialog, **select a label** from the dropdown and click "Apply".                                                | ![Label Dialog](../img/channel-flagging/label_dialog.png)                       |
+| 4    | After applying the label, it will appear below the figure in the channel widget.                                      | ![Channel Widget with Flag](../img/channel-flagging/channel_widget_flagged.png) |
 
 To get a custom flag into the dropdown, you need to add it in the settings dialog. For more information, see [Application Settings](application_settings.md). Afterwards, you can select it in the label dialog as shown above.
 
@@ -37,7 +37,7 @@ To run the automatic channel flag algorithm, please make sure that you have set 
 After you have set the settings, you can run the automatic channel flagging algorithm by starting it from the menu **"Automatic Selection" -> "Suggest Artifact Flags..."**. The application will then analyze the signal and suggest flags for the channels based on the configured settings (for all interested in how we are suggesting the flags please take a look at the [algorithmn description](#automatic-channel-flagging-under-the-hood)).
 Once the algorithm has finished, the application will indicate success by showing the following dialog and the flags will be displayed in each channel widget and the detail view. You can then review the suggested flags and adjust them manually if necessary.
 
-<img src="../resources/channel-flagging/automatic_flag_dialog_success.png" alt="Automatic Flagging Success Dialog" width="45%">
+![Automatic Flagging Success Dialog](../img/channel-flagging/automatic_flag_dialog_success.png)
 
 ### What happens with the flags after you have set them and export your data?
 

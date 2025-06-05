@@ -7,7 +7,7 @@ This section describes how to configure application settings in the hdsemg-selec
 2. Select **"Settings..."** to open the settings dialog.
 3. The settings dialog opens
 
-<img src="../resources/settings/settings_dialog.png">
+![Settings Dialog](../img/settings/settings_dialog.png)
 
 ### Logging Settings
 
@@ -33,7 +33,7 @@ You can also enable or disable checks for:
 
 These settings directly control how the automatic flagging algorithm evaluates each channel.
 
-<img src="../resources/settings/automatic_channel_flag_settings.png">
+![Automatic Channel Flagging Settings](../img/settings/automatic_channel_flag_settings.png)
 
 ### Custom Flags
 

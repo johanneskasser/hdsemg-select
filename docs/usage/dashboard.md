@@ -2,7 +2,7 @@
 
 The dashboard is the central interface of the **hdsemg-select** application, providing access to all major features. It gives an overview of the loaded data, the current grid position, and tools for reviewing and cleaning HD-sEMG recordings.
 
-<img src="../resources/dashboard.png" alt="Dashboard" width="100%">
+![Dashboard](../img/dashboard.png)
 
 ### Overview of Dashboard Components
 
@@ -32,7 +32,7 @@ Once you've loaded HD-sEMG data (see the [Getting Started Guide](getting_started
   Displays the currently active grid and fiber orientation (rows or columns).
   * By clicking on the panel, the **Grid and Orientation Selection** dialog can be reopened to change the grid or orientation.
   <br>
-  <img src="../resources/grid_orientation_dialog.png">
+  ![Grid and Orientation Selection Dialog](../img/grid_orientation_dialog.png)
 * **Selection Controls**
 
   * **Select All**: Activates all channels in the current grid view.

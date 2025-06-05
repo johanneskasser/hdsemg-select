@@ -2,7 +2,7 @@
 
 The **Signal Overview Plot** is a powerful tool that allows you to visualize the full grid of HD-sEMG signals at once. This view is especially useful for identifying action potential propagation patterns and determining the correct orientation of the electrode grid (i.e., whether rows or columns are aligned with the muscle fibers).
 
-![Signal Overview Plot](../resources/signal_overview_plot/signal_overview_plot.png)
+![Signal Overview Plot](../img/signal_overview_plot/signal_overview_plot.png)
 
 ---
 
