@@ -14,7 +14,7 @@ python main.py
 
 This will open the application window and display the dashboard interface.
 
-<img src="../resources/dashboard_empty.png" alt="Dashboard" width="100%">
+![Dashboard Empty](../img/dashboard_empty.png)
 
 ---
 
@@ -42,11 +42,11 @@ To load HD-sEMG data into the application:
    * Choose the fiber orientation (whether rows or columns are aligned with the muscle fibers).
      If you're unsure, you can evaluate the orientation later by observing propagation patterns in the [Signal Overview Plot](signal_overview_plot.md) and adjust it if needed.
 
-<img src="../resources/grid_orientation_dialog.png" alt="Grid Orientation Dialog">
+![Grid Orientation Dialog](../img/grid_orientation_dialog.png)
 
 5. After confirming grid and orientation, the main dashboard will be displayed.
 
-<img src="../resources/dashboard.png" alt="Dashboard" width="100%">
+![Dashboard](../img/dashboard.png)
 
 You can now navigate the grid using the bottom navigation buttons or your keyboard’s left/right arrow keys.
 

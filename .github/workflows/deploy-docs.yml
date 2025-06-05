@@ -2,6 +2,10 @@ name: 📦 Build & Deploy Docs
 
 on:
   push:
+    branches:
+      - main
+    tags:
+      - 'v*'
     paths:
       - 'mkdocs.yml'
       - 'docs/**'
