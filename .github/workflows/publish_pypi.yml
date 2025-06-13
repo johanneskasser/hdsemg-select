@@ -32,6 +32,17 @@ jobs:
           python -m pip install --upgrade pip
           pip install build twine
 
+      - name: Compile Qt resources
+        working-directory: src/hdsemg_select
+        run: |
+          if [ ! -f resources_rc.py ]; then
+            echo "Compiling resources.qrc → resources_rc.py"
+            pyrcc5 resources.qrc -o resources_rc.py
+          else
+            echo "resources_rc.py exists, skipping"
+          fi
+        shell: bash
+
       - name: Build package
         run: python -m build
 
