@@ -44,7 +44,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
 
- # ==== Deployment für main (alias „latest“) ====
+      # ==== Deployment für main (alias „latest“) ====
       - name: Deploy docs for branch main
         if: github.ref == 'refs/heads/main'
         env:
@@ -64,5 +64,4 @@ jobs:
           VERSION="${GITHUB_REF#refs/tags/v}"
           # Deploye unter dem Ordner „1.2.0/“
           mike deploy "$VERSION" --push
-          # Setze diese Version als Default (optional, falls neueste Version immer direkt geöffnet werden soll)
           mike set-default "$VERSION" --push
