@@ -60,7 +60,7 @@ Welcome to the documentation for hdsemg-select, a sophisticated graphical user i
 ## Related Tools
 
 - [hdsemg-pipe App 🧼](https://github.com/johanneskasser/hdsemg-pipe.git)
-- [hdsemg-shared 📦](https://github.com/johanneskasser/hdsemg-select.git)
+- [hdsemg-shared 📦](https://github.com/johanneskasser/hdsemg-shared.git)
 - [openhdemg 🧬](https://github.com/GiacomoValliPhD/openhdemg)
 
 ## Contributing
