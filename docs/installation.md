@@ -9,34 +9,32 @@ Before installing hdsemg-select, ensure you have:
 - Git installed on your system
 - Administrator access (for virtual environment creation)
 
-## Installation Steps
+## Installation
 
-### 1. Clone the Repository
+> There are several ways to install hdsemg-select:
 
+### 1. Installation via PyPI
+
+The package can be installed directly from PyPI:
 ```bash
-git clone https://github.com/johanneskasser/hdsemg-select.git
-cd hdsemg_select
+pip install hdsemg-shared
 ```
 
-### 2. Set Up Virtual Environment
+### 2. Installation from Source
 
-You have two options for setting up your development environment:
+Follow these steps to install the project from source:
 
-#### Option 1: Using Python venv
-```bash
-# Run as administrator
-python -m venv venv
-source venv/bin/activate  # On Windows use venv\Scripts\activate
-pip install -r requirements.txt
-```
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/johanneskasser/hdsemg-select.git
+   cd hdsemg-select
+   ```
+2. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-#### Option 2: Using Conda
-```bash
-conda env create -f environment.yml
-conda activate hdsemg_select
-```
-
-### 3. Compile Resource File
+3. Compile the Resource File
 
 Navigate to the source directory and compile the resource file:
 ```bash
@@ -44,12 +42,16 @@ cd ./src/hdsemg_select
 pyrcc5 resources.qrc -o resources_rc.py
 ```
 
-### 4. Launch the Application
+4. Start the Application
 
 Run the main Python script to start the application:
 ```bash
 python main.py
 ```
+
+### 3. Precompiled Versions (Windows & macOS)
+
+Precompiled .exe and macOS programs are available for download under the [Releases](https://github.com/johanneskasser/hdsemg-select/releases). Download the appropriate file and follow the instructions to run it.
 
 ## Troubleshooting
 
