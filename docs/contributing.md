@@ -35,7 +35,7 @@ When filing an issue, please include:
 1. Clone your fork:
    ```bash
    git clone https://github.com/johanneskasser/hdsemg-select.git
-   cd hdsemg-select
+   cd hdsemg_select
    ```
 
 2. Create a virtual environment:

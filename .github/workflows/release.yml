@@ -22,26 +22,26 @@ jobs:
           python-version: '3.10.x'
 
       - name: Install dependencies
-        working-directory: ./src
+        working-directory: src/hdsemg-select
         run: |
           python -m pip install --upgrade pip
-          pip install -r ../requirements.txt pyinstaller PyQt5
+          pip install -r ../../requirements.txt pyinstaller PyQt5
         shell: bash
 
       - name: Generate version.py from Git tag
-        working-directory: ./src
+        working-directory: src/hdsemg-select
         run: |
           APP_VERSION=${RAW_TAG#v}
           echo "__version__ = '${APP_VERSION}'" > version.py
         shell: bash
 
       - name: Make version resource (version.txt)
-        working-directory: ./src
+        working-directory: src/hdsemg-select
         run: python make_version.py
         shell: bash
 
       - name: Compile Qt resources
-        working-directory: ./src
+        working-directory: src/hdsemg-select
         run: |
           if [ ! -f resources_rc.py ]; then
             echo "Compiling resources.qrc → resources_rc.py"
@@ -52,7 +52,7 @@ jobs:
         shell: bash
 
       - name: Build executable with version info
-        working-directory: ./src
+        working-directory: src/hdsemg-select
         run: pyinstaller --clean hdsemg-select-win.spec
         shell: bash
 
@@ -60,7 +60,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: hdsemg-select-windows
-          path: ./src/dist/hdsemg-select.exe
+          path: src/hdsemg-select/dist/hdsemg-select.exe
 
   build-macos:
     runs-on: macOS-latest
@@ -81,34 +81,28 @@ jobs:
         run: |
           brew install qt@5
           brew link qt5 --force
-        # Forcing link, though often not needed if PATH is set up correctly by brew
-        # run: |
-        #   brew install qt@5
-        #   echo "/usr/local/opt/qt@5/bin" >> $GITHUB_PATH # For Intel runners
-        #   echo "/opt/homebrew/opt/qt@5/bin" >> $GITHUB_PATH # For ARM runners (if you switch to macos-14)
-
 
       - name: Install dependencies
-        working-directory: ./src
+        working-directory: src/hdsemg-select
         run: |
           python -m pip install --upgrade pip
-          pip install --only-binary=:all: -r ../requirements.txt
+          pip install --only-binary=:all: -r ../../requirements.txt
         shell: bash
 
       - name: Generate version.py from Git tag
-        working-directory: ./src
+        working-directory: src/hdsemg-select
         run: |
           APP_VERSION=${RAW_TAG#v}
           echo "__version__ = '${APP_VERSION}'" > version.py
         shell: bash
 
       - name: Make version resource (version.txt)
-        working-directory: ./src
+        working-directory: src/hdsemg-select
         run: python make_version.py
         shell: bash
 
       - name: Compile Qt resources
-        working-directory: ./src
+        working-directory: src/hdsemg-select
         run: |
           if [ ! -f resources_rc.py ]; then
             echo "Compiling resources.qrc → resources_rc.py"
@@ -119,24 +113,23 @@ jobs:
         shell: bash
 
       - name: Build executable with version info
-        working-directory: ./src
+        working-directory: src/hdsemg-select
         run: pyinstaller --clean --noconfirm hdsemg-select-macos.spec
         shell: bash
 
       - name: List files in dist
-        working-directory: ./src/dist
+        working-directory: src/hdsemg-select/dist
         run: ls -la
 
       - name: Package macOS app
-        working-directory: ./src/dist
-        run: |
-          zip -r hdsemg-select-macos.zip hdsemg-select.app
+        working-directory: src/hdsemg-select/dist
+        run: zip -r hdsemg-select-macos.zip hdsemg-select.app
 
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
         with:
           name: hdsemg-select-macos
-          path: ./src/dist/hdsemg-select-macos.zip
+          path: src/hdsemg-select/dist/hdsemg-select-macos.zip
 
   release:
     needs: [build-windows, build-macos]
@@ -162,7 +155,7 @@ jobs:
           path: macos-artifact
 
       - name: Gather Release Notes
-        shell: 'bash'
+        shell: bash
         id: notes
         run: |
           PREV_TAG=$(git tag --sort=-creatordate | sed -n "2p")

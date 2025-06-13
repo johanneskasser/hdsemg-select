@@ -1,6 +1,6 @@
 <div align="center">
 <br>
-  <img src="src/resources/icon.png" alt="App Icon" width="100" height="100"><br>
+  <img src="src/hdsemg_select/resources/icon.png" alt="App Icon" width="100" height="100"><br>
     <h2 align="center">🧼 hdsemg-select 🧼</h2>
     <h3 align="center">HDsEMG data cleaning tool</h3>
 </div>
@@ -24,7 +24,7 @@ helps identify and exclude faulty channels and automatically flag potential arti
 1. **Clone the repository:**
    ```bash
    git clone https://github.com/johanneskasser/hdsemg-select.git
-   cd hdsemg-select
+   cd hdsemg_select
    ```
 
 2. **Create virtual environment (as admin):**

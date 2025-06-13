@@ -59,11 +59,11 @@ pyrcc5 resources.qrc -o resources_rc.py
 ### Creating Executables
 - Windows:
   ```bash
-  pyinstaller src/hdsemg-select-win.spec
+  pyinstaller src/hdsemg_select-win.spec
   ```
 - macOS:
   ```bash
-  pyinstaller src/hdsemg-select-macos.spec
+  pyinstaller src/hdsemg_select-macos.spec
   ```
 
 ## Core Components

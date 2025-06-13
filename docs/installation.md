@@ -15,7 +15,7 @@ Before installing hdsemg-select, ensure you have:
 
 ```bash
 git clone https://github.com/johanneskasser/hdsemg-select.git
-cd hdsemg-select
+cd hdsemg_select
 ```
 
 ### 2. Set Up Virtual Environment
@@ -33,14 +33,14 @@ pip install -r requirements.txt
 #### Option 2: Using Conda
 ```bash
 conda env create -f environment.yml
-conda activate hdsemg-select
+conda activate hdsemg_select
 ```
 
 ### 3. Compile Resource File
 
 Navigate to the source directory and compile the resource file:
 ```bash
-cd ./src
+cd ./src/hdsemg_select
 pyrcc5 resources.qrc -o resources_rc.py
 ```
 

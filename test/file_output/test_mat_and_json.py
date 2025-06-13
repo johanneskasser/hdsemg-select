@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-hdsemg-select Output Verification Script
+hdsemg_select Output Verification Script
 
-Dieses Skript überprüft, ob die von hdsemg-select erzeugte bereinigte .mat-Datei
+Dieses Skript überprüft, ob die von hdsemg_select erzeugte bereinigte .mat-Datei
 nur die Kanäle enthält, die in der .json-Auswahldatei als 'selected: true'
 markiert sind, und ob die Daten dieser ausgewählten Kanäle mit den Daten der
 ursprünglichen .mat-Datei übereinstimmen.
@@ -49,7 +49,7 @@ if not original_mat_path:
     raise FileNotFoundError("Es muss die ursprüngliche .mat-Datei ausgewählt werden.")
 
 
-cleaned_mat_path = select_file("Wählen Sie die BEREINIGTE .mat-Datei (Output von hdsemg-select)", [("MATLAB-Dateien", "*.mat")])
+cleaned_mat_path = select_file("Wählen Sie die BEREINIGTE .mat-Datei (Output von hdsemg_select)", [("MATLAB-Dateien", "*.mat")])
 if not cleaned_mat_path:
     print("Bereinigte .mat-Dateiauswahl abgebrochen.")
     raise FileNotFoundError("Es muss die bereinigte .mat-Datei ausgewählt werden.")
