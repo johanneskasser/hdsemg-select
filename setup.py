@@ -49,7 +49,7 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-             "hdsemg_select=hdsemg_select.main:main",
+             "hdsemg-select=hdsemg_select.main:main",
         ],
     },
 )

@@ -17,7 +17,7 @@ Before installing hdsemg-select, ensure you have:
 
 The package can be installed directly from PyPI:
 ```bash
-pip install hdsemg-shared
+pip install hdsemg-select
 ```
 
 ### 2. Installation from Source

@@ -188,15 +188,18 @@ class ChannelSelector(QMainWindow):
                 # Dictionary to look up signals by index for easier access
                 signal_map = {int(s["index"]): s for s in ref_signals}
 
+                def convert_name(name):
+                    return name.item() if isinstance(name, np.ndarray) else str(name)
+
                 # Add performed path first, if available
                 if per_path_idx is not None and per_path_idx in signal_map:
-                    name = signal_map[per_path_idx]["name"]
+                    name = convert_name(signal_map[per_path_idx]["name"])
                     self.select_ref_signal.addItem(f"Performed Path – {name}", per_path_idx)
                     self.select_ref_signal.setCurrentIndex(self.select_ref_signal.findData(per_path_idx))
 
                 # Add requested path second, if available and not same as requested
                 if req_path_idx is not None and req_path_idx in signal_map and req_path_idx != req_path_idx:
-                    name = signal_map[req_path_idx]["name"]
+                    name = convert_name(signal_map[req_path_idx]["name"])
                     self.select_ref_signal.addItem(f"Requested Path – {name}", req_path_idx)
                     if per_path_idx is None:
                         self.select_ref_signal.setCurrentIndex(self.select_ref_signal.findData(req_path_idx))
@@ -205,7 +208,8 @@ class ChannelSelector(QMainWindow):
                 already_added = {req_path_idx, per_path_idx}
                 for signal in ref_signals:
                     if signal["index"] not in already_added:
-                        self.select_ref_signal.addItem(signal["name"], int(signal["index"]))
+                        name = convert_name(signal["name"])
+                        self.select_ref_signal.addItem(name, int(signal["index"]))
 
             else:
                 logger.warning(f"Selected grid '{selected_grid}' not found in grid info.")
@@ -248,7 +252,6 @@ class ChannelSelector(QMainWindow):
 
     def select_grid_and_orientation(self):
         """Opens dialog to select grid and orientation."""
-        # Usage in your main class
         def apply_callback(selected_grid, orientation, dialog, orientation_changed=False):
             self.apply_grid_selection(selected_grid, orientation,dialog, orientation_changed)
 
