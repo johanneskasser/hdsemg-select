@@ -38,7 +38,7 @@ setup(
         "scipy>=1.7.0",
         "pyinstaller>=6.11.0",
         "requests>=2.30.0",
-        "hdsemg-shared>=0.10.6",
+        "hdsemg-shared>=0.10.8",
         "pefile>=2023.2.7; sys_platform != 'win32'",
     ],
     python_requires=">=3.7",
