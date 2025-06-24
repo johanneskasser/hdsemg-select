@@ -210,10 +210,8 @@ class AutoFlagger:
         Retrieves all reference-signal indices from global grid info.
         """
         refs: list[int] = []
-        grid_info = global_state.get_grid_info() or {}
-        for grid in grid_info.values():
-            for ref in grid.get('reference_signals', []):
-                idx = ref.get('index')
-                if isinstance(idx, int):
-                    refs.append(idx)
+        for grid in global_state.get_emg_file().grids:
+            for ref in grid.ref_indices:
+                if isinstance(ref, int):
+                    refs.append(ref)
         return refs

@@ -1,10 +1,12 @@
 import json
 import os
+from typing import List
 
 import numpy as np
 from PyQt5.QtWidgets import QFileDialog, QMessageBox
 from pathlib import Path
-from hdsemg_shared import save_selection_to_mat, load_file, extract_grid_info
+from hdsemg_shared.fileio.file_io import EMGFile, Grid
+from hdsemg_shared.fileio.matlab_file_io import MatFileIO
 
 from hdsemg_select.select_logic.data_processing import compute_upper_quartile, scale_data
 from hdsemg_select.state.state import global_state
@@ -24,38 +26,39 @@ class FileManager:
         if not file_path:
             return False
 
+        # Ensure file exists
+        if not os.path.isfile(file_path):
+            QMessageBox.critical(
+                parent_window, "File Not Found",
+                f"The specified file does not exist:\n{file_path}"
+            )
+            return False
+
         try:
             global_state.reset()
             global_state.set_file_path(file_path)
             logger.info(f"Loading file {global_state.get_file_path()}")
 
             # Load data and other info
-            data, time, description, sampling_frequency, file_name, file_size = load_file(file_path)
+            emg = EMGFile.load(file_path)
 
             # Store loaded data in state
-            global_state.set_data(data)
-            global_state.set_time(time)
-            global_state.set_description(description)
-            global_state.set_sampling_frequency(sampling_frequency)
-            global_state.set_file_name(file_name)
-            global_state.set_file_size(file_size)
-            global_state.set_grid_info(extract_grid_info(global_state.get_description()))
-            global_state.set_channel_count(global_state.get_data().shape[1])
+            global_state.set_emg_file(emg)
 
-            if not global_state.get_grid_info():
+            if not global_state.get_emg_file().grids:
                 QMessageBox.warning(
                     parent_window, "Grid Info Missing",
                     "Automatic grid extraction failed. Please provide grid sizes manually."
                 )
                 # Store manual grid info in state
                 manual_grid = manual_grid_input(
-                    global_state.get_channel_count(),
-                    global_state.get_time(),
-                    global_state.get_data()
+                    global_state.get_emg_file().channel_count,
+                    global_state.get_emg_file().time,
+                    global_state.get_emg_file().data
                 )
                 global_state.set_grid_info(manual_grid)
 
-                if not global_state.get_grid_info():
+                if not global_state.get_emg_file().grids:
                     QMessageBox.information(
                         parent_window, "File Loading Failed",
                         "Grid information could not be determined."
@@ -64,18 +67,18 @@ class FileManager:
                     global_state.reset()
                     return False  # Indicate failure
 
-            logger.debug(f"Original Data Min: {np.min(global_state.get_data())}")
-            logger.debug(f"Original Data Max: {np.max(global_state.get_data())}")
+            logger.debug(f"Original Data Min: {np.min(global_state.get_emg_file().data)}")
+            logger.debug(f"Original Data Max: {np.max(global_state.get_emg_file().data)}")
 
             # Perform amplitude scaling, store scaled data in state
-            self.upper_quartile = compute_upper_quartile(global_state.get_data())
-            global_state.set_scaled_data(scale_data(global_state.get_data(), self.upper_quartile))
+            self.upper_quartile = compute_upper_quartile(global_state.get_emg_file().data)
+            global_state.set_scaled_data(scale_data(global_state.get_emg_file().data, self.upper_quartile))
 
             logger.debug(f"Scaled Data Min: {np.min(global_state.get_scaled_data())}")
             logger.debug(f"Scaled Data Max: {np.max(global_state.get_scaled_data())}")
 
             # Extract grid info and proceed, store in state
-            global_state.set_channel_status(_build_channel_status(global_state.get_channel_count(), global_state.get_grid_info()))
+            global_state.set_channel_status(_build_channel_status(global_state.get_emg_file().channel_count, global_state.get_emg_file().grids))
 
             return True  # Indicate success
 
@@ -88,19 +91,14 @@ class FileManager:
             global_state.reset()  # Reset state on any loading error
             return False  # Indicate failure
 
-def save_selection(parent, output_file, data, time, description, sampling_frequency, channel_status, file_name, grid_info, channel_labels):
+def save_selection(parent, output_file, emg_file: EMGFile, channel_status, channel_labels):
     """
     Saves the channel selection, data, and labels to both a .mat and a .json file.
 
     :param parent: The parent Qt widget (for dialogs).
     :param output_file: Optional pre-determined output file path. If None, a Save dialog is shown.
-    :param data: The EMG data array.
-    :param time: The time vector.
-    :param description: The channel description strings.
-    :param sampling_frequency: The data sampling frequency.
     :param channel_status: List/array of booleans for selection status.
-    :param file_name: The name of the original file.
-    :param grid_info: Dictionary of grid information.
+    :param emg_file: The EMGFile object containing data, time, description, and sampling frequency.
     :param channel_labels: Dictionary of channel indices to labels.
     """
 
@@ -114,7 +112,7 @@ def save_selection(parent, output_file, data, time, description, sampling_freque
         # If no output_file, open save dialog. User selects one path, we derive the other.
         options = QFileDialog.Options()
         # Suggest a default filename based on the original file name if available
-        default_filename = file_name if file_name else "selection"
+        default_filename = emg_file.file_name if emg_file.file_name else "selection"
         # Start dialog with .mat filter as a common default for data
         file_dialog_path, selected_filter = QFileDialog.getSaveFileName(
             parent,
@@ -140,13 +138,17 @@ def save_selection(parent, output_file, data, time, description, sampling_freque
     # Save .mat file
     try:
         # Ensure we only save if data is available for the .mat file
-        if data is not None and time is not None and description is not None:
-            data_mat, description_mat = clean_data_and_description_signal(channel_status, data, description)
-            save_selection_to_mat(mat_file_path, data_mat, time, description_mat, sampling_frequency, channel_status, file_name)
+        if emg_file.data is not None and emg_file.time is not None and emg_file.description is not None:
+            data_mat, description_mat = clean_data_and_description_signal(channel_status, emg_file.data, emg_file.description)
+            # Save the selection to .mat file
+            emg_file_copy = emg_file.copy()
+            emg_file_copy.data = data_mat
+            emg_file_copy.description = description_mat
+            emg_file_copy.save(save_path=mat_file_path)
             messages.append(f"Saved .mat to {Path(mat_file_path).name}")
         else:
              messages.append(".mat file skipped (data not available)")
-             logger.warning(f"Warning: .mat save skipped, missing data (data={data is not None}, time={time is not None}, description={description is not None})")
+             logger.warning(f"Warning: .mat save skipped, missing data (data={emg_file.data is not None}, time={emg_file.time is not None}, description={emg_file.description is not None})")
 
     except Exception as e:
         save_success = False
@@ -157,8 +159,8 @@ def save_selection(parent, output_file, data, time, description, sampling_freque
     # Save .json file
     try:
         # Ensure we have basic info to save JSON
-        if channel_status is not None and description is not None and grid_info is not None and channel_labels is not None:
-            json_save_success = save_selection_to_json(json_file_path, file_name, grid_info, channel_status, description, channel_labels)
+        if channel_status is not None and emg_file.description is not None and emg_file.grids is not None and channel_labels is not None:
+            json_save_success = save_selection_to_json(json_file_path, emg_file.file_name, emg_file.grids, channel_status, emg_file.description, channel_labels)
             if json_save_success:
                  messages.append(f"Saved .json to {Path(json_file_path).name}")
             else:
@@ -166,7 +168,7 @@ def save_selection(parent, output_file, data, time, description, sampling_freque
                  messages.append(f"Error saving .json")
         else:
             messages.append(".json file skipped (info not available)")
-            logger.warning(f"Warning: .json save skipped, missing info (status={channel_status is not None}, desc={description is not None}, grid={grid_info is not None}, labels={channel_labels is not None})")
+            logger.warning(f"Warning: .json save skipped, missing info (status={channel_status is not None}, desc={emg_file.description is not None}, grid={emg_file.grids is not None}, labels={channel_labels is not None})")
 
     except Exception as e:
         save_success = False
@@ -192,7 +194,7 @@ def save_selection(parent, output_file, data, time, description, sampling_freque
 
 def save_selection_to_json(file_path: str,
                            file_name: str,
-                           grid_info: dict,
+                           grids: List[Grid],
                            channel_status: list,
                            description: np.ndarray,
                            channel_labels: dict) -> bool:
@@ -205,8 +207,8 @@ def save_selection_to_json(file_path: str,
         Path where the JSON file should be saved.
     file_name : str
         Name of the original file.
-    grid_info : dict
-        Dictionary containing info about all extracted grids.
+    grids : list
+        List of the Grid Object (hdsemg-select) containing info about all extracted grids.
     channel_status : list[bool]
         Boolean list indicating channel selection status.
     description : np.ndarray
@@ -228,22 +230,14 @@ def save_selection_to_json(file_path: str,
 
     grids_out = []
 
-    if isinstance(grid_info, dict):
-        for grid_key, info in grid_info.items():
+    if isinstance(grids, list):
+        for grid in grids:
 
-            # ––– Sanity-Check –––
-            must_have = {"rows", "cols", "ied_mm", "indices",
-                         "reference_signals"}
-            if not must_have.issubset(info):
-                logger.debug("Skipping grid %s: missing keys (%s)",
-                             grid_key, must_have - set(info))
-                continue
-
-            rows      = info["rows"]
-            cols      = info["cols"]
-            scale     = info.get("ied_mm")   # may be None
-            indices   = info["indices"]
-            ref_list  = info["reference_signals"]
+            rows      = grid.rows
+            cols      = grid.cols
+            scale     = grid.ied_mm   # may be None
+            indices   = grid.emg_indices
+            ref_list  = grid.ref_indices
 
             # ---------- Channels ----------
             ch_objects = []
@@ -272,8 +266,8 @@ def save_selection_to_json(file_path: str,
             # ---------- Reference Signals ----------
             ref_objects = []
             for ref in ref_list:
-                ref_idx  = ref.get("index")
-                ref_name = ref.get("name", f"Ref {ref_idx + 1}")
+                ref_idx  = ref
+                ref_name = description[ref_idx,0].item()
 
                 if ref_idx is None or ref_idx >= len(channel_status):
                     continue  # inconsistent index, skip
@@ -287,7 +281,7 @@ def save_selection_to_json(file_path: str,
                 })
 
             grids_out.append({
-                "grid_key":  grid_key,
+                "grid_key":  grid.grid_key,
                 "rows":      rows,
                 "columns":   cols,
                 "inter_electrode_distance_mm": scale,
@@ -295,7 +289,7 @@ def save_selection_to_json(file_path: str,
                 "reference_signals": ref_objects
             })
     else:
-        logger.warning("grid_info is not a dict but %s", type(grid_info))
+        logger.warning("grid_info is not a List of Grids but %s", type(grids))
 
     all_channels_summary = []
     for i, sel in enumerate(channel_status):
@@ -347,13 +341,12 @@ def clean_data_and_description_signal(channel_status, data, description):
 
     return data, description
 
-def _build_channel_status(n_channels, grid_info):
+def _build_channel_status(n_channels, grids: List[Grid]):
     channel_status = [False] * n_channels
 
-    for grid in grid_info.values():
-        for ref in grid.get("reference_signals", []):
-            idx = ref.get("index")
-            if idx is not None and 0 <= idx < n_channels:
-                channel_status[idx] = True
+    for grid in grids:
+        for ref in grid.ref_indices:
+            if ref is not None and 0 <= ref < n_channels:
+                channel_status[ref] = True
 
     return channel_status

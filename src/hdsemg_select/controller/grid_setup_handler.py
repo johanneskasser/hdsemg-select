@@ -22,14 +22,12 @@ class GridSetupHandler:
         Applies the selected grid and orientation, calculates display parameters.
         Returns True on success, False on failure. Updates self attributes.
         """
-        if not global_state.get_grid_info():
+        if not global_state.get_emg_file().grids:
             logger.warning("apply_selection called without grid_info in state.")
             return False
 
-        # Access grid info from state
-        grid_info = global_state.get_grid_info()
-
-        if selected_grid not in grid_info:
+        grid = global_state.get_emg_file().get_grid(grid_key=selected_grid)
+        if grid is None:
              logger.error(f"Selected grid '{selected_grid}' not found in grid_info.")
              QMessageBox.critical(parent_window, "Grid Error", f"Selected grid '{selected_grid}' not found.")
              return False
@@ -40,13 +38,13 @@ class GridSetupHandler:
         self.fiber_orientation = orientation
         grid_layout = global_state.get_layout_for_fiber(self.fiber_orientation) # get the layout for the selected fiber orientation, can be defined by user
 
-        self.rows = grid_info[self.selected_grid]["rows"]
-        self.cols = grid_info[self.selected_grid]["cols"]
-        indices = grid_info[self.selected_grid]["indices"]
+        self.rows = grid.rows
+        self.cols = grid.cols
+        indices = grid.emg_indices
 
 
         # Validate the grid shape
-        expected_electrodes = grid_info[self.selected_grid]["electrodes"]
+        expected_electrodes = grid.electrodes
         if len(indices) != expected_electrodes:
              logger.error(f"Grid shape mismatch for '{selected_grid}': Expected {expected_electrodes} indices, got {len(indices)}.")
              QMessageBox.critical(

@@ -3,6 +3,7 @@ from typing import Dict
 from PyQt5.QtCore import QObject
 from PyQt5.QtCore import pyqtSignal
 import numpy as np
+from hdsemg_shared.fileio.file_io import EMGFile
 
 from hdsemg_select._log.log_config import logger
 from hdsemg_select.state.enum.layout_mode_enums import FiberMode, LayoutMode
@@ -22,16 +23,9 @@ class State(QObject):
 
     def reset(self):
         self._channel_status = []
-        self._grid_info = {}
-        self._data = None
-        self._time = None
-        self._file_name = None
         self._file_path = None
-        self._file_size = None
-        self._channel_count = 0
         self._scaled_data = None
-        self._description = None
-        self._sampling_frequency = None
+        self._emg_file = None
         self._channel_labels = {}
         self._input_file = None
         self._output_file = None
@@ -57,17 +51,8 @@ class State(QObject):
                 self._channel_status[idx] = []
                 return self._channel_status[idx]
 
-    def get_grid_info(self) -> dict:
-        return self._grid_info
-
-    def get_data(self):
-        return self._data
-
-    def get_time(self):
-        return self._time
-
-    def get_file_name(self) -> str:
-        return self._file_name
+    def get_emg_file(self) -> EMGFile:
+        return self._emg_file
 
     def get_max_amplitude(self):
         return self.max_amplitude
@@ -75,20 +60,8 @@ class State(QObject):
     def get_file_path(self) -> str:
         return self._file_path
 
-    def get_file_size(self):
-        return self._file_size
-
-    def get_channel_count(self) -> int:
-        return self._channel_count
-
     def get_scaled_data(self):
         return self._scaled_data
-
-    def get_description(self):
-        return self._description
-
-    def get_sampling_frequency(self):
-        return self._sampling_frequency
 
     def get_channel_labels(self, idx: int = None):
         if idx is None:
@@ -102,40 +75,24 @@ class State(QObject):
                 return self._channel_labels[idx]
 
     # Setters
+    def set_emg_file(self, emg_file: EMGFile):
+        if not isinstance(emg_file, EMGFile):
+            raise ValueError(f"Expected EMGFile instance, got {type(emg_file)}")
+        self._emg_file = emg_file
+
     def set_channel_status(self, value: list):
         self._channel_status = value
 
     def set_grid_info(self, value: dict):
         self._grid_info = value
 
-    def set_data(self, value):
-        self._data = value
-
-    def set_time(self, value):
-        self._time = value
-
-    def set_file_name(self, value: str):
-        self._file_name = value
-
     def set_file_path(self, value: str):
         self._file_path = value
 
-    def set_file_size(self, value):
-        self._file_size = value
-
-    def set_channel_count(self, value: int):
-        self._channel_count = value
-
     def set_scaled_data(self, value):
-        all_emg_idx = [idx for cfg in self._grid_info.values() for idx in cfg['indices']]
+        all_emg_idx = [idx for cfg in self._emg_file.grids for idx in cfg.emg_indices]
         self.max_amplitude = np.abs(value[:, all_emg_idx]).max()
         self._scaled_data = value
-
-    def set_description(self, value):
-        self._description = value
-
-    def set_sampling_frequency(self, value):
-        self._sampling_frequency = value
 
     def get_input_file(self):
         return self._input_file
@@ -152,11 +109,11 @@ class State(QObject):
     def update_channel_labels(self, channel_idx: int, labels: list):
         if not isinstance(labels, list):
             raise ValueError("Labels must be a list")
-        if channel_idx < 0 or channel_idx >= self._channel_count:
+        if channel_idx < 0 or channel_idx >= self._emg_file.channel_count:
             # Handle potential out of bounds if channel_count is zero or incorrect
-            if self._channel_count > 0:
+            if self._emg_file.channel_count > 0:
                 logger.warning(
-                    f"Attempted to update labels for channel index {channel_idx}, but channel count is {self._channel_count}. Ignoring.")
+                    f"Attempted to update labels for channel index {channel_idx}, but channel count is {self._emg_file.channel_count}. Ignoring.")
                 return
 
         if labels:

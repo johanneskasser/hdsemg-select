@@ -7,7 +7,7 @@ def update_channel_status_single(channel_status, idx, state):
 
 def select_all_channels(channel_status, select):
     if not select:
-        return _build_channel_status(len(channel_status), global_state.get_grid_info())
+        return _build_channel_status(len(channel_status), global_state.get_emg_file().grids)
     return [select] * len(channel_status)
 
 def count_selected_channels(channel_status):

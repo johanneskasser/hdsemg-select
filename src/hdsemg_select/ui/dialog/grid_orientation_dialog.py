@@ -10,8 +10,8 @@ class GridOrientationDialog(QDialog):
         self.setWindowTitle("Select Grid and Orientation")
         self.apply_callback = apply_callback
 
-        grid_info = global_state.get_grid_info()
-        if not grid_info:
+        grids = global_state.get_emg_file().grids
+        if not grids:
             return
 
         layout = QVBoxLayout(self)
@@ -20,8 +20,8 @@ class GridOrientationDialog(QDialog):
         layout.addWidget(grid_label)
 
         self.grid_combo = QComboBox()
-        for grid_key in grid_info.keys():
-            self.grid_combo.addItem(grid_key)
+        for grid in grids:
+            self.grid_combo.addItem(grid.grid_key)
 
         currently_selected_grid = parent.grid_setup_handler.get_selected_grid()
         if currently_selected_grid:

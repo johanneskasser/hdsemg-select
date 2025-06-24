@@ -16,7 +16,7 @@ class AutomaticAmplitudeSelection:
         Compute the average of the maximum and minimum amplitudes across all grid channels
         and set thresholds at 80% of these averages.
         """
-        data = global_state.get_data()
+        data = global_state.get_emg_file().data
         scaled_data = global_state.get_scaled_data()
         if data is None or not self.parent.grid_setup_handler.current_grid_indices:
             return 0, 0
@@ -123,7 +123,7 @@ class AutomaticAmplitudeSelection:
         If the maximum amplitude of a channel (in μV) is between lower_threshold and upper_threshold,
         that channel is selected.
         """
-        data = global_state.get_data()
+        data = global_state.get_emg_file().data
         scaled_data = global_state.get_scaled_data()
         if data is None:
             QMessageBox.warning(self.parent, "No Data", "Please load a file first.")

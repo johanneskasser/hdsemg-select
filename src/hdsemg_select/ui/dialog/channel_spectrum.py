@@ -12,8 +12,8 @@ class ChannelSpectrum:
         self.parent = parent
 
     def view_channel_spectrum(self, channel_idx):
-        y = global_state.get_data()[:, channel_idx]
-        fs = global_state.get_sampling_frequency()
+        y = global_state.get_emg_file().data[:, channel_idx]
+        fs = global_state.get_emg_file().sampling_frequency
         xf, yf = welchPS(y, fs)
 
         self.spectrum_window = QMainWindow(self.parent)
