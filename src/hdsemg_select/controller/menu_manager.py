@@ -112,26 +112,16 @@ class MenuManager:
         Collects necessary data from global_state and calls the save_selection function.
         """
         # Retrieve all required data from the global_state singleton
-        data = global_state.get_data()
-        time = global_state.get_time()
-        description = global_state.get_description()
-        sampling_frequency = global_state.get_sampling_frequency()
         channel_status = global_state.get_channel_status()
-        file_name = global_state.get_file_name()
-        grid_info = global_state.get_grid_info()
         channel_labels = global_state.get_channel_labels()
         output_file = global_state.get_output_file()
+        emg_file = global_state.get_emg_file()
 
         save_selection(
             parent=parent_window,
             output_file=output_file,
-            data=data,
-            time=time,
-            description=description,
-            sampling_frequency=sampling_frequency,
+            emg_file=emg_file,
             channel_status=channel_status,
-            file_name=file_name,
-            grid_info=grid_info,
             channel_labels=channel_labels  # Pass the collected labels
         )
 

@@ -177,29 +177,30 @@ class ChannelSelector(QMainWindow):
 
     def populate_ref_signal_dropdown(self):
         self.select_ref_signal.clear()
-        grid_info = global_state.get_grid_info()
-        if grid_info:
+        if not global_state.get_emg_file():
+            return
+        grids = global_state.get_emg_file().grids
+        if grids:
             selected_grid = self.grid_setup_handler.get_selected_grid()
-            if selected_grid in grid_info:
-                ref_signals = grid_info[selected_grid]["reference_signals"]
-                req_path_idx = grid_info[selected_grid]["requested_path_idx"]
-                per_path_idx = grid_info[selected_grid]["performed_path_idx"]
-
-                # Dictionary to look up signals by index for easier access
-                signal_map = {int(s["index"]): s for s in ref_signals}
+            selected_grid_obj = global_state.get_emg_file().get_grid(grid_key=selected_grid)
+            descriptions = global_state.get_emg_file().description
+            if selected_grid_obj is not None:
+                ref_signals = selected_grid_obj.ref_indices
+                req_path_idx = selected_grid_obj.requested_path_idx
+                per_path_idx = selected_grid_obj.performed_path_idx
 
                 def convert_name(name):
                     return name.item() if isinstance(name, np.ndarray) else str(name)
 
                 # Add performed path first, if available
-                if per_path_idx is not None and per_path_idx in signal_map:
-                    name = convert_name(signal_map[per_path_idx]["name"])
+                if per_path_idx is not None and per_path_idx in ref_signals:
+                    name = convert_name(descriptions[per_path_idx])
                     self.select_ref_signal.addItem(f"Performed Path – {name}", per_path_idx)
                     self.select_ref_signal.setCurrentIndex(self.select_ref_signal.findData(per_path_idx))
 
                 # Add requested path second, if available and not same as requested
-                if req_path_idx is not None and req_path_idx in signal_map and req_path_idx != req_path_idx:
-                    name = convert_name(signal_map[req_path_idx]["name"])
+                if req_path_idx is not None and req_path_idx in ref_signals and req_path_idx != req_path_idx:
+                    name = convert_name(descriptions[req_path_idx])
                     self.select_ref_signal.addItem(f"Requested Path – {name}", req_path_idx)
                     if per_path_idx is None:
                         self.select_ref_signal.setCurrentIndex(self.select_ref_signal.findData(req_path_idx))
@@ -207,9 +208,9 @@ class ChannelSelector(QMainWindow):
                 # Add all other signals, excluding ones already added
                 already_added = {req_path_idx, per_path_idx}
                 for signal in ref_signals:
-                    if signal["index"] not in already_added:
-                        name = convert_name(signal["name"])
-                        self.select_ref_signal.addItem(name, int(signal["index"]))
+                    if signal not in already_added:
+                        name = convert_name(descriptions[signal])
+                        self.select_ref_signal.addItem(name, int(signal))
 
             else:
                 logger.warning(f"Selected grid '{selected_grid}' not found in grid info.")
@@ -246,7 +247,7 @@ class ChannelSelector(QMainWindow):
 
             self.electrode_widget.setHidden(False)
             self.show_ref_signals.setEnabled(True)
-            self.setWindowTitle(f"hdsemg_select - Amplitude over Time - {global_state.get_file_name()}")
+            self.setWindowTitle(f"hdsemg_select - Amplitude over Time - {global_state.get_emg_file().file_name}")
         else:
             self.reset_to_start_state()
 
@@ -350,14 +351,15 @@ class ChannelSelector(QMainWindow):
         end_idx = start_idx + items_per_page
 
         # Get state data
-        grid_info = global_state.get_grid_info()  # Needed to find electrode count for grid
         scaled_data = global_state.get_scaled_data()
-        time_data = global_state.get_time()
+        time_data = global_state.get_emg_file().time
         channel_status = global_state.get_channel_status()
         channel_labels = global_state.get_channel_labels()
 
-        if selected_grid_key and grid_info and selected_grid_key in grid_info:
-            full_grid_indices_flat = [ch for ch in grid_info[selected_grid_key]["indices"] if ch is not None]
+        sel_grid = global_state.get_emg_file().get_grid(grid_key=selected_grid_key)
+
+        if selected_grid_key and sel_grid:
+            full_grid_indices_flat = [ch for ch in sel_grid.emg_indices if ch is not None]
 
             if full_grid_indices_flat and scaled_data is not None:
                 data_for_grid = scaled_data[:, full_grid_indices_flat]
@@ -488,19 +490,19 @@ class ChannelSelector(QMainWindow):
     def update_info_label(self):
         """Updates the information label in the header."""
         selected_count = count_selected_channels(global_state.get_channel_status())
-        file_size = global_state.get_file_size()
+        file_size = global_state.get_emg_file().file_size
         file_size_kb = file_size / 1024 if file_size is not None else 0
         info_text = (
-            f"File: {global_state.get_file_name() if global_state.get_file_name() else 'None'} ({file_size_kb:.2f} KB)\n"
-            f"Total Channels: {global_state.get_channel_count()}\n"
-            f"Sampling Frequency: {global_state.get_sampling_frequency() if global_state.get_sampling_frequency() is not None else 'N/A'}\n"
+            f"File: {global_state.get_emg_file().file_name if global_state.get_emg_file().file_name else 'None'} ({file_size_kb:.2f} KB)\n"
+            f"Total Channels: {global_state.get_emg_file().channel_count}\n"
+            f"Sampling Frequency: {global_state.get_emg_file().sampling_frequency if global_state.get_emg_file().sampling_frequency is not None else 'N/A'}\n"
             f"Selected Channels: {selected_count}"
         )
         self.info_label.setText(info_text)
 
     def view_channel_spectrum(self, channel_idx):
         """Opens a frequency spectrum view for a channel."""
-        if global_state.get_scaled_data() is not None and global_state.get_sampling_frequency() is not None:
+        if global_state.get_scaled_data() is not None and global_state.get_emg_file().sampling_frequency is not None:
             if not hasattr(self, 'channel_spectrum'):
                 self.channel_spectrum = ChannelSpectrum(self)
             self.channel_spectrum.view_channel_spectrum(channel_idx)
@@ -517,7 +519,7 @@ class ChannelSelector(QMainWindow):
     def run_auto_flagger(self):
         """Triggers the automatic suggestion of artifact flags."""
         scaled_data = global_state.get_scaled_data()
-        sampling_frequency = global_state.get_sampling_frequency()
+        sampling_frequency = global_state.get_emg_file().sampling_frequency
 
         if scaled_data is None or sampling_frequency is None:
             QMessageBox.warning(self, "Auto-Flagger",
@@ -552,7 +554,7 @@ class ChannelSelector(QMainWindow):
 
         updated_count = 0
         for channel_idx, suggestions in suggested_labels.items():
-            if not isinstance(channel_idx, int) or channel_idx < 0 or channel_idx >= global_state.get_channel_count():
+            if not isinstance(channel_idx, int) or channel_idx < 0 or channel_idx >= global_state.get_emg_file().channel_count:
                 logger.warning(f"Skipping suggested labels for invalid channel index: {channel_idx}")
                 continue
 
