@@ -190,7 +190,12 @@ class ChannelSelector(QMainWindow):
                 per_path_idx = selected_grid_obj.performed_path_idx
 
                 def convert_name(name):
-                    return name.item() if isinstance(name, np.ndarray) else str(name)
+                    while isinstance(name, np.ndarray):
+                        if name.size == 1:
+                            name = name.item()
+                        else:
+                            break
+                    return str(name)
 
                 # Add performed path first, if available
                 if per_path_idx is not None and per_path_idx in ref_signals:
