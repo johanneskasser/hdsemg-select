@@ -15,6 +15,9 @@ permissions:
 
 jobs:
   deploy:
+    if: ${{ !contains(github.ref_name, 'dev') && !contains(github.ref_name, 'rc') &&
+      !contains(github.ref_name, 'alpha') && !contains(github.ref_name, 'beta') &&
+      !contains(github.ref_name, 'test') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
