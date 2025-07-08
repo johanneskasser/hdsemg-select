@@ -1,6 +1,9 @@
 import argparse
 import logging
+import os
 import sys
+
+from PyQt5.QtCore import Qt
 
 from hdsemg_select._log.exception_hook import exception_hook
 from hdsemg_select._log.log_config import setup_logging
@@ -21,6 +24,10 @@ def main():
     parser.add_argument("--inputFile", type=str, help="File to be opened upon startup")
     parser.add_argument("--outputFile", type=str, help="Destination .mat file for saving the selection")
     args = parser.parse_args()
+
+    os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
+    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)  # scale UI elements
+    QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
 
     app = QApplication(sys.argv)
     window = ChannelSelector(input_file=args.inputFile, output_file=args.outputFile)
