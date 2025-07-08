@@ -32,11 +32,10 @@ setup(
     },
     install_requires=[
         "PyQt5>=5.15.0",
-        "pyqt5-tools>=5.15.0; sys_platform == 'win32'",
+        "pyqt5-tools>=5.15.9.3.3; sys_platform == 'win32'",
         "matplotlib>=3.4.0",
         "numpy>=1.21.0",
         "scipy>=1.7.0",
-        "pyinstaller>=6.11.0",
         "requests>=2.30.0",
         "hdsemg-shared>=0.11.1",
         "pefile>=2023.2.7; sys_platform != 'win32'",

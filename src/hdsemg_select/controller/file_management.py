@@ -113,6 +113,8 @@ def save_selection(parent, output_file, emg_file: EMGFile, channel_status, chann
         options = QFileDialog.Options()
         # Suggest a default filename based on the original file name if available
         default_filename = emg_file.file_name if emg_file.file_name else "selection"
+        if not default_filename.lower().endswith(".mat"):
+            default_filename = os.path.splitext(default_filename)[0] + ".mat"
         # Start dialog with .mat filter as a common default for data
         file_dialog_path, selected_filter = QFileDialog.getSaveFileName(
             parent,
