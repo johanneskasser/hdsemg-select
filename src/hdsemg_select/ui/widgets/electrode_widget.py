@@ -6,6 +6,7 @@ from hdsemg_select.state.enum.layout_mode_enums import LayoutMode, FiberMode
 from hdsemg_select.state.state import global_state
 from hdsemg_select.ui.icons.custom_icon_enum import CustomIcon
 from hdsemg_select.ui.plot.signal_overview_plot import open_signal_plot_dialog
+from hdsemg_select.ui.theme import Colors, Spacing, BorderRadius, Styles
 
 
 class ElectrodeWidget(QWidget):
@@ -18,9 +19,7 @@ class ElectrodeWidget(QWidget):
         self.grid_label = QLabel("")
 
         rotate_button = QPushButton("Rotate View")
-        rotate_font = rotate_button.font()
-        rotate_font.setBold(True)
-        rotate_button.setFont(rotate_font)
+        rotate_button.setStyleSheet(Styles.button_primary())
         rotate_button.setToolTip("Rotate the application view to switch between parallel and perpendicular fiber orientations.")
         rotate_button.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         rotate_button.setIcon(self.style().standardIcon(QPushButton().style().SP_BrowserReload))
@@ -44,7 +43,7 @@ class ElectrodeWidget(QWidget):
 
         open_signal_overview_btn = QPushButton("Open Signal Overview")
         open_signal_overview_btn.setIcon(QIcon(CustomIcon.EXTEND.value))
-        open_signal_overview_btn.setFont(rotate_font)
+        open_signal_overview_btn.setStyleSheet(Styles.button_secondary())
         open_signal_overview_btn.setToolTip("Open signal overview window to visualize the selected grid in more detail and examine Action Potentials.")
         open_signal_overview_btn.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         open_signal_overview_btn.clicked.connect(self.open_signal_overview)
@@ -74,7 +73,7 @@ class ElectrodeWidget(QWidget):
                 lbl.setAlignment(Qt.AlignCenter)
                 lbl.setFont(font)
                 # Keep them transparent so we can show highlight behind them
-                lbl.setStyleSheet("background-color: white; border: 1px solid gray;")
+                lbl.setStyleSheet(f"background-color: {Colors.BG_PRIMARY}; border: 1px solid {Colors.BORDER_DEFAULT};")
                 self.grid_layout.addWidget(lbl, r, c)
                 row_labels.append(lbl)
             self.electrode_labels.append(row_labels)
@@ -105,9 +104,9 @@ class ElectrodeWidget(QWidget):
         r, c = self.map_channel_to_grid(grid_idx)
         if selected:
             # When selected, we can give a distinct style
-            self.electrode_labels[r][c].setStyleSheet("background-color: green; border: 1px solid black;")
+            self.electrode_labels[r][c].setStyleSheet(f"background-color: {Colors.GREEN_500}; border: 1px solid {Colors.GREEN_700};")
         else:
-            self.electrode_labels[r][c].setStyleSheet("background-color: white; border: 1px solid gray;")
+            self.electrode_labels[r][c].setStyleSheet(f"background-color: {Colors.BG_PRIMARY}; border: 1px solid {Colors.BORDER_DEFAULT};")
 
     def map_channel_to_grid(self, grid_idx):
         # Column major mapping

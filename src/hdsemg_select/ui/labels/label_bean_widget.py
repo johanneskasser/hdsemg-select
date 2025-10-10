@@ -1,6 +1,7 @@
 # ui/label_bean_widget.py
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QLabel
+from hdsemg_select.ui.theme import Colors, Spacing, BorderRadius
 
 
 class LabelBeanWidget(QLabel):
@@ -33,17 +34,17 @@ class LabelBeanWidget(QLabel):
         self.setMaximumHeight(20)
 
         # Set padding inside the label
-        self.setContentsMargins(5, 1, 5, 1)
+        self.setContentsMargins(Spacing.XS, 1, Spacing.XS, 1)
 
         # Apply a stylesheet for the bean appearance
         self.setStyleSheet(f"""
             QLabel {{
                 background-color: {self.color};
-                color: black; /* Text color */
-                border: 1px solid grey; /* Optional border */
-                border-radius: 10px; /* Half of height for rounded ends */
-                padding: 1px 5px; /* Padding */
-                margin: 0 2px; /* Margin between beans */
+                color: {Colors.TEXT_PRIMARY};
+                border: 1px solid {Colors.BORDER_DEFAULT};
+                border-radius: {BorderRadius.LG};
+                padding: 1px {Spacing.XS}px;
+                margin: 0 {Spacing.XS // 2}px;
             }}
         """)
 

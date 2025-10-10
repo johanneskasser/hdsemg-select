@@ -3,6 +3,7 @@ from enum import Enum
 from PyQt5.QtCore import QSize
 from PyQt5.QtGui import QIcon, QPixmap
 from PyQt5.QtWidgets import QPushButton
+from hdsemg_select.ui.theme import Styles
 
 
 class CustomIcon(Enum):
@@ -28,4 +29,4 @@ def set_button_icon(button: QPushButton, icon: CustomIcon, size: int = None):
     button.setIcon(icon.qicon)
     if size is not None:
         button.setIconSize(QSize(size, size))
-    button.setStyleSheet("QPushButton { border: none; }")
+    button.setStyleSheet(Styles.button_icon())

@@ -2,6 +2,7 @@ from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QFormLayout, QLabel, QSpinBox, QDoubleSpinBox,
     QDialogButtonBox, QSpacerItem, QSizePolicy
 )
+from hdsemg_select.ui.theme import Colors, Spacing, BorderRadius, Styles
 
 
 class DifferentialFilterSettingsDialog(QDialog):
@@ -25,6 +26,7 @@ class DifferentialFilterSettingsDialog(QDialog):
         form_layout.setRowWrapPolicy(QFormLayout.WrapAllRows)
 
         self.order_spinbox = QSpinBox()
+        self.order_spinbox.setStyleSheet(Styles.input_field())
         self.order_spinbox.setRange(2, 20)  # reasonable upper bound
         self.order_spinbox.setSingleStep(2)  # even numbers only
         default_n = int(self.params.get("n", 4))
@@ -43,6 +45,7 @@ class DifferentialFilterSettingsDialog(QDialog):
 
         # ----------------------------- Lower cut-off
         self.low_freq_spinbox = QDoubleSpinBox()
+        self.low_freq_spinbox.setStyleSheet(Styles.input_field())
         self.low_freq_spinbox.setRange(0.1, 5000.0)
         self.low_freq_spinbox.setDecimals(1)
         self.low_freq_spinbox.setSuffix(" Hz")
@@ -58,6 +61,7 @@ class DifferentialFilterSettingsDialog(QDialog):
         form_layout.addItem(QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Expanding))
 
         self.up_freq_spinbox = QDoubleSpinBox()
+        self.up_freq_spinbox.setStyleSheet(Styles.input_field())
         self.up_freq_spinbox.setRange(1.0, 5000.0)
         self.up_freq_spinbox.setDecimals(1)
         self.up_freq_spinbox.setSuffix(" Hz")
@@ -94,8 +98,8 @@ class DifferentialFilterSettingsDialog(QDialog):
         order_valid = (n % 2 == 0) and n >= 2
 
         # style feedback
-        self.up_freq_spinbox.setStyleSheet("" if freq_valid else "background:#FFCCCC;")
-        self.order_spinbox.setStyleSheet("" if order_valid else "background:#FFCCCC;")
+        self.up_freq_spinbox.setStyleSheet(Styles.input_field() if freq_valid else f"background-color: {Colors.RED_100}; border: 1px solid {Colors.RED_500};")
+        self.order_spinbox.setStyleSheet(Styles.input_field() if order_valid else f"background-color: {Colors.RED_100}; border: 1px solid {Colors.RED_500};")
 
         # tooltip feedback
         self.up_freq_spinbox.setToolTip("" if freq_valid

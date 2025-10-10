@@ -2,7 +2,7 @@
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QHBoxLayout, QPushButton,
     QFormLayout, QLineEdit, QColorDialog, QTableWidget, QTableWidgetItem,
-    QHeaderView, QMessageBox, QAbstractItemView
+    QHeaderView, QMessageBox, QAbstractItemView, QDialog, QDialogButtonBox
 )
 from PyQt5.QtGui import QColor
 from PyQt5.QtCore import Qt
@@ -11,6 +11,7 @@ import uuid
 
 from hdsemg_select.config.config_enums import Settings
 from hdsemg_select.ui.labels.label_bean_widget import LabelBeanWidget        # your bean
+from hdsemg_select.ui.theme import Colors, Spacing, BorderRadius, Styles, Fonts
 
 class CustomFlaggerSettingsTab(QWidget):
     """
@@ -26,28 +27,81 @@ class CustomFlaggerSettingsTab(QWidget):
     # ---------- UI ---------- #
     def _init_ui(self):
         vbox = QVBoxLayout(self)
+        vbox.setSpacing(Spacing.LG)
+        vbox.setContentsMargins(Spacing.MD, Spacing.MD, Spacing.MD, Spacing.MD)
+
+        # Header
+        header_label = QLabel("Custom Channel Labels")
+        header_label.setStyleSheet(Styles.label_heading(size="lg"))
+        vbox.addWidget(header_label)
 
         # ── Info
-        vbox.addWidget(QLabel(
-            "Define custom flags which can be added to each individual channel.\n"
-        ))
+        info_label = QLabel(
+            "Create custom labels that can be assigned to individual channels. "
+            "Use these to mark channels with specific characteristics or conditions."
+        )
+        info_label.setStyleSheet(Styles.label_secondary())
+        info_label.setWordWrap(True)
+        vbox.addWidget(info_label)
 
         # ── Table
         self.table = QTableWidget(0, 3)
-        self.table.setHorizontalHeaderLabels(["ID", "Name", "Preview"])
+        self.table.setStyleSheet(f"""
+            QTableWidget {{
+                background-color: {Colors.BG_PRIMARY};
+                border: 1px solid {Colors.BORDER_DEFAULT};
+                border-radius: {BorderRadius.MD};
+                gridline-color: {Colors.BORDER_MUTED};
+            }}
+            QTableWidget::item {{
+                padding: {Spacing.SM}px;
+            }}
+            QTableWidget::item:selected {{
+                background-color: {Colors.BLUE_100};
+                color: {Colors.TEXT_PRIMARY};
+            }}
+            QHeaderView::section {{
+                background-color: {Colors.BG_SECONDARY};
+                color: {Colors.TEXT_PRIMARY};
+                border: none;
+                border-bottom: 1px solid {Colors.BORDER_DEFAULT};
+                padding: {Spacing.SM}px;
+                font-weight: {Fonts.WEIGHT_SEMIBOLD};
+            }}
+        """)
+        self.table.setHorizontalHeaderLabels(["ID", "Label Name", "Preview"])
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.table.setAlternatingRowColors(True)
+
+        # Hide the ID column - it's only needed internally
+        self.table.setColumnHidden(self.COL_ID, True)
+
         vbox.addWidget(self.table)
 
         # ── Controls
         btn_row = QHBoxLayout()
-        self.btn_add    = QPushButton("Add")
-        self.btn_delete = QPushButton("Delete")
+        btn_row.setSpacing(Spacing.SM)
+
+        self.btn_add = QPushButton("Add New Label")
+        self.btn_add.setStyleSheet(Styles.button_primary())
+        self.btn_add.setToolTip("Create a new custom label")
+
+        self.btn_delete = QPushButton("Delete Selected")
+        self.btn_delete.setStyleSheet(Styles.button_danger())
+        self.btn_delete.setToolTip("Remove selected labels")
+
         btn_row.addWidget(self.btn_add)
         btn_row.addWidget(self.btn_delete)
         btn_row.addStretch()
         vbox.addLayout(btn_row)
+
+        # Info box
+        info_box = QLabel("💡 Tip: Double-click a label's preview to change its color. Custom labels are saved and persist across sessions.")
+        info_box.setStyleSheet(Styles.info_box(type="info"))
+        info_box.setWordWrap(True)
+        vbox.addWidget(info_box)
 
         # connect
         self.btn_add.clicked.connect(self._on_add)
@@ -119,50 +173,123 @@ class CustomFlaggerSettingsTab(QWidget):
         self.table.setCellWidget(row, self.COL_COLOR, bean)
 
 
-class _AddFlagDialog(QMessageBox):
+class _AddFlagDialog(QDialog):
     """
-    Simple modal pop-up collecting name / color.
+    Modal dialog for creating a new custom label.
     """
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("New Flag")
+        self.setWindowTitle("Create Custom Label")
+        self.setMinimumWidth(400)
+
+        layout = QVBoxLayout(self)
+        layout.setSpacing(Spacing.LG)
+        layout.setContentsMargins(Spacing.LG, Spacing.LG, Spacing.LG, Spacing.LG)
+
+        # Header
+        header_label = QLabel("New Custom Label")
+        header_label.setStyleSheet(Styles.label_heading(size="lg"))
+        layout.addWidget(header_label)
+
+        info_label = QLabel("Enter a name and choose a color for your custom label.")
+        info_label.setStyleSheet(Styles.label_secondary())
+        info_label.setWordWrap(True)
+        layout.addWidget(info_label)
+
+        # Form
+        form = QFormLayout()
+        form.setSpacing(Spacing.MD)
+        form.setLabelAlignment(Qt.AlignRight)
+        form.setFieldGrowthPolicy(QFormLayout.ExpandingFieldsGrow)
 
         # name
         self.name_edit = QLineEdit()
+        self.name_edit.setStyleSheet(Styles.input_field())
+        self.name_edit.setPlaceholderText("e.g., High Noise, Baseline Shift, etc.")
+        form.addRow("Label Name:", self.name_edit)
 
         # colour
-        self.color_btn = QPushButton("Pick…")
+        self.color_btn = QPushButton("Choose Color...")
+        self.color_btn.setStyleSheet(Styles.button_secondary())
         self.color_preview = QLabel(" ")
-        self.color_preview.setFixedSize(40, 20)
-        self._color = QColor("lightblue")
+        self.color_preview.setFixedSize(80, 24)
+        self.color_preview.setStyleSheet(f"border: 1px solid {Colors.BORDER_DEFAULT}; border-radius: {BorderRadius.SM};")
+        self._color = QColor(Colors.BLUE_500)
         self._update_color_preview()
         self.color_btn.clicked.connect(self._pick_color)
 
-        # layout
-        form = QFormLayout()
-        form.addRow("Name:", self.name_edit)
-
         col_layout = QHBoxLayout()
+        col_layout.setSpacing(Spacing.SM)
         col_layout.addWidget(self.color_btn)
         col_layout.addWidget(self.color_preview)
         col_layout.addStretch()
-        form.addRow("Color:", col_layout)
+        form.addRow("Label Color:", col_layout)
 
-        self.layout().addLayout(form, 0, 0)
+        layout.addLayout(form)
+
+        # Preview
+        preview_label = QLabel("Preview:")
+        preview_label.setStyleSheet(Styles.label_secondary())
+        layout.addWidget(preview_label)
+
+        self.preview_bean = LabelBeanWidget("Example Label", self._color.name())
+        preview_layout = QHBoxLayout()
+        preview_layout.addWidget(self.preview_bean)
+        preview_layout.addStretch()
+        layout.addLayout(preview_layout)
+
+        # Update preview on name change
+        self.name_edit.textChanged.connect(self._update_preview)
+
+        layout.addStretch()
 
         # buttons
-        self.addButton("Create", QMessageBox.AcceptRole)
-        self.addButton("Cancel",  QMessageBox.RejectRole)
+        button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        ok_button = button_box.button(QDialogButtonBox.Ok)
+        ok_button.setText("Create Label")
+        ok_button.setStyleSheet(Styles.button_primary())
+        cancel_button = button_box.button(QDialogButtonBox.Cancel)
+        cancel_button.setStyleSheet(Styles.button_secondary())
+
+        button_box.accepted.connect(self.accept)
+        button_box.rejected.connect(self.reject)
+        layout.addWidget(button_box)
 
     # ------- helpers
     def _pick_color(self):
-        c = QColorDialog.getColor(self._color, self, "Flag Color")
+        c = QColorDialog.getColor(self._color, self, "Choose Label Color")
         if c.isValid():
             self._color = c
             self._update_color_preview()
+            self._update_preview()
 
     def _update_color_preview(self):
-        self.color_preview.setStyleSheet(f"background:{self._color.name()};")
+        self.color_preview.setStyleSheet(f"""
+            background-color: {self._color.name()};
+            border: 1px solid {Colors.BORDER_DEFAULT};
+            border-radius: {BorderRadius.SM};
+        """)
+
+    def _update_preview(self):
+        """Update the preview bean with current name and color."""
+        name = self.name_edit.text() or "Example Label"
+        # Update the preview bean
+        if hasattr(self, 'preview_bean'):
+            # Remove old preview
+            old_bean = self.preview_bean
+            # Create new bean with updated values
+            self.preview_bean = LabelBeanWidget(name, self._color.name())
+            # Replace in layout
+            for i in range(self.layout().count()):
+                item = self.layout().itemAt(i)
+                if item and isinstance(item, QHBoxLayout):
+                    for j in range(item.count()):
+                        widget = item.itemAt(j).widget()
+                        if widget == old_bean:
+                            item.removeWidget(old_bean)
+                            old_bean.deleteLater()
+                            item.insertWidget(j, self.preview_bean)
+                            return
 
     # ------- API
     def values(self):
