@@ -16,6 +16,7 @@ class ElectrodeWidget(QWidget):
         self.grid_orientation = None
         self.parent = parent
         self.layout = QVBoxLayout(self)
+        self.layout.setContentsMargins(80, Spacing.MD, Spacing.MD, 80)  # Extra space on left and bottom for fiber arrow
         self.grid_label = QLabel("")
 
         rotate_button = QPushButton("Rotate View")
@@ -144,8 +145,8 @@ class ElectrodeWidget(QWidget):
         first_rect = first_lbl.geometry()
         last_rect = last_lbl.geometry()
 
-        # Semi-transparent yellow
-        yellow = QColor(255, 255, 0, 90)
+        # Semi-transparent yellow for highlighting current row/column
+        highlight_color = QColor(255, 255, 0, 90)
 
         # 1) Highlight a full ROW
         if self.grid_orientation == LayoutMode.ROWS and 0 <= self.highlight_index < rows:
@@ -158,7 +159,7 @@ class ElectrodeWidget(QWidget):
                 b.right() - a.left(),
                 a.height()
             )
-            painter.fillRect(span, yellow)
+            painter.fillRect(span, highlight_color)
 
         # 2) Highlight a full COLUMN
         elif self.grid_orientation == LayoutMode.COLUMNS and 0 <= self.highlight_index < cols:
@@ -171,7 +172,7 @@ class ElectrodeWidget(QWidget):
                 a.width(),
                 b.bottom() - a.top()
             )
-            painter.fillRect(span, yellow)
+            painter.fillRect(span, highlight_color)
 
         # 3) Draw the rounded‐rect outline around the entire grid
         padding = 10
@@ -181,7 +182,10 @@ class ElectrodeWidget(QWidget):
             (last_rect.right() - first_rect.left()) + 2 * padding,
             (last_rect.bottom() - first_rect.top()) + 2 * padding
         )
-        pen = QPen(Qt.black, 2)
+
+        # Use design system colors
+        border_color = QColor(Colors.BORDER_DEFAULT.lstrip('#'))
+        pen = QPen(border_color, 2)
         painter.setPen(pen)
         painter.setBrush(Qt.NoBrush)
         painter.drawRoundedRect(outline, 15, 15)
@@ -194,22 +198,56 @@ class ElectrodeWidget(QWidget):
         tab_rect = QRect(int(tab_x), int(tab_y), int(tab_w), tab_h)
         painter.drawRoundedRect(tab_rect, 10, 10)
 
-        # 5) Draw the muscle‐fiber arrow to the left
-        arrow_x = outline.left() - 40
-        pen_arrow = QPen(Qt.black, 3)
-        painter.setPen(pen_arrow)
-        painter.drawLine(arrow_x, outline.top(), arrow_x, outline.bottom())
-        painter.drawLine(arrow_x, outline.top(), arrow_x - 5, outline.top() + 10)
-        painter.drawLine(arrow_x, outline.top(), arrow_x + 5, outline.top() + 10)
+        # 5) Draw the muscle fiber direction indicator
+        if self.grid_orientation is not None:
+            arrow_color = QColor(Colors.BLUE_600.lstrip('#'))
+            pen_arrow = QPen(arrow_color, 3)
+            painter.setPen(pen_arrow)
 
-        # 6) Label “Muscle Fiber” along the arrow
-        painter.setPen(Qt.black)
-        painter.setFont(QFont("Arial", 10))
-        painter.save()
-        painter.translate(arrow_x - 10, (outline.top() + outline.bottom()) / 2)
-        painter.rotate(-90)
-        painter.drawText(-50, 0, "Muscle Fiber")
-        painter.restore()
+            if self.grid_orientation == LayoutMode.ROWS:
+                # Horizontal arrow BELOW the grid for ROWS (muscle fibers run horizontally)
+                arrow_start_y = tab_rect.bottom() + 15
+                arrow_y = arrow_start_y
+                arrow_start_x = outline.left() + 20
+                arrow_end_x = outline.right() - 20
+
+                # Draw horizontal line
+                painter.drawLine(int(arrow_start_x), int(arrow_y), int(arrow_end_x), int(arrow_y))
+                # Draw arrowheads at both ends
+                painter.drawLine(int(arrow_start_x), int(arrow_y), int(arrow_start_x + 10), int(arrow_y - 5))
+                painter.drawLine(int(arrow_start_x), int(arrow_y), int(arrow_start_x + 10), int(arrow_y + 5))
+                painter.drawLine(int(arrow_end_x), int(arrow_y), int(arrow_end_x - 10), int(arrow_y - 5))
+                painter.drawLine(int(arrow_end_x), int(arrow_y), int(arrow_end_x - 10), int(arrow_y + 5))
+
+                # Label centered below arrow
+                painter.setFont(QFont("Arial", 10, QFont.Bold))
+                label = "Muscle Fiber Direction"
+                label_width = painter.fontMetrics().horizontalAdvance(label)
+                label_x = outline.left() + (outline.width() - label_width) / 2
+                label_y = arrow_start_y + 35
+                painter.drawText(int(label_x), int(label_y), label)
+
+            elif self.grid_orientation == LayoutMode.COLUMNS:
+                # Vertical arrow LEFT of the grid for COLUMNS (muscle fibers run vertically)
+                arrow_x = outline.left() - 40
+                arrow_start_y = outline.top() + 20
+                arrow_end_y = outline.bottom() - 20
+
+                # Draw vertical line
+                painter.drawLine(int(arrow_x), int(arrow_start_y), int(arrow_x), int(arrow_end_y))
+                # Draw arrowheads at both ends
+                painter.drawLine(int(arrow_x), int(arrow_start_y), int(arrow_x - 5), int(arrow_start_y + 10))
+                painter.drawLine(int(arrow_x), int(arrow_start_y), int(arrow_x + 5), int(arrow_start_y + 10))
+                painter.drawLine(int(arrow_x), int(arrow_end_y), int(arrow_x - 5), int(arrow_end_y - 10))
+                painter.drawLine(int(arrow_x), int(arrow_end_y), int(arrow_x + 5), int(arrow_end_y - 10))
+
+                # Label rotated and positioned to the left of arrow
+                painter.setFont(QFont("Arial", 10, QFont.Bold))
+                painter.save()
+                painter.translate(arrow_x - 15, (outline.top() + outline.bottom()) / 2)
+                painter.rotate(-90)
+                painter.drawText(-60, 0, "Muscle Fiber Direction")
+                painter.restore()
 
     def open_signal_overview(self):
         """Open the Signal Overview Plot"""
