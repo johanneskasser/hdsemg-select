@@ -2,12 +2,14 @@
 
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QHBoxLayout,
-    QPushButton, QComboBox
+    QPushButton, QComboBox, QGroupBox, QFormLayout
 )
+from PyQt5.QtCore import Qt
 from hdsemg_select._log.log_config import logger
 import logging
 
 from hdsemg_select.config.config_enums import Settings
+from hdsemg_select.ui.theme import Colors, Spacing, BorderRadius, Styles
 
 class LoggingSettingsTab(QWidget):
     def __init__(self, parent=None):
@@ -21,32 +23,67 @@ class LoggingSettingsTab(QWidget):
         Initializes the UI elements for the logging settings tab.
         """
         layout = QVBoxLayout(self) # Use 'self' as the parent for the layout
+        layout.setSpacing(Spacing.LG)
+        layout.setContentsMargins(Spacing.MD, Spacing.MD, Spacing.MD, Spacing.MD)
 
-        info_label = QLabel("Set the logging level of the application.")
+        # Header
+        header_label = QLabel("Logging Configuration")
+        header_label.setStyleSheet(Styles.label_heading(size="lg"))
+        layout.addWidget(header_label)
+
+        info_label = QLabel(
+            "Control the verbosity of application logging. "
+            "Higher levels show fewer messages. Use DEBUG for troubleshooting and ERROR for production."
+        )
+        info_label.setStyleSheet(Styles.label_secondary())
+        info_label.setWordWrap(True)
         layout.addWidget(info_label)
 
-        # Horizontal layout row for the log level selection
-        h_layout = QHBoxLayout()
-        label = QLabel("Log Level:")
-        h_layout.addWidget(label)
+        # Log level selection group
+        log_group = QGroupBox("Log Level")
+        log_group.setStyleSheet(Styles.groupbox())
+        log_layout = QFormLayout(log_group)
+        log_layout.setSpacing(Spacing.MD)
+        log_layout.setLabelAlignment(Qt.AlignRight)
+        log_layout.setFieldGrowthPolicy(QFormLayout.ExpandingFieldsGrow)
 
         # Dropdown for selecting the log level
+        level_container = QHBoxLayout()
+        level_container.setSpacing(Spacing.SM)
+
         self.log_level_dropdown = QComboBox()
+        self.log_level_dropdown.setStyleSheet(Styles.combobox())
         # Ensure the items match logging levels
         self.log_level_dropdown.addItems(["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"])
-        h_layout.addWidget(self.log_level_dropdown)
+        level_container.addWidget(self.log_level_dropdown, 1)
 
         # Button to confirm the new log level
         self.set_level_button = QPushButton("Apply")
-        h_layout.addWidget(self.set_level_button)
+        self.set_level_button.setStyleSheet(Styles.button_primary())
+        self.set_level_button.setToolTip("Apply the selected log level immediately")
+        level_container.addWidget(self.set_level_button)
+
+        log_layout.addRow("Logging Level:", level_container)
 
         # Label to display the current log level
         self.current_log_level_label = QLabel()
-        # Initial text will be set by loadSettings
-        # self.current_log_level_label.setText(f"Current: <b>{logging.getLevelName(logger.getEffectiveLevel())}</b>") # Removed, loadSettings will handle
-        layout.addLayout(h_layout)
+        self.current_log_level_label.setStyleSheet(Styles.label_secondary())
+        log_layout.addRow("Current Level:", self.current_log_level_label)
 
-        layout.addWidget(self.current_log_level_label) # Add label below the HBox
+        layout.addWidget(log_group)
+
+        # Info about log levels
+        level_info_box = QLabel(
+            "<b>Log Levels:</b><br>"
+            "• <b>DEBUG</b>: Detailed diagnostic information<br>"
+            "• <b>INFO</b>: General informational messages<br>"
+            "• <b>WARNING</b>: Warning messages for potential issues<br>"
+            "• <b>ERROR</b>: Error messages for failures<br>"
+            "• <b>CRITICAL</b>: Critical errors only"
+        )
+        level_info_box.setStyleSheet(Styles.info_box(type="info"))
+        level_info_box.setWordWrap(True)
+        layout.addWidget(level_info_box)
 
         layout.addStretch(1) # Push content to top
 
@@ -73,7 +110,7 @@ class LoggingSettingsTab(QWidget):
                  handler.setLevel(new_level)
 
             effective_level_name = logging.getLevelName(logger.getEffectiveLevel())
-            self.current_log_level_label.setText(f"Current: <b>{effective_level_name}</b>")
+            self.current_log_level_label.setText(f"<b>{effective_level_name}</b>")
             # Ensure dropdown reflects the level that was just set (useful if loading sets it)
             index = self.log_level_dropdown.findText(level_text.upper())
             if index != -1:
