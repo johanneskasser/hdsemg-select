@@ -4,6 +4,7 @@ from functools import partial
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QCheckBox, QPushButton,
                              QScrollArea, QHBoxLayout, QMenu)
+from hdsemg_select.ui.theme import Colors, Spacing, BorderRadius, Styles
 
 
 class LabelSelectionWidget(QWidget):
@@ -21,8 +22,8 @@ class LabelSelectionWidget(QWidget):
                                         any(avail_lbl["id"] == lbl["id"] for avail_lbl in available_labels)]
 
         self.main_layout = QVBoxLayout(self)
-        self.main_layout.setContentsMargins(5, 5, 5, 5)
-        self.main_layout.setSpacing(5)
+        self.main_layout.setContentsMargins(Spacing.XS, Spacing.XS, Spacing.XS, Spacing.XS)
+        self.main_layout.setSpacing(Spacing.XS)
 
         self.scroll_area = QScrollArea(self)
         self.scroll_area.setWidgetResizable(True)
@@ -33,7 +34,7 @@ class LabelSelectionWidget(QWidget):
         self.checkbox_widget = QWidget()
         self.checkbox_layout = QVBoxLayout(self.checkbox_widget)
         self.checkbox_layout.setContentsMargins(0, 0, 0, 0)
-        self.checkbox_layout.setSpacing(3)
+        self.checkbox_layout.setSpacing(Spacing.XS // 2)
 
         self.checkboxes = {}
 
@@ -54,6 +55,7 @@ class LabelSelectionWidget(QWidget):
         # --- Buttons ---
         self.button_layout = QHBoxLayout()
         self.apply_button = QPushButton("Apply")
+        self.apply_button.setStyleSheet(Styles.button_primary())
         self.apply_button.clicked.connect(self._apply_changes)
 
         self.button_layout.addStretch()

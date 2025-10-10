@@ -2,6 +2,7 @@ from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QComboBox, QPushButton
 
 from hdsemg_select.state.enum.layout_mode_enums import FiberMode, LayoutMode
 from hdsemg_select.state.state import global_state
+from hdsemg_select.ui.theme import Colors, Spacing, BorderRadius, Styles
 
 
 class GridOrientationDialog(QDialog):
@@ -20,6 +21,7 @@ class GridOrientationDialog(QDialog):
         layout.addWidget(grid_label)
 
         self.grid_combo = QComboBox()
+        self.grid_combo.setStyleSheet(Styles.combobox())
         for grid in grids:
             self.grid_combo.addItem(grid.grid_key)
 
@@ -44,6 +46,7 @@ class GridOrientationDialog(QDialog):
         layout.addLayout(orientation_label_layout)
 
         self.orientation_combo = QComboBox()
+        self.orientation_combo.setStyleSheet(Styles.combobox())
         self.orientation_combo.addItem("Rows parallel to fibers", LayoutMode.ROWS)
         self.orientation_combo.addItem("Columns parallel to fibers", LayoutMode.COLUMNS)
 
@@ -56,6 +59,7 @@ class GridOrientationDialog(QDialog):
         layout.addWidget(self.orientation_combo)
 
         ok_button = QPushButton("OK")
+        ok_button.setStyleSheet(Styles.button_primary())
         ok_button.clicked.connect(self.on_ok)
         layout.addWidget(ok_button)
 

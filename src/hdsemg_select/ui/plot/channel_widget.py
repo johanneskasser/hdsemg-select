@@ -14,6 +14,7 @@ from hdsemg_select.config.config_manager import config # For getting available l
 from hdsemg_select.ui.labels.label_bean_widget import LabelBeanWidget
 from hdsemg_select.ui.labels.label_selection_widget import LabelSelectionWidget
 from hdsemg_select._log.log_config import logger
+from hdsemg_select.ui.theme import Colors, Spacing, BorderRadius, Styles
 
 class ChannelWidget(QWidget):
     channel_status_changed = pyqtSignal(int, int)  # channel_idx, state (Qt.Checked/Unchecked)
@@ -32,8 +33,8 @@ class ChannelWidget(QWidget):
         self._overlay_ref_signal = _overlay_ref_signal
 
         self.main_layout = QVBoxLayout(self)
-        self.main_layout.setContentsMargins(5, 5, 5, 5)
-        self.main_layout.setSpacing(5)
+        self.main_layout.setContentsMargins(Spacing.XS, Spacing.XS, Spacing.XS, Spacing.XS)
+        self.main_layout.setSpacing(Spacing.XS)
 
         self.figure = Figure(figsize=(4, 2), dpi=100)
         self.canvas = FigureCanvas(self.figure)
@@ -45,7 +46,7 @@ class ChannelWidget(QWidget):
 
         self.labels_h_layout = QHBoxLayout()
         self.labels_h_layout.setContentsMargins(0, 0, 0, 0)
-        self.labels_h_layout.setSpacing(3)
+        self.labels_h_layout.setSpacing(Spacing.XS // 2)
         self.controls_layout.addLayout(self.labels_h_layout)
 
         self.label_widgets = []
@@ -65,7 +66,7 @@ class ChannelWidget(QWidget):
 
         self.buttons_h_layout = QHBoxLayout()
         self.buttons_h_layout.setContentsMargins(0, 0, 0, 0)
-        self.buttons_h_layout.setSpacing(5)
+        self.buttons_h_layout.setSpacing(Spacing.XS)
         self.controls_layout.addLayout(self.buttons_h_layout)
 
         self.checkbox = QCheckBox(f"Ch {self.channel_number}")
@@ -76,6 +77,7 @@ class ChannelWidget(QWidget):
         self.buttons_h_layout.addStretch(1)
 
         self.view_button = QPushButton()
+        self.view_button.setStyleSheet(Styles.button_icon())
         self.view_button.setIcon(QIcon(":/resources/extend.png"))
         self.view_button.setToolTip("View Time Series")
         self.view_button.setFixedSize(30, 30)
@@ -83,6 +85,7 @@ class ChannelWidget(QWidget):
         self.buttons_h_layout.addWidget(self.view_button)
 
         self.spectrum_button = QPushButton()
+        self.spectrum_button.setStyleSheet(Styles.button_icon())
         self.spectrum_button.setIcon(QIcon(":/resources/frequency.png"))
         self.spectrum_button.setToolTip("View Frequency Spectrum")
         self.spectrum_button.setFixedSize(30, 30)

@@ -16,6 +16,7 @@ from hdsemg_shared.preprocessing.differential import to_differential
 
 from hdsemg_select.ui.dialog.differential_filter_settings_dialog import DifferentialFilterSettingsDialog
 from hdsemg_select.ui.icons.custom_icon_enum import CustomIcon, set_button_icon
+from hdsemg_select.ui.theme import Colors, Spacing, BorderRadius, Styles
 
 
 def _normalize_trace(trace: np.ndarray, max_amp: float = 1.1) -> np.ndarray:
@@ -86,10 +87,11 @@ class SignalPlotDialog(QDialog):
     def _create_view_settings(self):
         box = QGroupBox("View Settings")
         box.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
+        box.setStyleSheet(Styles.groupbox())
 
         main_layout = QVBoxLayout()
-        main_layout.setContentsMargins(8, 8, 8, 8)
-        main_layout.setSpacing(10)
+        main_layout.setContentsMargins(Spacing.SM, Spacing.SM, Spacing.SM, Spacing.SM)
+        main_layout.setSpacing(Spacing.MD)
 
         # --- Orientation Toggle ---
         orientation_layout = QHBoxLayout()
@@ -127,13 +129,14 @@ class SignalPlotDialog(QDialog):
         separator = QWidget()
         separator.setFixedHeight(1)
         separator.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        separator.setStyleSheet("background-color: #c0c0c0;")
+        separator.setStyleSheet(f"background-color: {Colors.BORDER_DEFAULT};")
         main_layout.addWidget(separator)
 
         # --- Filter Settings ---
         filter_layout = QHBoxLayout()
         lbl_signal_type = QLabel("Signal Type:")
         self.signal_mode_combo = QComboBox()
+        self.signal_mode_combo.setStyleSheet(Styles.combobox())
         self.signal_mode_combo.addItems(["Monopolar (MP)", "Single Differential (SD)", "Double Differential (DD)"])
         self.signal_mode_combo.currentTextChanged.connect(self._on_signal_mode_changed)
 

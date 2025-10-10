@@ -3,6 +3,7 @@ from PyQt5.QtGui import QIntValidator
 from hdsemg_select._log.log_config import logger
 from hdsemg_select.state.state import global_state
 from hdsemg_select.ui.labels.base_labels import BaseChannelLabel
+from hdsemg_select.ui.theme import Colors, Spacing, BorderRadius, Styles
 
 
 class AutomaticAmplitudeSelection:
@@ -53,6 +54,7 @@ class AutomaticAmplitudeSelection:
 
         lower_layout = QHBoxLayout()
         lower_input = QLineEdit()
+        lower_input.setStyleSheet(Styles.input_field())
         lower_input.setValidator(QIntValidator(0, 1000000))
         lower_input.setText(str(self.lower_threshold))
         lower_layout.addWidget(lower_input)
@@ -66,6 +68,7 @@ class AutomaticAmplitudeSelection:
 
         upper_layout = QHBoxLayout()
         upper_input = QLineEdit()
+        upper_input.setStyleSheet(Styles.input_field())
         upper_input.setValidator(QIntValidator(0, 1000000))
         upper_input.setText(str(self.upper_threshold))
         upper_layout.addWidget(upper_input)
@@ -84,10 +87,12 @@ class AutomaticAmplitudeSelection:
         button_layout = QHBoxLayout()
 
         ok_button = QPushButton("OK")
+        ok_button.setStyleSheet(Styles.button_primary())
         ok_button.clicked.connect(lambda: self.save_thresholds(dialog, lower_input, upper_input))
         button_layout.addWidget(ok_button)
 
         cancel_button = QPushButton("Cancel")
+        cancel_button.setStyleSheet(Styles.button_secondary())
         cancel_button.clicked.connect(dialog.reject)
         button_layout.addWidget(cancel_button)
 

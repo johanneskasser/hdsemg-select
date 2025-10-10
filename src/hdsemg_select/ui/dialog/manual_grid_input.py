@@ -10,6 +10,8 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 import numpy as np
 
+from hdsemg_select.ui.theme import Colors, Spacing, BorderRadius, Styles
+
 logger = logging.getLogger("hdsemg")
 
 
@@ -27,12 +29,14 @@ def manual_grid_input(total_channels, time, scaled_data):
     layout.addLayout(grid_entries_layout)
 
     add_grid_button = QPushButton("+")
+    add_grid_button.setStyleSheet(Styles.button_secondary())
     add_grid_button.setToolTip("Add another grid size entry")
     add_grid_button.clicked.connect(lambda: add_grid_entry(grid_entries_layout))
     layout.addWidget(add_grid_button)
 
     # Button to open the channel selection widget
     channel_selection_button = QPushButton("View Raw Channels")
+    channel_selection_button.setStyleSheet(Styles.button_secondary())
     channel_selection_button.setToolTip("Open interactive channel selection Viewer [BETA]")
     channel_selection_button.clicked.connect(lambda: open_all_channels_overview(total_channels, scaled_data, time))
     layout.addWidget(channel_selection_button)
@@ -40,11 +44,13 @@ def manual_grid_input(total_channels, time, scaled_data):
     # Dialog buttons
     button_layout = QHBoxLayout()
     ok_button = QPushButton("OK")
+    ok_button.setStyleSheet(Styles.button_primary())
     ok_button.setToolTip("Confirm grid sizes")
     ok_button.clicked.connect(dialog.accept)
     button_layout.addWidget(ok_button)
 
     cancel_button = QPushButton("Cancel")
+    cancel_button.setStyleSheet(Styles.button_secondary())
     cancel_button.clicked.connect(dialog.reject)
     button_layout.addWidget(cancel_button)
 
@@ -61,6 +67,7 @@ def add_grid_entry(grid_entries_layout):
     grid_row = QHBoxLayout()
 
     rows_input = QLineEdit()
+    rows_input.setStyleSheet(Styles.input_field())
     rows_input.setPlaceholderText("Rows")
     rows_input.setValidator(QIntValidator(1, 100))  # Accept integers between 1 and 100
     rows_input.setToolTip("Enter the number of rows for the grid")
@@ -70,6 +77,7 @@ def add_grid_entry(grid_entries_layout):
     grid_row.addWidget(x_label)
 
     cols_input = QLineEdit()
+    cols_input.setStyleSheet(Styles.input_field())
     cols_input.setPlaceholderText("Columns")
     cols_input.setValidator(QIntValidator(1, 100))  # Accept integers between 1 and 100
     cols_input.setToolTip("Enter the number of columns for the grid")
@@ -79,6 +87,7 @@ def add_grid_entry(grid_entries_layout):
     grid_row.addWidget(ref_label)
 
     ref_input = QLineEdit()
+    ref_input.setStyleSheet(Styles.input_field())
     ref_input.setPlaceholderText("References")
     ref_input.setValidator(QIntValidator(1, 100))
     ref_input.setToolTip("Enter the number of reference signals for the grid")
@@ -167,10 +176,12 @@ def open_all_channels_overview(total_channels, scaled_data, time):
     layout.addWidget(label)
 
     progress_bar = QProgressBar()
+    progress_bar.setStyleSheet(Styles.progress_bar())
     progress_bar.setRange(0, 100)
     layout.addWidget(progress_bar)
 
     cancel_button = QPushButton("Cancel")
+    cancel_button.setStyleSheet(Styles.button_secondary())
     layout.addWidget(cancel_button)
 
     progress_dialog.setLayout(layout)
@@ -243,6 +254,7 @@ def open_all_channels_overview(total_channels, scaled_data, time):
 
         # Add close button
         close_button = QPushButton("Close")
+        close_button.setStyleSheet(Styles.button_secondary())
         close_button.clicked.connect(overview_dialog.accept)
         layout.addLayout(hlayout)
         layout.addWidget(close_button)

@@ -1,5 +1,6 @@
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtWidgets import QFrame, QVBoxLayout, QLabel
+from hdsemg_select.ui.theme import Colors, Spacing, BorderRadius, Styles
 
 
 class ClickableGridInfoWidget(QFrame):
@@ -18,7 +19,7 @@ class ClickableGridInfoWidget(QFrame):
         self.setCursor(Qt.PointingHandCursor)  # Cursor bei Hover auf Zeiger setzen
 
         self._layout = QVBoxLayout(self)
-        self._layout.setContentsMargins(5, 5, 5, 5)
+        self._layout.setContentsMargins(Spacing.XS, Spacing.XS, Spacing.XS, Spacing.XS)
 
         self.text_label = QLabel("")
         self.text_label.setAlignment(Qt.AlignCenter)
