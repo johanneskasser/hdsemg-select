@@ -110,6 +110,8 @@ class MenuManager:
     def _perform_save_selection(self, parent_window):
         """
         Collects necessary data from global_state and calls the save_selection function.
+        If an output_file was provided via command-line arguments and save is successful,
+        automatically closes the application.
         """
         # Retrieve all required data from the global_state singleton
         channel_status = global_state.get_channel_status()
@@ -117,13 +119,17 @@ class MenuManager:
         output_file = global_state.get_output_file()
         emg_file = global_state.get_emg_file()
 
-        save_selection(
+        save_success = save_selection(
             parent=parent_window,
             output_file=output_file,
             emg_file=emg_file,
             channel_status=channel_status,
             channel_labels=channel_labels  # Pass the collected labels
         )
+
+        # If output_file was provided (via command-line) and save was successful, close the app
+        if output_file and save_success:
+            parent_window.close()
 
     def _init_arrow_key_navigation(self, parent_window):
         """
