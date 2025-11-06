@@ -100,6 +100,7 @@ def save_selection(parent, output_file, emg_file: EMGFile, channel_status, chann
     :param channel_status: List/array of booleans for selection status.
     :param emg_file: The EMGFile object containing data, time, description, and sampling frequency.
     :param channel_labels: Dictionary of channel indices to labels.
+    :return: True if save was successful, False if cancelled or failed.
     """
 
     if output_file:
@@ -125,7 +126,7 @@ def save_selection(parent, output_file, emg_file: EMGFile, channel_status, chann
         )
 
         if not file_dialog_path:
-            return # User cancelled
+            return False # User cancelled
 
         # Derive both .mat and .json paths from the user's chosen path
         base_path_without_ext, _ = os.path.splitext(file_dialog_path)
@@ -186,6 +187,7 @@ def save_selection(parent, output_file, emg_file: EMGFile, channel_status, chann
             "\n".join(messages), # Join all save messages
             QMessageBox.Ok
         )
+        return True
     else:
          QMessageBox.warning(
             parent,
@@ -193,6 +195,7 @@ def save_selection(parent, output_file, emg_file: EMGFile, channel_status, chann
             "Some files may not have been saved correctly:\n" + "\n".join(messages),
             QMessageBox.Ok
          )
+         return False
 
 def save_selection_to_json(file_path: str,
                            file_name: str,
