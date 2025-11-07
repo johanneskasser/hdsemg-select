@@ -138,16 +138,12 @@ def save_selection(parent, output_file, emg_file: EMGFile, channel_status, chann
     save_success = True
     messages = []
 
-    # Save .mat file
+    # Save .mat file (keeping all channels, JSON will indicate which are good/bad)
     try:
         # Ensure we only save if data is available for the .mat file
         if emg_file.data is not None and emg_file.time is not None and emg_file.description is not None:
-            data_mat, description_mat = clean_data_and_description_signal(channel_status, emg_file.data, emg_file.description)
-            # Save the selection to .mat file
-            emg_file_copy = emg_file.copy()
-            emg_file_copy.data = data_mat
-            emg_file_copy.description = description_mat
-            emg_file_copy.save(save_path=mat_file_path)
+            # Save all channels without filtering (JSON contains selection info)
+            emg_file.save(save_path=mat_file_path)
             messages.append(f"Saved .mat to {Path(mat_file_path).name}")
         else:
              messages.append(".mat file skipped (data not available)")
