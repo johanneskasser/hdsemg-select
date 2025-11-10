@@ -22,13 +22,17 @@ class State(QObject):
         return cls._instance
 
     def reset(self):
+        # Preserve command-line arguments through reset
+        input_file = self._input_file if hasattr(self, '_input_file') else None
+        output_file = self._output_file if hasattr(self, '_output_file') else None
+
         self._channel_status = []
         self._file_path = None
         self._scaled_data = None
         self._emg_file = None
         self._channel_labels = {}
-        self._input_file = None
-        self._output_file = None
+        self._input_file = input_file
+        self._output_file = output_file
         self.max_amplitude = None
         # default fallback
         self._fiber_to_layout: Dict[FiberMode, LayoutMode] = {

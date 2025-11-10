@@ -109,6 +109,21 @@ def save_selection(parent, output_file, emg_file: EMGFile, channel_status, chann
         mat_file_path = f"{base_path_without_ext}.mat"
         json_file_path = f"{base_path_without_ext}.json"
         base_path = base_path_without_ext # Store base name for message
+
+        # Ensure parent directory exists when using command-line output path
+        parent_dir = os.path.dirname(mat_file_path)
+        if parent_dir and not os.path.exists(parent_dir):
+            try:
+                os.makedirs(parent_dir, exist_ok=True)
+                logger.info(f"Created output directory: {parent_dir}")
+            except OSError as e:
+                logger.error(f"Failed to create output directory {parent_dir}: {e}")
+                QMessageBox.critical(
+                    parent,
+                    "Save Error",
+                    f"Could not create output directory:\n{parent_dir}\n\nError: {e}"
+                )
+                return False
     else:
         # If no output_file, open save dialog. User selects one path, we derive the other.
         options = QFileDialog.Options()
