@@ -109,6 +109,21 @@ def save_selection(parent, output_file, emg_file: EMGFile, channel_status, chann
         mat_file_path = f"{base_path_without_ext}.mat"
         json_file_path = f"{base_path_without_ext}.json"
         base_path = base_path_without_ext # Store base name for message
+
+        # Ensure parent directory exists when using command-line output path
+        parent_dir = os.path.dirname(mat_file_path)
+        if parent_dir and not os.path.exists(parent_dir):
+            try:
+                os.makedirs(parent_dir, exist_ok=True)
+                logger.info(f"Created output directory: {parent_dir}")
+            except OSError as e:
+                logger.error(f"Failed to create output directory {parent_dir}: {e}")
+                QMessageBox.critical(
+                    parent,
+                    "Save Error",
+                    f"Could not create output directory:\n{parent_dir}\n\nError: {e}"
+                )
+                return False
     else:
         # If no output_file, open save dialog. User selects one path, we derive the other.
         options = QFileDialog.Options()
@@ -138,16 +153,12 @@ def save_selection(parent, output_file, emg_file: EMGFile, channel_status, chann
     save_success = True
     messages = []
 
-    # Save .mat file
+    # Save .mat file (keeping all channels, JSON will indicate which are good/bad)
     try:
         # Ensure we only save if data is available for the .mat file
         if emg_file.data is not None and emg_file.time is not None and emg_file.description is not None:
-            data_mat, description_mat = clean_data_and_description_signal(channel_status, emg_file.data, emg_file.description)
-            # Save the selection to .mat file
-            emg_file_copy = emg_file.copy()
-            emg_file_copy.data = data_mat
-            emg_file_copy.description = description_mat
-            emg_file_copy.save(save_path=mat_file_path)
+            # Save all channels without filtering (JSON contains selection info)
+            emg_file.save(save_path=mat_file_path)
             messages.append(f"Saved .mat to {Path(mat_file_path).name}")
         else:
              messages.append(".mat file skipped (data not available)")
