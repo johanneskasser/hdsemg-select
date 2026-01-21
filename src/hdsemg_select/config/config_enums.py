@@ -1,4 +1,4 @@
-from enum import Enum, auto
+from enum import Enum
 
 
 class Settings(Enum):
@@ -11,8 +11,8 @@ class Settings(Enum):
     AUTO_FLAGGER_CHECK_60HZ = "auto_flagger_check_60hz"
     AUTO_FLAGGER_NOISE_FREQ_BAND_HZ = "auto_flagger_noise_freq_band_hz"
 
-    CUSTOM_FLAGS = auto()
-    CUSTOM_FLAG_NAMES = auto()
-    CUSTOM_FLAG_LAST_ID = auto() #running ID generator
+    CUSTOM_FLAGS = "custom_flags"
+    CUSTOM_FLAG_NAMES = "custom_flag_names"
+    CUSTOM_FLAG_LAST_ID = "custom_flag_last_id"  # running ID generator
 
 
