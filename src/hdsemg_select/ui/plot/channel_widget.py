@@ -170,8 +170,19 @@ class ChannelWidget(QWidget):
             widget.deleteLater()
         self.label_widgets = []
 
+        # Get RMS quality value for this channel (if available)
+        rms_quality = global_state.get_rms_quality(self.channel_idx)
+
         for label in sorted(self._current_labels, key=lambda x: x.get("name", "")):
-            bean = LabelBeanWidget(label.get("name"), color=label.get("color", "lightblue"))
+            label_name = label.get("name", "")
+
+            # For RMS labels, append the quality value if available
+            if label_name.startswith("RMS:") and rms_quality:
+                display_name = f"{label_name} ({rms_quality})"
+            else:
+                display_name = label_name
+
+            bean = LabelBeanWidget(display_name, color=label.get("color", "lightblue"))
             self.labels_h_layout.insertWidget(self.labels_h_layout.count() - 2, bean)
             self.label_widgets.append(bean)
 
@@ -179,9 +190,14 @@ class ChannelWidget(QWidget):
             if self._current_labels:
                 tooltip_text = f"Edit labels for Channel {self.channel_number}:\n" + \
                                ", ".join(label.get("name", "") for label in self._current_labels)
+                if rms_quality:
+                    tooltip_text += f"\n\nRMS Quality: {rms_quality}"
                 self.add_label_button.setToolTip(tooltip_text)
             else:
-                self.add_label_button.setToolTip(f"Add labels for Channel {self.channel_number}")
+                tooltip_text = f"Add labels for Channel {self.channel_number}"
+                if rms_quality:
+                    tooltip_text += f"\n\nRMS Quality: {rms_quality}"
+                self.add_label_button.setToolTip(tooltip_text)
 
     def update_channel_status(self, status: bool):
         self.checkbox.blockSignals(True)

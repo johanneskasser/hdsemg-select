@@ -7,7 +7,7 @@ from PyQt5.QtCore import Qt
 
 from hdsemg_select._log.exception_hook import exception_hook
 from hdsemg_select._log.log_config import setup_logging
-
+from hdsemg_select.ui.palette import get_palette
 from PyQt5.QtWidgets import (
     QApplication
 )
@@ -15,6 +15,11 @@ from PyQt5.QtWidgets import (
 from hdsemg_select.ui.main_window import ChannelSelector
 
 def main():
+    # Force light mode on macOS 
+    # This prevents the system's dark mode from interfering with the app's custom theme.
+    if sys.platform == 'darwin':
+        os.environ['QT_MAC_WANTS_LIGHT_THEME'] = '1'
+
     setup_logging()
     sys.excepthook = exception_hook
     logger = logging.getLogger("hdsemg")
@@ -32,6 +37,7 @@ def main():
     app = QApplication(sys.argv)
     window = ChannelSelector(input_file=args.inputFile, output_file=args.outputFile)
     window.showMaximized()
+    window.setPalette(get_palette())
 
     # If an input file was specified, load it automatically.
     if args.inputFile:

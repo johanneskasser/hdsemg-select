@@ -8,6 +8,9 @@ class BaseChannelLabel(Enum):
     ARTIFACT = {"id": 4, "name": "Artifact", "color": Colors.YELLOW_600}
     BAD_CHANNEL = {"id": 5, "name": "Bad Channel", "color": Colors.RED_600}
     REFERENCE_SIGNAL = {"id": 6, "name": "Reference Signal", "color": Colors.GREEN_500}
+    RMS_EXCELLENT = {"id": 7, "name": "RMS: Excellent", "color": Colors.GREEN_600}
+    RMS_GOOD = {"id": 8, "name": "RMS: Good", "color": Colors.GREEN_500}
+    RMS_OK = {"id": 9, "name": "RMS: OK", "color": Colors.YELLOW_500}
 
     @classmethod
     def get_by_name(cls, name: str):
