@@ -7,7 +7,7 @@ from PyQt5.QtCore import Qt
 
 from hdsemg_select._log.exception_hook import exception_hook
 from hdsemg_select._log.log_config import setup_logging
-from hdsemg_select.ui.palette import get_palette
+from hdsemg_select.ui.theme import get_app_stylesheet
 from PyQt5.QtWidgets import (
     QApplication
 )
@@ -37,7 +37,7 @@ def main():
     app = QApplication(sys.argv)
     window = ChannelSelector(input_file=args.inputFile, output_file=args.outputFile)
     window.showMaximized()
-    window.setPalette(get_palette())
+    app.setStyleSheet(get_app_stylesheet())
 
     # If an input file was specified, load it automatically.
     if args.inputFile:
