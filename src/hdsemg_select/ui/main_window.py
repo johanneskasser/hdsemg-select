@@ -10,6 +10,7 @@ from hdsemg_select._log.log_config import logger
 from hdsemg_select.config.config_enums import Settings
 from hdsemg_select.controller.file_management import FileManager
 from hdsemg_select.controller.grid_setup_handler import GridSetupHandler
+from hdsemg_select.controller.rms_loader import RMSLoader
 from hdsemg_select.controller.menu_manager import MenuManager
 from hdsemg_select.select_logic.auto_flagger import AutoFlagger
 from hdsemg_select.select_logic.channel_management import select_all_channels, update_channel_status_single, count_selected_channels
@@ -288,6 +289,9 @@ class ChannelSelector(QMainWindow):
             self.electrode_widget.set_orientation_highlight(self.grid_setup_handler.get_orientation(),
                                                             self.grid_setup_handler.get_current_page())
 
+            # Apply RMS labels for the selected grid (if RMS data available)
+            self._apply_rms_labels_for_grid(selected_grid)
+
             self.display_page(orientation_changed)  # Refresh the display
 
             # Enable relevant actions
@@ -301,6 +305,51 @@ class ChannelSelector(QMainWindow):
             # Grid setup failed (message box already shown by handler)
             dialog.reject()
             pass
+
+    def _apply_rms_labels_for_grid(self, grid_key: str):
+        """
+        Applies RMS quality labels to channels for the selected grid.
+        Maps RMS data channel numbers (0-indexed) to channel indices.
+        """
+        raw_rms_data = global_state.get_raw_rms_data()
+        if raw_rms_data is None:
+            return
+
+        # Find matching RMS grid data
+        rms_channel_data = RMSLoader.find_matching_grid(raw_rms_data, grid_key)
+        if rms_channel_data is None:
+            logger.debug(f"No RMS data matches grid '{grid_key}'")
+            return
+
+        # Get the grid to map channel numbers to indices
+        grid = global_state.get_emg_file().get_grid(grid_key=grid_key)
+        if grid is None:
+            return
+
+        # Map 0-indexed channel numbers from RMS to EMG indices
+        emg_indices = grid.emg_indices
+        rms_quality_map = {}
+
+        for position_0indexed, rms_data in rms_channel_data.items():
+            # position_0indexed is the channel number in RMS file (0-indexed)
+            if 0 <= position_0indexed < len(emg_indices):
+                channel_idx = emg_indices[position_0indexed]
+                if channel_idx is not None:
+                    # Get the BaseChannelLabel for this RMS quality
+                    label = rms_data.get_base_label()
+                    if label:
+                        # Add label to channel (preserving existing labels)
+                        existing_labels = global_state.get_channel_labels(channel_idx)
+                        # Avoid duplicates based on label id
+                        if not any(l.get("id") == label.get("id") for l in existing_labels):
+                            new_labels = existing_labels + [label]
+                            global_state.update_channel_labels(channel_idx, new_labels)
+
+                    # Store RMS quality string for tooltip display
+                    rms_quality_map[channel_idx] = rms_data.rms_quality
+
+        global_state.set_rms_quality_data(rms_quality_map)
+        logger.info(f"Applied RMS labels to {len(rms_quality_map)} channels for grid '{grid_key}'")
 
     def toggle_select_all(self, shortcut=False):
         """Toggles selection status for all channels."""

@@ -12,11 +12,27 @@ from hdsemg_select.select_logic.data_processing import compute_upper_quartile, s
 from hdsemg_select.state.state import global_state
 from hdsemg_select._log.log_config import logger
 from hdsemg_select.ui.dialog.manual_grid_input import manual_grid_input
+from hdsemg_select.controller.rms_loader import RMSLoader
 
 
 class FileManager:
     def __init__(self):
         self.upper_quartile = None
+
+    def _load_rms_data(self, file_path: str):
+        """
+        Attempts to load companion RMS file and stores data in global state.
+        Does not fail if RMS file is missing - this is optional data.
+        """
+        rms_data = RMSLoader.load_rms_file(file_path)
+
+        if rms_data is None:
+            logger.debug("No RMS data loaded (file not found or invalid)")
+            return
+
+        # Store raw RMS data in state for later use when grid is selected
+        global_state.set_raw_rms_data(rms_data)
+        logger.info(f"Loaded RMS data with grids: {list(rms_data.keys())}")
 
     def process_file(self, file_path, parent_window):
         """
@@ -79,6 +95,9 @@ class FileManager:
 
             # Extract grid info and proceed, store in state
             global_state.set_channel_status(_build_channel_status(global_state.get_emg_file().channel_count, global_state.get_emg_file().grids))
+
+            # Load companion RMS file if available
+            self._load_rms_data(file_path)
 
             return True  # Indicate success
 

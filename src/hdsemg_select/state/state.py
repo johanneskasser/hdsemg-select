@@ -34,6 +34,9 @@ class State(QObject):
         self._input_file = input_file
         self._output_file = output_file
         self.max_amplitude = None
+        # RMS quality data from companion _rms.json files
+        self._raw_rms_data = None  # Raw RMS data before grid mapping
+        self._rms_quality_data = {}  # Mapped RMS quality per channel (for tooltip display)
         # default fallback
         self._fiber_to_layout: Dict[FiberMode, LayoutMode] = {
             FiberMode.PARALLEL: LayoutMode.COLUMNS,
@@ -162,5 +165,29 @@ class State(QObject):
 
     def is_fiber_to_layout_user_set(self):
         return self._fiber_to_layout_user_set
+
+    # RMS data methods
+    def set_raw_rms_data(self, data):
+        """Store raw RMS data from file (before grid mapping)."""
+        self._raw_rms_data = data
+
+    def get_raw_rms_data(self):
+        """Get raw RMS data."""
+        return self._raw_rms_data
+
+    def set_rms_quality_data(self, data: dict):
+        """
+        Store RMS quality strings for channels.
+        data: dict mapping channel_idx (0-indexed) to rms_quality string
+        """
+        self._rms_quality_data = data
+
+    def get_rms_quality(self, channel_idx: int):
+        """Get the RMS quality string for a channel, or None."""
+        return self._rms_quality_data.get(channel_idx)
+
+    def get_all_rms_quality(self) -> dict:
+        """Get all RMS quality data."""
+        return self._rms_quality_data
 
 global_state = State()

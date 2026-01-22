@@ -19,6 +19,7 @@ coverage.xml
 .tox/
 nosetests.xml
 .coverage
+.venv/
 .cache
 .pyre/
 *.sqlite3
