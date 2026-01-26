@@ -56,7 +56,7 @@ jobs:
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.TEST_PYPI_TOKEN }}
-        run: twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+        run: twine upload --skip-existing --repository-url https://test.pypi.org/legacy/ dist/*
 
   publish-pypi:
     if: ${{ !contains(github.ref_name, 'dev') && !contains(github.ref_name, 'rc') &&
@@ -102,7 +102,7 @@ jobs:
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
-        run: twine upload dist/*
+        run: twine upload --skip-existing dist/*
 
       - name: Gather Release Notes
         id: notes
