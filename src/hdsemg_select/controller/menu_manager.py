@@ -17,6 +17,7 @@ class MenuManager:
         self.change_grid_action = None
         self.amplitude_menu = None
         self.suggest_flags_action = None  # New action
+        self.crop_signal_action = None
 
     def create_menus(self, menubar, parent_window):
         """Creates and adds menus to the given menubar."""
@@ -29,6 +30,7 @@ class MenuManager:
         file_menu.setObjectName("File")
         grid_menu.setObjectName("Grid")
         auto_select_menu.setObjectName("Automatic Selection")
+        self._create_signal_menu(menubar, parent_window)
         self._init_arrow_key_navigation(parent_window)
 
     def _create_file_menu(self, menubar, parent_window) -> QMenu:  # Added return type hint
@@ -94,6 +96,17 @@ class MenuManager:
         auto_select_menu.addAction(self.suggest_flags_action)
 
         return auto_select_menu  # Return the created menu
+
+    def _create_signal_menu(self, menubar, parent_window) -> QMenu:
+        signal_menu = menubar.addMenu("Signal")
+        self.crop_signal_action = QAction("Crop Signal...", parent_window)
+        self.crop_signal_action.setShortcut(QKeySequence("Ctrl+R"))
+        self.crop_signal_action.setStatusTip("Interactively crop all signals to a time range")
+        self.crop_signal_action.setEnabled(False)
+        self.crop_signal_action.triggered.connect(parent_window.open_crop_dialog)
+        signal_menu.addAction(self.crop_signal_action)
+        signal_menu.setObjectName("Signal")
+        return signal_menu
 
     def on_auto_settings_(self, parent_window):
         result = parent_window.automatic_selection.open_settings_dialog()
@@ -166,3 +179,6 @@ class MenuManager:
 
     def get_suggest_flags_action(self):  # New getter
         return self.suggest_flags_action
+
+    def get_crop_signal_action(self):
+        return self.crop_signal_action
