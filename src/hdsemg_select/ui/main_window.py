@@ -19,6 +19,7 @@ from hdsemg_select.settings.tabs.auto_flagger_settings_tab import validate_auto_
 from hdsemg_select.state.state import global_state
 from hdsemg_select.ui.dialog.channel_details import ChannelDetailWindow
 from hdsemg_select.ui.dialog.channel_spectrum import ChannelSpectrum
+from hdsemg_select.ui.dialog.crop_signal import CropSignalDialog
 from hdsemg_select.ui.dialog.grid_orientation_dialog import GridOrientationDialog
 from hdsemg_select.ui.plot.channel_widget import ChannelWidget
 from hdsemg_select.ui.widgets.electrode_widget import ElectrodeWidget
@@ -159,13 +160,14 @@ class ChannelSelector(QMainWindow):
         self.change_grid_action = self.menu_manager.get_change_grid_action()
         self.amplidude_menu = self.menu_manager.get_amplitude_menu()
         self.suggest_flags_action = self.menu_manager.get_suggest_flags_action()
+        self.crop_signal_action = self.menu_manager.get_crop_signal_action()
 
     def ref_sig_signal_changed(self):
         """Handles changes in the reference signal checkbox."""
         if self.show_ref_signals.isChecked():
             self.select_ref_signal.setEnabled(True)
             selected_signal = self.select_ref_signal.currentData()
-            ref_sig_scaled = ChannelWidget.scale_ref_signal(global_state.get_scaled_data()[:, selected_signal])
+            ref_sig_scaled = ChannelWidget.scale_ref_signal(global_state.get_effective_scaled_data()[:, selected_signal])
             if selected_signal is not None:
                 for channel_widget in self.channel_widgets:
                     channel_widget.set_overlay_signal(ref_sig_scaled)
@@ -247,6 +249,8 @@ class ChannelSelector(QMainWindow):
             if hasattr(self, 'amplidude_menu') and self.amplidude_menu: self.amplidude_menu.setEnabled(True)
             if hasattr(self, 'save_action') and self.save_action: self.save_action.setEnabled(True)
             if hasattr(self, 'suggest_flags_action') and self.suggest_flags_action: self.suggest_flags_action.setEnabled(True)
+            if hasattr(self, 'crop_signal_action') and self.crop_signal_action:
+                self.crop_signal_action.setEnabled(True)
 
             # Trigger grid selection after successful file processing
             self.select_grid_and_orientation()
@@ -405,8 +409,8 @@ class ChannelSelector(QMainWindow):
         end_idx = start_idx + items_per_page
 
         # Get state data
-        scaled_data = global_state.get_scaled_data()
-        time_data = global_state.get_emg_file().time
+        scaled_data = global_state.get_effective_scaled_data()
+        time_data = global_state.get_effective_time()
         channel_status = global_state.get_channel_status()
         channel_labels = global_state.get_channel_labels()
 
@@ -495,7 +499,7 @@ class ChannelSelector(QMainWindow):
     def get_selected_ref_signal(self):
         selected_ref_signal = self.select_ref_signal.currentData() if self.show_ref_signals.isChecked() else None
         selected_ref_signal = ChannelWidget.scale_ref_signal(
-            global_state.get_scaled_data()[:, selected_ref_signal]) if selected_ref_signal is not None else None
+            global_state.get_effective_scaled_data()[:, selected_ref_signal]) if selected_ref_signal is not None else None
         return selected_ref_signal
 
     def handle_single_channel_update(self, idx, state):
@@ -657,3 +661,16 @@ class ChannelSelector(QMainWindow):
         if self.amplidude_menu: self.amplidude_menu.setEnabled(False)
         if self.save_action: self.save_action.setEnabled(False)
         if self.change_grid_action: self.change_grid_action.setEnabled(False)
+        if hasattr(self, 'crop_signal_action') and self.crop_signal_action:
+            self.crop_signal_action.setEnabled(False)
+
+    def open_crop_dialog(self):
+        """Open the interactive crop signal dialog."""
+        from PyQt5.QtWidgets import QDialog
+        dlg = CropSignalDialog(parent=self)
+        if dlg.exec_() == QDialog.Accepted:
+            crop = dlg.get_crop_range()
+            if crop is not None:
+                global_state.set_crop_range(crop)
+                logger.info("Crop range applied: %s", crop)
+                self.display_page(True)

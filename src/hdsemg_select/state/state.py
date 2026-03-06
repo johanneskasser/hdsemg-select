@@ -34,6 +34,7 @@ class State(QObject):
         self._input_file = input_file
         self._output_file = output_file
         self.max_amplitude = None
+        self._crop_range: tuple | None = None  # (start_idx, end_idx) sample indices
         # RMS quality data from companion _rms.json files
         self._raw_rms_data = None  # Raw RMS data before grid mapping
         self._rms_quality_data = {}  # Mapped RMS quality per channel (for tooltip display)
@@ -189,5 +190,46 @@ class State(QObject):
     def get_all_rms_quality(self) -> dict:
         """Get all RMS quality data."""
         return self._rms_quality_data
+
+    def set_crop_range(self, crop_range: tuple | None) -> None:
+        """Set crop range as (start, end) inclusive sample indices, or None to clear.
+        Both indices must be in [0, n_samples - 1] with start <= end.
+        No bounds check is performed; caller is responsible for validity.
+        """
+        self._crop_range = crop_range
+
+    def get_crop_range(self) -> tuple | None:
+        """Return (start, end) crop indices, or None if no crop set."""
+        return self._crop_range
+
+    def get_effective_scaled_data(self) -> "np.ndarray | None":
+        """Return scaled_data sliced to crop range, or full data if no crop."""
+        data = self._scaled_data
+        if data is None:
+            return None
+        if self._crop_range is not None:
+            s, e = self._crop_range
+            return data[s:e + 1]
+        return data
+
+    def get_effective_emg_data(self) -> "np.ndarray | None":
+        """Return emg_file.data sliced to crop range, or full data if no crop."""
+        if self._emg_file is None or self._emg_file.data is None:
+            return None
+        data = self._emg_file.data
+        if self._crop_range is not None:
+            s, e = self._crop_range
+            return data[s:e + 1]
+        return data
+
+    def get_effective_time(self) -> "np.ndarray | None":
+        """Return emg_file.time sliced to crop range, or full time if no crop."""
+        if self._emg_file is None or self._emg_file.time is None:
+            return None
+        t = self._emg_file.time
+        if self._crop_range is not None:
+            s, e = self._crop_range
+            return t[s:e + 1]
+        return t
 
 global_state = State()

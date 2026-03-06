@@ -38,6 +38,12 @@ Welcome to the documentation for hdsemg-select, a sophisticated graphical user i
 - Custom label management
 - Comprehensive artifact flagging system
 
+### Signal Editing
+
+- Interactive crop editor (Signal → Crop Signal… / `Ctrl + R`)
+- Reversible time-range selection via drag or two-click
+- Permanent crop applied to `.mat` on save
+
 ### Data Processing
 - Automatic artifact detection
     - ECG contamination identification

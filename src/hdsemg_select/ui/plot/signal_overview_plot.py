@@ -227,7 +227,7 @@ class SignalPlotDialog(QDialog):
             logger.warning(f"Plot update skipped: No channels for grid '{selected_grid_name}'.")
             return
 
-        source_data = global_state.get_emg_file().data
+        source_data = global_state.get_effective_emg_data()
         fs = global_state.get_emg_file().sampling_frequency
 
         if source_data is None or source_data.ndim != 2 or source_data.size == 0:
@@ -239,7 +239,7 @@ class SignalPlotDialog(QDialog):
             QMessageBox.critical(self, "Error", f"Invalid sampling frequency ({fs}).")
             return
 
-        time_vector = global_state.get_emg_file().time
+        time_vector = global_state.get_effective_time()
         if time_vector is None or time_vector.size == 0:
             self._show_no_grid_message("Time vector not available or empty.")
             logger.warning("Plot update skipped: Time vector not available.")
