@@ -176,7 +176,21 @@ def save_selection(parent, output_file, emg_file: EMGFile, channel_status, chann
     try:
         # Ensure we only save if data is available for the .mat file
         if emg_file.data is not None and emg_file.time is not None and emg_file.description is not None:
-            # Save all channels without filtering (JSON contains selection info)
+            # Apply crop range permanently if set
+            crop = global_state.get_crop_range()
+            if crop is not None:
+                s, e = crop
+                n_samples = emg_file.data.shape[0]
+                if s < 0 or e >= n_samples or s > e:
+                    logger.error(
+                        "Invalid crop range %s for data with %d samples; skipping crop",
+                        crop, n_samples
+                    )
+                else:
+                    emg_file.data = emg_file.data[s:e + 1]
+                    emg_file.time = emg_file.time[s:e + 1]
+                    logger.info("Applied crop range %s to emg_file before saving", crop)
+                    global_state.set_crop_range(None)  # Crop is now baked in
             emg_file.save(save_path=mat_file_path)
             messages.append(f"Saved .mat to {Path(mat_file_path).name}")
         else:

@@ -29,6 +29,7 @@ nav:
       - Automatic Selection: usage/automatic_selection.md
       - Channel Flagging: usage/channel_flagging.md
       - Signal Overview Plot: usage/signal_overview_plot.md
+      - Crop Signal: usage/crop_signal.md
       - Signal Details: usage/signal_details.md
       - Application Output: usage/application_output.md
       - Application Settings: usage/application_settings.md

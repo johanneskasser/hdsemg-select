@@ -132,10 +132,17 @@ class CropSignalDialog(QtWidgets.QDialog):
         plot_layout.addLayout(roi_bar)
         content.addWidget(plot_frame, stretch=3)
 
-        # --- Sidebar ---
+        # --- Sidebar (wrapper keeps buttons sticky at bottom) ---
+        sidebar_widget = QtWidgets.QWidget()
+        sidebar_widget.setMaximumWidth(350)
+        sidebar_widget.setStyleSheet("background-color: transparent;")
+        sidebar_layout = QtWidgets.QVBoxLayout(sidebar_widget)
+        sidebar_layout.setContentsMargins(0, 0, 0, 0)
+        sidebar_layout.setSpacing(Spacing.SM)
+
+        # Scrollable channel list
         scroll = QtWidgets.QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setMaximumWidth(350)
         scroll.setStyleSheet("QScrollArea { border: none; background-color: transparent; }")
 
         panel = QtWidgets.QWidget()
@@ -157,22 +164,20 @@ class CropSignalDialog(QtWidgets.QDialog):
         self._build_channel_groups(vbox, emg_file, description)
 
         vbox.addStretch(1)
+        scroll.setWidget(panel)
+        sidebar_layout.addWidget(scroll, stretch=1)
 
-        # Buttons
-        btn_layout = QtWidgets.QVBoxLayout()
-        btn_layout.setSpacing(Spacing.SM)
+        # Sticky buttons – outside scroll area, always visible
         reset_btn = QtWidgets.QPushButton("Reset Selection")
         reset_btn.setStyleSheet(Styles.button_secondary())
         reset_btn.clicked.connect(self._reset_selection)
-        btn_layout.addWidget(reset_btn)
         ok_btn = QtWidgets.QPushButton("Apply & Close")
         ok_btn.setStyleSheet(Styles.button_primary())
         ok_btn.clicked.connect(self._on_apply)
-        btn_layout.addWidget(ok_btn)
-        vbox.addLayout(btn_layout)
+        sidebar_layout.addWidget(reset_btn)
+        sidebar_layout.addWidget(ok_btn)
 
-        scroll.setWidget(panel)
-        content.addWidget(scroll, stretch=1)
+        content.addWidget(sidebar_widget, stretch=1)
         main_layout.addLayout(content)
 
         # Initialize range to full signal
@@ -326,6 +331,12 @@ class CropSignalDialog(QtWidgets.QDialog):
         self._canvas.draw_idle()
 
     def _draw_threshold_lines(self):
+        # Remove old artists from the axes (no-op after ax.clear(), needed after direct calls)
+        for artist in self._threshold_lines:
+            try:
+                artist.remove()
+            except Exception:
+                pass
         self._threshold_lines.clear()
 
         if self._first_click is not None:
@@ -342,10 +353,20 @@ class CropSignalDialog(QtWidgets.QDialog):
     # ------------------------------------------------------------------ #
     # Interaction                                                          #
     # ------------------------------------------------------------------ #
+    def _signal_bounds(self) -> tuple[int, int]:
+        emg = global_state.get_emg_file()
+        if emg is None or emg.data is None:
+            return (0, 0)
+        return (0, max(0, emg.data.shape[0] - 1))
+
+    def _clamp(self, value: int) -> int:
+        lo, hi = self._signal_bounds()
+        return max(lo, min(hi, value))
+
     def _on_span_select(self, xmin, xmax):
         self._first_click = None
-        self._lower = int(xmin)
-        self._upper = int(xmax)
+        self._lower = self._clamp(int(xmin))
+        self._upper = self._clamp(int(xmax))
         self._update_roi_info()
         self._draw_threshold_lines()
 
@@ -356,7 +377,7 @@ class CropSignalDialog(QtWidgets.QDialog):
             return
         if event.xdata is None:
             return
-        x = int(event.xdata)
+        x = self._clamp(int(event.xdata))
         if self._first_click is None:
             self._first_click = x
             self._draw_threshold_lines()

@@ -27,3 +27,4 @@ instance/
 *.log
 /src/hdsemg_select/config/config.json
 /src/hdsemg_select/resources_rc.py
+/docs/plans/*
