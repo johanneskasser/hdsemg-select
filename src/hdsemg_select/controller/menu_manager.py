@@ -16,8 +16,10 @@ class MenuManager:
         self.save_action = None
         self.change_grid_action = None
         self.amplitude_menu = None
+        self.zero_line_menu = None
         self.suggest_flags_action = None  # New action
         self.crop_signal_action = None
+        self.toggle_signal_overview_action = None
 
     def create_menus(self, menubar, parent_window):
         """Creates and adds menus to the given menubar."""
@@ -85,6 +87,19 @@ class MenuManager:
         settings_action.setStatusTip("Configure thresholds for automatic selection")
         settings_action.triggered.connect(partial(self.on_auto_settings_, parent_window))
         self.amplitude_menu.addAction(settings_action)
+
+        self.zero_line_menu = auto_select_menu.addMenu("Zero Line Detection")
+        self.zero_line_menu.setEnabled(False)  # Enabled when data is loaded
+
+        zero_line_start = QAction("Start", parent_window)
+        zero_line_start.setStatusTip("Run zero-line detection with current settings")
+        zero_line_start.triggered.connect(parent_window.zero_line_selection.perform_selection)
+        self.zero_line_menu.addAction(zero_line_start)
+
+        zero_line_settings = QAction("Settings", parent_window)
+        zero_line_settings.setStatusTip("Configure zero-line detection parameters")
+        zero_line_settings.triggered.connect(parent_window.zero_line_selection.open_settings_dialog)
+        self.zero_line_menu.addAction(zero_line_settings)
 
         auto_select_menu.addSeparator()  # Add a separator before the new flag action
 
@@ -166,6 +181,12 @@ class MenuManager:
         self.select_all_action.triggered.connect(partial(parent_window.toggle_select_all, True))
         parent_window.addAction(self.select_all_action)
 
+        self.toggle_signal_overview_action = QAction('Toggle Signal Overview', parent_window)
+        self.toggle_signal_overview_action.setShortcut(QKeySequence(Qt.Key_Space))
+        self.toggle_signal_overview_action.triggered.connect(parent_window.electrode_widget.toggle_signal_overview)
+        self.toggle_signal_overview_action.setEnabled(False)
+        parent_window.addAction(self.toggle_signal_overview_action)
+
 
     # Methods to access the created actions/menus if needed by the parent window
     def get_save_action(self):
@@ -177,8 +198,14 @@ class MenuManager:
     def get_amplitude_menu(self):
         return self.amplitude_menu
 
+    def get_zero_line_menu(self):
+        return self.zero_line_menu
+
     def get_suggest_flags_action(self):  # New getter
         return self.suggest_flags_action
 
     def get_crop_signal_action(self):
         return self.crop_signal_action
+
+    def get_toggle_signal_overview_action(self):
+        return self.toggle_signal_overview_action

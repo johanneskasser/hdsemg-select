@@ -24,6 +24,7 @@ from hdsemg_select.ui.dialog.grid_orientation_dialog import GridOrientationDialo
 from hdsemg_select.ui.plot.channel_widget import ChannelWidget
 from hdsemg_select.ui.widgets.electrode_widget import ElectrodeWidget
 from hdsemg_select.ui.selection.amplitude_based import AutomaticAmplitudeSelection
+from hdsemg_select.ui.selection.zero_line_selection import ZeroLineSelection
 from hdsemg_select.config.config_manager import config
 # noinspection PyUnresolvedReferences
 import hdsemg_select.resources_rc
@@ -115,7 +116,8 @@ class ChannelSelector(QMainWindow):
         self.pagination_layout.addWidget(self.next_button)
 
         # Create the menu bar using the MenuManager
-        self.automatic_selection = AutomaticAmplitudeSelection(self)  # Keep AutomaticSelection here
+        self.automatic_selection = AutomaticAmplitudeSelection(self)
+        self.zero_line_selection = ZeroLineSelection(self)
         self.create_menus()  # This method now delegates to MenuManager
 
         self.grid_label_widget = ClickableGridInfoWidget(self, width=400, height=60, boarder=False)
@@ -159,8 +161,10 @@ class ChannelSelector(QMainWindow):
         self.save_action = self.menu_manager.get_save_action()
         self.change_grid_action = self.menu_manager.get_change_grid_action()
         self.amplidude_menu = self.menu_manager.get_amplitude_menu()
+        self.zero_line_menu = self.menu_manager.get_zero_line_menu()
         self.suggest_flags_action = self.menu_manager.get_suggest_flags_action()
         self.crop_signal_action = self.menu_manager.get_crop_signal_action()
+        self.toggle_signal_overview_action = self.menu_manager.get_toggle_signal_overview_action()
 
     def ref_sig_signal_changed(self):
         """Handles changes in the reference signal checkbox."""
@@ -251,6 +255,10 @@ class ChannelSelector(QMainWindow):
             if hasattr(self, 'suggest_flags_action') and self.suggest_flags_action: self.suggest_flags_action.setEnabled(True)
             if hasattr(self, 'crop_signal_action') and self.crop_signal_action:
                 self.crop_signal_action.setEnabled(True)
+            if hasattr(self, 'toggle_signal_overview_action') and self.toggle_signal_overview_action:
+                self.toggle_signal_overview_action.setEnabled(True)
+            if hasattr(self, 'zero_line_menu') and self.zero_line_menu:
+                self.zero_line_menu.setEnabled(True)
 
             # Trigger grid selection after successful file processing
             self.select_grid_and_orientation()
@@ -286,6 +294,9 @@ class ChannelSelector(QMainWindow):
 
             if dialog is not None:
                 dialog.accept()
+
+            # Invalidate cached signal overview dialog — grid context changed
+            self.electrode_widget.invalidate_signal_overview()
 
             # Update UI elements based on new grid setup
             self.electrode_widget.set_grid_shape((self.rows, self.cols))
@@ -663,6 +674,11 @@ class ChannelSelector(QMainWindow):
         if self.change_grid_action: self.change_grid_action.setEnabled(False)
         if hasattr(self, 'crop_signal_action') and self.crop_signal_action:
             self.crop_signal_action.setEnabled(False)
+        if hasattr(self, 'toggle_signal_overview_action') and self.toggle_signal_overview_action:
+            self.toggle_signal_overview_action.setEnabled(False)
+        if hasattr(self, 'zero_line_menu') and self.zero_line_menu:
+            self.zero_line_menu.setEnabled(False)
+        self.electrode_widget.invalidate_signal_overview()
 
     def open_crop_dialog(self):
         """Open the interactive crop signal dialog."""

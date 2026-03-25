@@ -7,6 +7,7 @@ class BaseChannelLabel(Enum):
     NOISE_60 = {"id": 3, "name": "Noise 60 Hz", "color": Colors.YELLOW_500}
     ARTIFACT = {"id": 4, "name": "Artifact", "color": Colors.YELLOW_600}
     BAD_CHANNEL = {"id": 5, "name": "Bad Channel", "color": Colors.RED_600}
+    ZERO_LINE = {"id": 10, "name": "Zero Line", "color": Colors.RED_600}
     REFERENCE_SIGNAL = {"id": 6, "name": "Reference Signal", "color": Colors.GREEN_500}
     RMS_EXCELLENT = {"id": 7, "name": "RMS: Excellent", "color": Colors.GREEN_600}
     RMS_GOOD = {"id": 8, "name": "RMS: Good", "color": Colors.GREEN_500}

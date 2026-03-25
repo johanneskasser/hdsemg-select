@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QLineEdit, QPushButton, QHBoxLayout, QMessageBox, QCheckBox, QGroupBox, QFormLayout
+from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QLineEdit, QPushButton, QHBoxLayout, QMessageBox, QCheckBox, QGroupBox, QFormLayout, QScrollArea
 from PyQt5.QtGui import QIntValidator, QFont
 from PyQt5.QtCore import Qt
 from hdsemg_select._log.log_config import logger
@@ -12,6 +12,7 @@ class AutomaticAmplitudeSelection:
         self.parent = parent
         self.lower_threshold = 0  # Default lower threshold (in μV)
         self.upper_threshold = 0  # Default upper threshold (in μV)
+        self.apply_to_all_grids = False
 
     def auto_compute_thresholds(self):
         """
@@ -116,7 +117,49 @@ class AutomaticAmplitudeSelection:
         threshold_group.setLayout(threshold_layout)
         main_layout.addWidget(threshold_group)
 
-        # Status label for feedback
+        # Scope section
+        scope_group = QGroupBox("Scope")
+        scope_group.setStyleSheet(Styles.groupbox())
+        scope_layout = QVBoxLayout()
+        scope_layout.setSpacing(Spacing.SM)
+
+        apply_to_all_grids_cb = QCheckBox("Apply to all grids")
+        apply_to_all_grids_cb.setChecked(self.apply_to_all_grids)
+        apply_to_all_grids_cb.setToolTip(
+            "Run detection on every grid in the file, not just the currently selected one."
+        )
+        scope_layout.addWidget(apply_to_all_grids_cb)
+        scope_group.setLayout(scope_layout)
+        main_layout.addWidget(scope_group)
+
+        # Preview label (shown when "apply to all grids" is checked)
+        preview_label = QLabel("")
+        preview_label.setWordWrap(True)
+        preview_label.setAlignment(Qt.AlignTop | Qt.AlignLeft)
+        preview_label.setStyleSheet(f"""
+            QLabel {{
+                padding: {Spacing.SM}px;
+                background-color: transparent;
+                color: {Colors.BLUE_900};
+                font-family: monospace;
+            }}
+        """)
+
+        preview_scroll = QScrollArea()
+        preview_scroll.setWidget(preview_label)
+        preview_scroll.setWidgetResizable(True)
+        preview_scroll.setFixedHeight(130)
+        preview_scroll.setStyleSheet(f"""
+            QScrollArea {{
+                border: 1px solid {Colors.BLUE_100};
+                border-radius: {BorderRadius.MD};
+                background-color: {Colors.BLUE_50};
+            }}
+        """)
+        preview_scroll.setVisible(False)
+        main_layout.addWidget(preview_scroll)
+
+        # Status label for validation feedback
         status_label = QLabel("")
         status_label.setStyleSheet(f"""
             QLabel {{
@@ -129,6 +172,60 @@ class AutomaticAmplitudeSelection:
         status_label.setWordWrap(True)
         status_label.setVisible(False)
         main_layout.addWidget(status_label)
+
+        # --- Preview helper ---
+        def _format_preview_text(results_by_grid):
+            lines = []
+            total_bad = total_ch = 0
+            for grid_key, info in results_by_grid.items():
+                n = info["total"]
+                bad = info["flagged"]
+                total_bad += len(bad)
+                total_ch += n
+                ch_str = (
+                    f"  (ch {', '.join(str(c + 1) for c in bad)})"
+                    if 0 < len(bad) <= 10
+                    else ""
+                )
+                lines.append(f"{grid_key}: {len(bad)} of {n} flagged{ch_str}")
+            lines.append("─" * 35)
+            lines.append(f"Total: {total_bad} of {total_ch} channels would be flagged")
+            return "\n".join(lines)
+
+        def update_preview():
+            if not apply_to_all_grids_cb.isChecked():
+                preview_scroll.setVisible(False)
+                return
+            scaled_data = global_state.get_scaled_data()
+            emg_file = global_state.get_emg_file()
+            if scaled_data is None or emg_file is None:
+                preview_scroll.setVisible(False)
+                return
+            try:
+                lower = int(lower_input.text()) if lower_input.text() else 0
+                upper = int(upper_input.text()) if upper_input.text() else 0
+                if lower >= upper:
+                    preview_scroll.setVisible(False)
+                    return
+            except ValueError:
+                preview_scroll.setVisible(False)
+                return
+            results_by_grid = {}
+            for grid in emg_file.grids:
+                flagged = []
+                for i in grid.emg_indices:
+                    if i < scaled_data.shape[1]:
+                        ch_data = scaled_data[:, i]
+                        if not (upper <= ch_data.max() and lower >= ch_data.min()):
+                            flagged.append(i)
+                results_by_grid[grid.grid_key] = {
+                    "total": len(grid.emg_indices),
+                    "flagged": flagged,
+                }
+            preview_label.setText(_format_preview_text(results_by_grid))
+            preview_scroll.setVisible(True)
+
+        apply_to_all_grids_cb.toggled.connect(update_preview)
 
         # When checkbox is checked, compute and update thresholds automatically
         def on_checkbox_state_changed(state):
@@ -187,6 +284,7 @@ class AutomaticAmplitudeSelection:
                     apply_button.setEnabled(True)
             except ValueError:
                 apply_button.setEnabled(False)
+            update_preview()
 
         lower_input.textChanged.connect(validate_inputs)
         upper_input.textChanged.connect(validate_inputs)
@@ -208,19 +306,21 @@ class AutomaticAmplitudeSelection:
         apply_button = QPushButton("Apply && Run Selection")
         apply_button.setStyleSheet(Styles.button_primary())
         apply_button.setToolTip("Save thresholds and immediately perform automatic channel selection")
-        apply_button.clicked.connect(lambda: self.apply_and_run(dialog, lower_input, upper_input))
+        apply_button.clicked.connect(
+            lambda: self.apply_and_run(dialog, lower_input, upper_input, apply_to_all_grids_cb)
+        )
         button_layout.addWidget(apply_button)
 
         main_layout.addLayout(button_layout)
 
         dialog.setLayout(main_layout)
 
-        # Initial validation
+        # Initial validation and preview
         validate_inputs()
 
         return dialog.exec_()
 
-    def apply_and_run(self, dialog, lower_input, upper_input):
+    def apply_and_run(self, dialog, lower_input, upper_input, apply_to_all_grids_cb):
         """Save thresholds and immediately run the automatic selection."""
         try:
             self.lower_threshold = int(lower_input.text())
@@ -231,8 +331,8 @@ class AutomaticAmplitudeSelection:
                                     "Lower threshold must be less than upper threshold.")
                 return
 
+            self.apply_to_all_grids = apply_to_all_grids_cb.isChecked()
             dialog.accept()
-            # Immediately perform the selection
             self.perform_selection()
 
         except ValueError:
@@ -273,35 +373,59 @@ class AutomaticAmplitudeSelection:
             QMessageBox.warning(self.parent, "No Data", "Please load a file first.")
             return
 
+        if self.apply_to_all_grids:
+            emg_file = global_state.get_emg_file()
+            grids_to_process = {g.grid_key: g.emg_indices for g in emg_file.grids}
+        else:
+            grids_to_process = {
+                self.parent.grid_setup_handler.selected_grid:
+                    self.parent.grid_setup_handler.current_grid_indices
+            }
+
         selected_count = 0
         deselected_count = 0
         channel_status = global_state.get_channel_status()
+        summary_lines = []
 
-        for i in self.parent.grid_setup_handler.current_grid_indices:
-            channel_data = scaled_data[:, i]
-            max_amplitude = channel_data.max()  # in μV
-            min_amplitude = channel_data.min()
+        for grid_key, indices in grids_to_process.items():
+            grid_selected = 0
+            grid_deselected = 0
+            for i in indices:
+                channel_data = scaled_data[:, i]
+                max_amplitude = channel_data.max()
+                min_amplitude = channel_data.min()
 
-            if self.upper_threshold <= max_amplitude and self.lower_threshold >= min_amplitude:
-                channel_status[i] = True
-                selected_count += 1
-            else:
-                channel_status[i] = False
-                deselected_count += 1
-                # Also display the Bad Channel label
-                # current labels for that channel
-                labels = global_state.get_channel_labels(i).copy()
+                if self.upper_threshold <= max_amplitude and self.lower_threshold >= min_amplitude:
+                    channel_status[i] = True
+                    grid_selected += 1
+                else:
+                    channel_status[i] = False
+                    grid_deselected += 1
+                    labels = global_state.get_channel_labels(i).copy()
+                    if BaseChannelLabel.BAD_CHANNEL.value not in labels:
+                        labels.append(BaseChannelLabel.BAD_CHANNEL.value)
+                        global_state.update_channel_labels(i, labels)
 
-                # add the new label only if it is not present yet
-                if BaseChannelLabel.BAD_CHANNEL.value not in labels:
-                    labels.append(BaseChannelLabel.BAD_CHANNEL.value)
-                    global_state.update_channel_labels(i, labels)
+            selected_count += grid_selected
+            deselected_count += grid_deselected
+            if self.apply_to_all_grids:
+                summary_lines.append(
+                    f"{grid_key}: {grid_selected} selected, {grid_deselected} deselected"
+                )
 
-        # Update the global state with the new channel status
         global_state.set_channel_status(channel_status)
-
         self.parent.display_page()
-        QMessageBox.information(
-            self.parent, f"Automatic Selection of grid {self.parent.grid_setup_handler.selected_grid} complete",
-            f"{selected_count} channels selected, {deselected_count} channels deselected."
-        )
+
+        if self.apply_to_all_grids:
+            detail = "\n".join(summary_lines)
+            QMessageBox.information(
+                self.parent,
+                "Automatic Selection — All Grids",
+                f"{detail}\n\nTotal: {selected_count} selected, {deselected_count} deselected.",
+            )
+        else:
+            QMessageBox.information(
+                self.parent,
+                f"Automatic Selection of grid {self.parent.grid_setup_handler.selected_grid} complete",
+                f"{selected_count} channels selected, {deselected_count} channels deselected.",
+            )

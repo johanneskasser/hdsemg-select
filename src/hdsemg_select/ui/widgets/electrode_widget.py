@@ -42,6 +42,9 @@ class ElectrodeWidget(QWidget):
         self.fiber_orientation = None
         self.highlight_index = 0  # which row/column is currently highlighted
 
+        # Persistent dialog reference — kept alive for fast show/hide toggling
+        self._signal_overview_dialog = None
+
         open_signal_overview_btn = QPushButton("Open Signal Overview")
         open_signal_overview_btn.setIcon(QIcon(CustomIcon.EXTEND.value))
         open_signal_overview_btn.setStyleSheet(Styles.button_secondary())
@@ -249,11 +252,40 @@ class ElectrodeWidget(QWidget):
                 painter.drawText(-60, 0, "Muscle Fiber Direction")
                 painter.restore()
 
+    def _ensure_signal_overview_dialog(self):
+        """Create the dialog if it doesn't exist yet, then return it."""
+        if self._signal_overview_dialog is None:
+            dlg = open_signal_plot_dialog(self.parent.grid_setup_handler, self)
+            dlg.orientation_applied.connect(self.signal_overview_plot_applied)
+            dlg.channel_status_changed.connect(self.parent.display_page)
+            self._signal_overview_dialog = dlg
+        return self._signal_overview_dialog
+
     def open_signal_overview(self):
-        """Open the Signal Overview Plot"""
+        """Open the Signal Overview Plot (button handler)."""
         logger.info("Open Signal Overview Plot")
-        dlg = open_signal_plot_dialog(self.parent.grid_setup_handler, self)
-        dlg.orientation_applied.connect(self.signal_overview_plot_applied) # when the plot fires, immediatley re-emit it
+        dlg = self._ensure_signal_overview_dialog()
+        dlg.refresh_channel_states()
+        dlg.show()
+        dlg.raise_()
+
+    def toggle_signal_overview(self):
+        """Toggle the Signal Overview Plot open/closed (spacebar handler)."""
+        if self._signal_overview_dialog is not None and self._signal_overview_dialog.isVisible():
+            logger.info("Hide Signal Overview Plot")
+            self._signal_overview_dialog.hide()
+        else:
+            logger.info("Show Signal Overview Plot")
+            dlg = self._ensure_signal_overview_dialog()
+            dlg.refresh_channel_states()
+            dlg.show()
+            dlg.raise_()
+
+    def invalidate_signal_overview(self):
+        """Close and discard the cached dialog (call on grid change or file reset)."""
+        if self._signal_overview_dialog is not None:
+            self._signal_overview_dialog.close()
+            self._signal_overview_dialog = None
 
     def _on_rotate_btn_pressed(self):
         """
