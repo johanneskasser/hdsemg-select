@@ -291,7 +291,7 @@ class SignalPlotDialog(QDialog):
                                 f"Sample mismatch for MP Ch {ch_idx + 1}. Data: {source_data[:, ch_idx].shape[0]}, Time: {time_vector.shape[0]}")
                             continue
                         traces_to_plot.append(source_data[:, ch_idx])
-                        labels_for_plot.append(f"{ch_idx + 1}")  # Original label style
+                        labels_for_plot.append(str(self.grid_handler.get_electrode_number(ch_idx)))
                         original_mp_indices_for_status.append(ch_idx)
             if not traces_to_plot:
                 self._show_no_grid_message(f"No valid MP channels to display for '{selected_grid_name}'.")

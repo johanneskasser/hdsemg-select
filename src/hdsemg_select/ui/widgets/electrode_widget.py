@@ -1,3 +1,6 @@
+from typing import Optional
+
+import numpy as np
 from PyQt5.QtCore import Qt, QRect, pyqtSignal
 from PyQt5.QtGui import QPainter, QPen, QColor, QFont, QIcon
 from PyQt5.QtWidgets import QWidget, QGridLayout, QLabel, QVBoxLayout, QSizePolicy, QPushButton
@@ -45,6 +48,9 @@ class ElectrodeWidget(QWidget):
         # Persistent dialog reference — kept alive for fast show/hide toggling
         self._signal_overview_dialog = None
 
+        # Physical electrode layout — set externally after grid selection
+        self._display_grid: Optional[np.ndarray] = None  # shape (rows, cols), float, nan=empty
+
         open_signal_overview_btn = QPushButton("Open Signal Overview")
         open_signal_overview_btn.setIcon(QIcon(CustomIcon.EXTEND.value))
         open_signal_overview_btn.setStyleSheet(Styles.button_secondary())
@@ -84,23 +90,36 @@ class ElectrodeWidget(QWidget):
 
         self.update()
 
+    def set_electrode_display_grid(self, grid: Optional[np.ndarray]):
+        """Store the physical electrode layout (rows × cols float array, nan = empty)."""
+        self._display_grid = grid
+
     def label_electrodes(self):
         rows, cols = self.grid_shape
-        max_channels = rows * cols
-        channel_indices = list(range(1, max_channels + 1))
-        logger.debug(channel_indices)
 
-        for i, ch in enumerate(channel_indices):
-            r = i // cols  # row-major: integer division gives the row index
-            c = i % cols  # modulo gives the column index
-            self.electrode_labels[r][c].setText(str(ch))
+        if self._display_grid is not None:
+            for r in range(rows):
+                for c in range(cols):
+                    local_idx = self._display_grid[r, c]
+                    label = "" if np.isnan(local_idx) else str(int(local_idx) + 1)
+                    self.electrode_labels[r][c].setText(label)
+        else:
+            # Fallback: sequential row-major 1..N
+            for i in range(rows * cols):
+                r = i // cols
+                c = i % cols
+                self.electrode_labels[r][c].setText(str(i + 1))
 
-    def update_all(self, channel_status, channel_indices):
+    def update_all(self, channel_status, channel_indices, grid_channel_map: dict = None):
         if not self.electrode_labels:
             return
-        for grid_idx, ch_idx in enumerate(channel_indices):
+        for i, ch_idx in enumerate(channel_indices):
+            if ch_idx is None:
+                continue
             selected = channel_status[ch_idx]
-            self.update_electrode(grid_idx, selected)
+            # Use the row-major grid position from grid_channel_map when available
+            grid_pos = grid_channel_map[ch_idx] if (grid_channel_map and ch_idx in grid_channel_map) else i
+            self.update_electrode(grid_pos, selected)
 
     def update_electrode(self, grid_idx, selected):
         if not self.electrode_labels:
@@ -113,10 +132,10 @@ class ElectrodeWidget(QWidget):
             self.electrode_labels[r][c].setStyleSheet(f"background-color: {Colors.BG_PRIMARY}; border: 1px solid {Colors.BORDER_DEFAULT};")
 
     def map_channel_to_grid(self, grid_idx):
-        # Column major mapping
+        # Row-major mapping — consistent with label_electrodes() and grid_channel_map
         rows, cols = self.grid_shape
-        r = grid_idx % rows
-        c = grid_idx // rows
+        r = grid_idx // cols
+        c = grid_idx % cols
         return r, c
 
     def set_orientation_highlight(self, orientation, current_page=0):

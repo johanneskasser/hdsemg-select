@@ -22,10 +22,11 @@ class ChannelWidget(QWidget):
     view_spectrum_requested = pyqtSignal(int)  # channel_idx
 
     def __init__(self, channel_idx: int, time_data, scaled_data_slice, ylim: tuple,
-                 initial_status: bool, initial_labels: list, parent=None, _overlay_ref_signal=None):
+                 initial_status: bool, initial_labels: list, parent=None,
+                 _overlay_ref_signal=None, electrode_number: int = None):
         super().__init__(parent)
         self.channel_idx = channel_idx
-        self.channel_number = channel_idx + 1
+        self.channel_number = electrode_number if electrode_number is not None else channel_idx + 1
         self.time_data = time_data
         self.scaled_data_slice = scaled_data_slice
         self.ylim = ylim

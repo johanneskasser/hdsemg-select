@@ -26,6 +26,8 @@ class AutomaticAmplitudeSelection:
         max_values = []
         min_values = []
         for i in self.parent.grid_setup_handler.current_grid_indices:
+            if i is None:
+                continue
             channel_data = scaled_data[:, i]
             max_values.append(channel_data.max())
             min_values.append(channel_data.min())
@@ -391,6 +393,8 @@ class AutomaticAmplitudeSelection:
             grid_selected = 0
             grid_deselected = 0
             for i in indices:
+                if i is None:
+                    continue
                 channel_data = scaled_data[:, i]
                 max_amplitude = channel_data.max()
                 min_amplitude = channel_data.min()

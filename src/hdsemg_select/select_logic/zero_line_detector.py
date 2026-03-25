@@ -52,6 +52,9 @@ class ZeroLineDetector:
         min_dead_frac = float(settings.get("min_dead_fraction", 0.05))
         min_dead_run_frac = float(settings.get("min_dead_run_fraction", 0.10))
 
+        # Drop None sentinels (empty electrode positions in physical layouts)
+        grid_indices = [ch for ch in grid_indices if ch is not None]
+
         window_samples = max(1, int(fs * window_ms / 1000))
         n_samples = data.shape[0]
         n_windows = n_samples // window_samples

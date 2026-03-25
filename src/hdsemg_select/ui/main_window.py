@@ -300,6 +300,10 @@ class ChannelSelector(QMainWindow):
 
             # Update UI elements based on new grid setup
             self.electrode_widget.set_grid_shape((self.rows, self.cols))
+            # Pass physical layout (may be None for unrecognised electrodes)
+            self.electrode_widget.set_electrode_display_grid(
+                self.grid_setup_handler.get_electrode_display_grid()
+            )
             self.electrode_widget.label_electrodes()
             self.electrode_widget.set_orientation_highlight(self.grid_setup_handler.get_orientation(),
                                                             self.grid_setup_handler.get_current_page())
@@ -461,7 +465,9 @@ class ChannelSelector(QMainWindow):
 
         # Create and add a ChannelWidget for each channel on the page
         for page_pos, channel_idx in enumerate(page_channels):
-            # channel_idx should not be None here because current_grid_indices is filtered
+            # channel_idx may be None for empty (NaN) electrode positions — skip them
+            if channel_idx is None:
+                continue
 
             # Ensure channel_idx is valid for scaled_data shape before creating widget
             if scaled_data is None or channel_idx < 0 or channel_idx >= scaled_data.shape[1]:
@@ -473,8 +479,10 @@ class ChannelSelector(QMainWindow):
             initial_status = channel_status[channel_idx] if channel_idx < len(channel_status) else False
             initial_labels = channel_labels.get(channel_idx, [])
 
+            electrode_number = self.grid_setup_handler.get_electrode_number(channel_idx)
             channel_widget = ChannelWidget(
                 channel_idx=channel_idx,
+                electrode_number=electrode_number,
                 time_data=time_data,  # Pass data for plotting
                 scaled_data_slice=scaled_data[:, channel_idx],  # Pass slice for plotting
                 ylim=self.ylim,  # Pass calculated ylim
@@ -501,7 +509,11 @@ class ChannelSelector(QMainWindow):
             self.channel_widgets.append(channel_widget)
 
         self.update_info_label()
-        self.electrode_widget.update_all(channel_status, self.grid_setup_handler.get_current_grid_indices())
+        self.electrode_widget.update_all(
+            channel_status,
+            self.grid_setup_handler.get_current_grid_indices(),
+            self.grid_setup_handler.get_grid_channel_map(),
+        )
         self.electrode_widget.set_orientation_highlight(
             self.grid_setup_handler.get_orientation(),
             self.grid_setup_handler.get_current_page()  # Use handler's current page
