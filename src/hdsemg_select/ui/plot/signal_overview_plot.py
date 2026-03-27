@@ -2,7 +2,7 @@ import numpy as np
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QDialog, QPushButton, QHBoxLayout, QLabel, QVBoxLayout, QMessageBox, QStyle, QApplication, \
-    QGroupBox, QComboBox, QSizePolicy, QWidget
+    QGroupBox, QComboBox, QSizePolicy, QWidget, QCheckBox
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
@@ -31,6 +31,7 @@ def _normalize_trace(trace: np.ndarray, max_amp: float = 1.1) -> np.ndarray:
 
 class SignalPlotDialog(QDialog):
     orientation_applied = pyqtSignal()
+    channel_status_changed = pyqtSignal()
     _COLORS = plt.get_cmap("tab10").colors
 
     def __init__(self, grid_handler: GridSetupHandler, parent=None):
@@ -38,6 +39,11 @@ class SignalPlotDialog(QDialog):
         self.currently_selected_fiber_mode = grid_handler.get_orientation()
 
         self._plot_generation_count = 0
+
+        # Channel selection checkboxes overlaid on the canvas (MP mode only)
+        self._channel_checkboxes: list = []
+        self._plotted_mp_indices: list = []
+        self._plotted_lines: list = []
 
         # Initialize differential filter parameters
         self._differential_filter_params = {'n': 4, 'low': 20.0, 'up': 450.0}
@@ -76,6 +82,7 @@ class SignalPlotDialog(QDialog):
 
         self.canvas = FigureCanvas(Figure(figsize=(15, 10)))
         self.ax = self.canvas.figure.add_subplot(111)
+        self.canvas.mpl_connect('draw_event', self._reposition_checkboxes)
         self.toolbar = NavigationToolbar(self.canvas, self)
 
         root = QVBoxLayout(self)
@@ -284,7 +291,7 @@ class SignalPlotDialog(QDialog):
                                 f"Sample mismatch for MP Ch {ch_idx + 1}. Data: {source_data[:, ch_idx].shape[0]}, Time: {time_vector.shape[0]}")
                             continue
                         traces_to_plot.append(source_data[:, ch_idx])
-                        labels_for_plot.append(f"{ch_idx + 1}")  # Original label style
+                        labels_for_plot.append(str(self.grid_handler.get_electrode_number(ch_idx)))
                         original_mp_indices_for_status.append(ch_idx)
             if not traces_to_plot:
                 self._show_no_grid_message(f"No valid MP channels to display for '{selected_grid_name}'.")
@@ -352,6 +359,7 @@ class SignalPlotDialog(QDialog):
                 return
 
         # --- Plotting ---
+        self._clear_channel_checkboxes()
         self.ax.clear()
         offset = 0.0
 
@@ -376,11 +384,12 @@ class SignalPlotDialog(QDialog):
                 ch_original_idx = original_mp_indices_for_status[i]
                 linestyle = "-" if global_state.get_channel_status(ch_original_idx) else "--"
 
-            self.ax.plot(time_vector,
-                         normalized + offset,
-                         color=self._COLORS[i % len(self._COLORS)],
-                         linestyle=linestyle,
-                         linewidth=1.0)
+            (line,) = self.ax.plot(time_vector,
+                                   normalized + offset,
+                                   color=self._COLORS[i % len(self._COLORS)],
+                                   linestyle=linestyle,
+                                   linewidth=1.0)
+            self._plotted_lines.append(line)
 
             # Separator lines
             if self._signal_mode == "MP":
@@ -403,7 +412,10 @@ class SignalPlotDialog(QDialog):
             self.ax.set_ylim(-0.5, n_plotted - 0.5)
             yt = np.arange(n_plotted)
             self.ax.set_yticks(yt)
-            self.ax.set_yticklabels(labels_for_plot, fontsize=8)
+            if self._signal_mode == "MP":
+                self.ax.set_yticklabels([''] * n_plotted, fontsize=8)
+            else:
+                self.ax.set_yticklabels(labels_for_plot, fontsize=8)
         else:  # Should not happen if checks above are correct
             self.ax.set_ylim(-0.5, 0.5)
             self.ax.set_yticks([])
@@ -435,7 +447,86 @@ class SignalPlotDialog(QDialog):
             logger.warning(f"Tight layout failed: {e}")
 
         self.canvas.draw_idle()
+        if self._signal_mode == "MP":
+            self._setup_channel_checkboxes(original_mp_indices_for_status)
         logger.debug(f"Signal Plot update complete for {self._signal_mode} mode.")
+
+    def _clear_channel_checkboxes(self):
+        for cb in self._channel_checkboxes:
+            cb.setParent(None)
+            cb.deleteLater()
+        self._channel_checkboxes.clear()
+        self._plotted_mp_indices.clear()
+        self._plotted_lines.clear()
+
+    def _setup_channel_checkboxes(self, mp_indices: list):
+        self._plotted_mp_indices = list(mp_indices)
+        for ch_idx in mp_indices:
+            cb = QCheckBox(self.canvas)
+            cb.setText("")
+            cb.setFixedSize(16, 16)
+            cb.setStyleSheet("""
+                QCheckBox { background-color: transparent; }
+                QCheckBox::indicator {
+                    width: 13px; height: 13px;
+                    border: 2px solid #555555;
+                    border-radius: 2px;
+                    background-color: rgba(255, 255, 255, 210);
+                }
+                QCheckBox::indicator:checked {
+                    background-color: #3b82f6;
+                    border-color: #2563eb;
+                }
+            """)
+            cb.setChecked(bool(global_state.get_channel_status(ch_idx)))
+            cb.setToolTip(f"Channel {ch_idx + 1}")
+            cb.toggled.connect(lambda checked, idx=ch_idx: self._on_checkbox_toggled(idx, checked))
+            cb.show()
+            self._channel_checkboxes.append(cb)
+        self._reposition_checkboxes()
+
+    def refresh_channel_states(self):
+        """Sync checkbox states and linestyles with current global_state without re-plotting."""
+        if not self._channel_checkboxes or self._signal_mode != "MP":
+            return
+        needs_redraw = False
+        for i, (cb, ch_idx) in enumerate(zip(self._channel_checkboxes, self._plotted_mp_indices)):
+            is_selected = bool(global_state.get_channel_status(ch_idx))
+            cb.blockSignals(True)
+            cb.setChecked(is_selected)
+            cb.blockSignals(False)
+            if i < len(self._plotted_lines):
+                new_ls = "-" if is_selected else "--"
+                if self._plotted_lines[i].get_linestyle() != new_ls:
+                    self._plotted_lines[i].set_linestyle(new_ls)
+                    needs_redraw = True
+        if needs_redraw:
+            self.canvas.draw_idle()
+
+    def _reposition_checkboxes(self, event=None):
+        if not self._channel_checkboxes:
+            return
+        ax_bbox = self.ax.get_window_extent()
+        cb_size = 14
+        x_canvas = int(ax_bbox.x0) - cb_size - 4
+        for i, cb in enumerate(self._channel_checkboxes):
+            y_disp = self.ax.transData.transform_point((0.0, float(i)))[1]
+            y_canvas = int(self.canvas.height() - y_disp) - cb_size // 2
+            cb.move(max(0, x_canvas), y_canvas)
+
+    def _on_checkbox_toggled(self, ch_idx: int, checked: bool):
+        status = global_state.get_channel_status()
+        if 0 <= ch_idx < len(status):
+            status[ch_idx] = checked
+            global_state.set_channel_status(status)
+        try:
+            plot_idx = self._plotted_mp_indices.index(ch_idx)
+            if plot_idx < len(self._plotted_lines):
+                self._plotted_lines[plot_idx].set_linestyle("-" if checked else "--")
+                self.canvas.draw_idle()
+        except (ValueError, IndexError):
+            pass
+        self.channel_status_changed.emit()
 
     def _open_filter_settings_dialog(self):
         # Pass a copy of current params, so original is not modified if dialog is cancelled
