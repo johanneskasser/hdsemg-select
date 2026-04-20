@@ -31,6 +31,12 @@ import hdsemg_select.resources_rc
 from hdsemg_select.ui.widgets.clickable_info_widget import ClickableGridInfoWidget
 
 
+def build_grid_label(rows: int, cols: int, layout_mode_name: str, orientation_name: str, muscle: str | None) -> str:
+    """Compose the text for the grid info label widget."""
+    shape_line = f"({rows}x{cols})  {layout_mode_name.title()} {orientation_name.title()} to fibers"
+    return f"{muscle}\n{shape_line}" if muscle else shape_line
+
+
 class ChannelSelector(QMainWindow):
     def __init__(self, input_file=None, output_file=None):
         super().__init__()
@@ -317,8 +323,9 @@ class ChannelSelector(QMainWindow):
             self.save_action.setEnabled(True)
             self.select_all_checkbox.setEnabled(True)
             layout_mode = global_state.get_layout_for_fiber(orientation)
-            # Update grid label using values from handler
-            grid_text = f"({self.rows}x{self.cols}) \n {layout_mode.name.title()} {orientation.name.title()} to fibers"
+            selected_grid_obj = global_state.get_emg_file().get_grid(grid_key=selected_grid)
+            muscle = selected_grid_obj.muscle if selected_grid_obj and selected_grid_obj.muscle else None
+            grid_text = build_grid_label(self.rows, self.cols, layout_mode.name, orientation.name, muscle)
             self.grid_label_widget.setText(grid_text)
         else:
             # Grid setup failed (message box already shown by handler)
