@@ -94,26 +94,45 @@ def get_display_grid(electrode_name: str, rows: int, cols: int) -> Optional[np.n
 
     Returns None if the electrode name is unrecognised or if the expected
     dimensions do not match the stored layout.
+
+    Falls back to user-defined custom layouts persisted in config when the
+    built-in layout lookup fails.
     """
     canonical = _resolve_name(electrode_name)
-    if canonical is None:
-        return None
-    base0 = _LAYOUTS_BASE0.get(canonical)
-    if base0 is None:
-        return None
+    if canonical is not None:
+        base0 = _LAYOUTS_BASE0.get(canonical)
+        if base0 is not None:
+            # base0 is cols × rows (outer = col, inner = row)
+            expected_cols = len(base0)
+            expected_rows = len(base0[0])
 
-    # base0 is cols × rows (outer = col, inner = row)
-    expected_cols = len(base0)
-    expected_rows = len(base0[0])
+            arr = np.array(base0, dtype=float)  # shape (expected_cols, expected_rows)
 
-    arr = np.array(base0, dtype=float)  # shape (expected_cols, expected_rows)
+            if expected_rows == rows and expected_cols == cols:
+                # Normal orientation: transpose to (rows, cols)
+                return arr.T
+            elif expected_rows == cols and expected_cols == rows:
+                # File stores the grid with rows/cols swapped relative to the physical layout.
+                # arr already has shape (expected_cols=rows, expected_rows=cols) = (rows, cols).
+                return arr
+            else:
+                return None
 
-    if expected_rows == rows and expected_cols == cols:
-        # Normal orientation: transpose to (rows, cols)
-        return arr.T
-    elif expected_rows == cols and expected_cols == rows:
-        # File stores the grid with rows/cols swapped relative to the physical layout.
-        # arr already has shape (expected_cols=rows, expected_rows=cols) = (rows, cols).
-        return arr
-    else:
-        return None
+    # Fall back to user-defined custom layouts stored in config
+    try:
+        from hdsemg_select.config.config_manager import config
+        from hdsemg_select.config.config_enums import Settings
+        custom = config.get(Settings.CUSTOM_ELECTRODE_LAYOUTS, {}) or {}
+        entry = custom.get(electrode_name)
+        if entry and entry.get("rows") == rows and entry.get("cols") == cols:
+            raw = entry["grid"]  # list of rows, each a list of int|None
+            arr = np.array(
+                [[np.nan if v is None else float(v) for v in row] for row in raw],
+                dtype=float,
+            )
+            if arr.shape == (rows, cols):
+                return arr
+    except Exception:
+        pass
+
+    return None

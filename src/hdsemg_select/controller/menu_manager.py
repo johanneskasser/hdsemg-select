@@ -120,6 +120,14 @@ class MenuManager:
         self.crop_signal_action.setEnabled(False)
         self.crop_signal_action.triggered.connect(parent_window.open_crop_dialog)
         signal_menu.addAction(self.crop_signal_action)
+
+        self.density_map_action = QAction("Density Map...", parent_window)
+        self.density_map_action.setShortcut(QKeySequence("Ctrl+D"))
+        self.density_map_action.setStatusTip("Animated ARV heatmap over the physical electrode grid")
+        self.density_map_action.setEnabled(False)
+        self.density_map_action.triggered.connect(parent_window.open_density_map_dialog)
+        signal_menu.addAction(self.density_map_action)
+
         signal_menu.setObjectName("Signal")
         return signal_menu
 
@@ -206,6 +214,9 @@ class MenuManager:
 
     def get_crop_signal_action(self):
         return self.crop_signal_action
+
+    def get_density_map_action(self):
+        return self.density_map_action
 
     def get_toggle_signal_overview_action(self):
         return self.toggle_signal_overview_action

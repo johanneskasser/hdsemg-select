@@ -15,4 +15,10 @@ class Settings(Enum):
     CUSTOM_FLAG_NAMES = auto()
     CUSTOM_FLAG_LAST_ID = auto() #running ID generator
 
+    DENSITY_ARV_WINDOW_MS = "density_arv_window_ms"
+    DENSITY_SCALE_MAX_MV = "density_scale_max_mv"
+    DENSITY_PLAYBACK_FPS = "density_playback_fps"
+    DENSITY_DEFAULT_SPEED = "density_default_speed"
+    CUSTOM_ELECTRODE_LAYOUTS = "custom_electrode_layouts"
+
 
