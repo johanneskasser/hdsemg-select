@@ -5,12 +5,13 @@ from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QGroupBox,
     QComboBox, QPushButton, QDoubleSpinBox, QSpinBox,
-    QSlider, QLabel, QWidget, QSizePolicy, QStyle,
+    QSlider, QLabel, QWidget, QSizePolicy, QStyle, QCheckBox,
 )
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.figure import Figure
+from matplotlib.patches import Rectangle
 
 from hdsemg_select._log.log_config import logger
 from hdsemg_select.config.config_enums import Settings
@@ -76,11 +77,15 @@ class DensityMapDialog(QDialog):
         self._emg_indices: list = []
         self._electrode_name: str = ""
         self._n_grid_channels: int = 0
+        self._grid_max_amplitude: float = 1.0
 
-        # Matplotlib image handle (set on first render)
+        # Matplotlib handles
         self._image = None
         self._colorbar = None
         self._ax = None
+        self._ch_num_texts: list = []
+        self._sel_patches: list = []
+        self._click_cid = None
 
         self._build_ui()
         self._populate_grid_selector()
@@ -117,7 +122,7 @@ class DensityMapDialog(QDialog):
 
         # --- Sidebar ---
         sidebar = QWidget()
-        sidebar.setFixedWidth(260)
+        sidebar.setFixedWidth(270)
         sidebar_layout = QVBoxLayout(sidebar)
         sidebar_layout.setContentsMargins(0, 0, 0, 0)
         sidebar_layout.setSpacing(Spacing.SM)
@@ -163,11 +168,8 @@ class DensityMapDialog(QDialog):
         self._scale_spin.setRange(0.001, 100.0)
         self._scale_spin.setDecimals(3)
         self._scale_spin.setSingleStep(0.1)
-        self._scale_spin.setSuffix(" (max)")
-        default_scale = config.get(Settings.DENSITY_SCALE_MAX_MV, None)
-        if default_scale is None:
-            default_scale = max(0.001, global_state.max_amplitude or 1.0)
-        self._scale_spin.setValue(default_scale)
+        self._scale_spin.setSuffix(" mV")
+        self._scale_spin.setValue(1.0)  # Overwritten by _resolve_grid_layout
         self._scale_spin.setStyleSheet(self._spinbox_style())
         self._scale_spin.valueChanged.connect(self._on_scale_changed)
         scale_row.addWidget(self._scale_spin)
@@ -203,6 +205,28 @@ class DensityMapDialog(QDialog):
         pb_box_layout.addLayout(fps_row)
         sidebar_layout.addWidget(pb_box)
 
+        # Display options group
+        disp_box = QGroupBox("Display Options")
+        disp_box.setStyleSheet(self._groupbox_style())
+        disp_box_layout = QVBoxLayout(disp_box)
+
+        self._smooth_check = QCheckBox("Smooth interpolation")
+        self._smooth_check.setStyleSheet(self._checkbox_style())
+        self._smooth_check.stateChanged.connect(self._on_smooth_changed)
+        disp_box_layout.addWidget(self._smooth_check)
+
+        self._ch_num_check = QCheckBox("Channel numbers")
+        self._ch_num_check.setStyleSheet(self._checkbox_style())
+        self._ch_num_check.stateChanged.connect(self._on_ch_num_changed)
+        disp_box_layout.addWidget(self._ch_num_check)
+
+        self._sel_check = QCheckBox("Selection status")
+        self._sel_check.setToolTip("Overlay selection state; click a cell to toggle it")
+        self._sel_check.setStyleSheet(self._checkbox_style())
+        self._sel_check.stateChanged.connect(self._on_sel_changed)
+        disp_box_layout.addWidget(self._sel_check)
+
+        sidebar_layout.addWidget(disp_box)
         sidebar_layout.addStretch()
         main_split.addWidget(sidebar)
 
@@ -276,7 +300,9 @@ class DensityMapDialog(QDialog):
         transport_layout.addWidget(self._time_slider, stretch=1)
 
         self._time_label = QLabel("t = 0.000 s / 0.000 s")
-        self._time_label.setStyleSheet(f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}; font-family: monospace;")
+        self._time_label.setStyleSheet(
+            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}; font-family: monospace;"
+        )
         self._time_label.setFixedWidth(200)
         transport_layout.addWidget(self._time_label)
 
@@ -294,7 +320,6 @@ class DensityMapDialog(QDialog):
         if emg_file and emg_file.grids:
             for grid in emg_file.grids:
                 self._grid_combo.addItem(grid.grid_key)
-            # Pre-select the grid currently active in the handler
             current = self._grid_handler.get_selected_grid()
             if current and self._grid_combo.findText(current) >= 0:
                 self._grid_combo.setCurrentText(current)
@@ -323,6 +348,16 @@ class DensityMapDialog(QDialog):
         self._resolve_grid_layout()
         self._reset_plot()
 
+    def _compute_grid_max(self) -> float:
+        """99.5th-percentile absolute value across the current grid's channels."""
+        if self._data is None or not self._emg_indices:
+            return 1.0
+        valid_cols = [i for i in self._emg_indices if i < self._data.shape[1]]
+        if not valid_cols:
+            return 1.0
+        val = float(np.percentile(np.abs(self._data[:, valid_cols]), 99.5))
+        return max(val, 0.001)
+
     def _resolve_grid_layout(self):
         """Determine physical layout and emg_indices for the selected grid key."""
         key = self._grid_combo.currentText()
@@ -342,18 +377,30 @@ class DensityMapDialog(QDialog):
 
         self._emg_indices = list(grid.emg_indices)
         self._n_grid_channels = len(self._emg_indices)
-
-        # Extract electrode name the same way GridSetupHandler does
         self._electrode_name = self._grid_handler._extract_electrode_name(grid.emg_indices)
 
-        display_grid = get_display_grid(self._electrode_name, grid.rows, grid.cols)
-        self._display_grid = display_grid
+        self._display_grid = get_display_grid(self._electrode_name, grid.rows, grid.cols)
+
+        # Auto-set scale to the grid's natural amplitude range
+        self._grid_max_amplitude = self._compute_grid_max()
+        self._scale_spin.blockSignals(True)
+        self._scale_spin.setValue(self._grid_max_amplitude)
+        self._scale_spin.blockSignals(False)
 
     # ------------------------------------------------------------------
     # Plot management
     # ------------------------------------------------------------------
 
     def _reset_plot(self):
+        if self._click_cid is not None:
+            try:
+                self._canvas.mpl_disconnect(self._click_cid)
+            except Exception:
+                pass
+            self._click_cid = None
+
+        self._ch_num_texts = []
+        self._sel_patches = []
         self._figure.clear()
         self._image = None
         self._colorbar = None
@@ -373,7 +420,6 @@ class DensityMapDialog(QDialog):
         self._ax.set_facecolor(Colors.BG_PRIMARY)
         self._figure.patch.set_facecolor(Colors.BG_PRIMARY)
 
-        # Render first frame
         arv = compute_arv_window(
             self._data,
             self._cursor_sample,
@@ -382,17 +428,21 @@ class DensityMapDialog(QDialog):
         grid_vals = channels_to_grid(arv, self._display_grid, self._emg_indices)
         masked = np.ma.masked_invalid(grid_vals)
 
+        interp = "bilinear" if self._smooth_check.isChecked() else "nearest"
         self._image = self._ax.imshow(
             masked,
             cmap=_EMG_CMAP,
             vmin=0.0,
             vmax=self._scale_spin.value(),
             aspect="equal",
-            interpolation="nearest",
+            interpolation=interp,
             origin="upper",
         )
         self._colorbar = self._figure.colorbar(self._image, ax=self._ax)
-        self._colorbar.set_label("ARV", color=Colors.TEXT_SECONDARY)
+        self._colorbar.set_label("ARV (mV)", color=Colors.TEXT_SECONDARY)
+        self._colorbar.ax.yaxis.set_tick_params(color=Colors.TEXT_SECONDARY)
+        for lbl in self._colorbar.ax.get_yticklabels():
+            lbl.set_color(Colors.TEXT_SECONDARY)
         self._ax.set_xlabel("Column", color=Colors.TEXT_SECONDARY)
         self._ax.set_ylabel("Row", color=Colors.TEXT_SECONDARY)
         self._ax.tick_params(colors=Colors.TEXT_SECONDARY)
@@ -401,6 +451,11 @@ class DensityMapDialog(QDialog):
             color=Colors.TEXT_PRIMARY,
             fontsize=10,
         )
+
+        self._update_channel_annotations()
+        self._update_selection_overlay()
+
+        self._click_cid = self._canvas.mpl_connect('button_press_event', self._on_canvas_click)
 
         self._canvas.draw_idle()
         self._set_transport_enabled(True)
@@ -438,11 +493,123 @@ class DensityMapDialog(QDialog):
         self._time_slider.setEnabled(enabled)
 
     # ------------------------------------------------------------------
+    # Display overlays
+    # ------------------------------------------------------------------
+
+    def _update_channel_annotations(self):
+        """Draw (or clear) 1-based channel-number labels on each electrode cell."""
+        for t in self._ch_num_texts:
+            try:
+                t.remove()
+            except ValueError:
+                pass
+        self._ch_num_texts = []
+
+        if not self._ch_num_check.isChecked() or self._ax is None or self._display_grid is None:
+            self._canvas.draw_idle()
+            return
+
+        rows, cols = self._display_grid.shape
+        for r in range(rows):
+            for c in range(cols):
+                local = self._display_grid[r, c]
+                if np.isnan(local):
+                    continue
+                idx = int(local)
+                if idx >= len(self._emg_indices):
+                    continue
+                ch_num = self._emg_indices[idx] + 1  # 1-based
+                t = self._ax.text(
+                    c, r, str(ch_num),
+                    ha="center", va="center",
+                    fontsize=7, color="white",
+                    fontweight="bold",
+                    bbox=dict(boxstyle="round,pad=0.1", facecolor="black", alpha=0.45),
+                )
+                self._ch_num_texts.append(t)
+        self._canvas.draw_idle()
+
+    def _update_selection_overlay(self):
+        """Draw (or clear) green/red selection-state rectangles on each electrode cell."""
+        for p in self._sel_patches:
+            try:
+                p.remove()
+            except (ValueError, AttributeError):
+                pass
+        self._sel_patches = []
+
+        if not self._sel_check.isChecked() or self._ax is None or self._display_grid is None:
+            self._canvas.draw_idle()
+            return
+
+        channel_status = global_state.get_channel_status()
+        rows, cols = self._display_grid.shape
+        for r in range(rows):
+            for c in range(cols):
+                local = self._display_grid[r, c]
+                if np.isnan(local):
+                    continue
+                idx = int(local)
+                if idx >= len(self._emg_indices):
+                    continue
+                data_col = self._emg_indices[idx]
+                if data_col >= len(channel_status):
+                    continue
+                selected = bool(channel_status[data_col])
+                color = Colors.GREEN_500 if selected else "#DD2200"
+                rect = Rectangle(
+                    (c - 0.5, r - 0.5), 1.0, 1.0,
+                    fill=True, facecolor=color, alpha=0.25,
+                    linewidth=2, edgecolor=color,
+                )
+                self._ax.add_patch(rect)
+                self._sel_patches.append(rect)
+        self._canvas.draw_idle()
+
+    def _on_canvas_click(self, event):
+        """Toggle channel selection when the user clicks a cell with Selection status enabled."""
+        if not self._sel_check.isChecked():
+            return
+        if event.inaxes is not self._ax or event.xdata is None or event.ydata is None:
+            return
+        if self._display_grid is None:
+            return
+
+        col = int(round(event.xdata))
+        row = int(round(event.ydata))
+        n_rows, n_cols = self._display_grid.shape
+        if not (0 <= row < n_rows and 0 <= col < n_cols):
+            return
+
+        local = self._display_grid[row, col]
+        if np.isnan(local):
+            return
+
+        idx = int(local)
+        if idx >= len(self._emg_indices):
+            return
+
+        data_col = self._emg_indices[idx]
+        channel_status = global_state.get_channel_status()
+        if data_col >= len(channel_status):
+            return
+
+        new_state = not bool(channel_status[data_col])
+        parent = self.parent()
+        if parent is not None and hasattr(parent, 'handle_single_channel_update'):
+            parent.handle_single_channel_update(
+                data_col, Qt.Checked if new_state else Qt.Unchecked
+            )
+        else:
+            channel_status[data_col] = new_state
+
+        self._update_selection_overlay()
+
+    # ------------------------------------------------------------------
     # Timer / playback
     # ------------------------------------------------------------------
 
     def _on_timer_tick(self):
-        # Detect crop/data change
         current_data = global_state.get_effective_emg_data()
         if current_data is None:
             self._timer.stop()
@@ -544,7 +711,6 @@ class DensityMapDialog(QDialog):
         self._render_frame()
 
     def _on_scale_changed(self, _value: float):
-        config.set(Settings.DENSITY_SCALE_MAX_MV, _value)
         if self._image is not None:
             self._image.set_clim(0.0, _value)
             self._canvas.draw_idle()
@@ -560,6 +726,18 @@ class DensityMapDialog(QDialog):
         config.set(Settings.DENSITY_PLAYBACK_FPS, value)
         if self._playing:
             self._timer.start(max(1, 1000 // self._fps))
+
+    def _on_smooth_changed(self, state: int):
+        if self._image is None:
+            return
+        self._image.set_interpolation("bilinear" if state == Qt.Checked else "nearest")
+        self._canvas.draw_idle()
+
+    def _on_ch_num_changed(self, _state: int):
+        self._update_channel_annotations()
+
+    def _on_sel_changed(self, _state: int):
+        self._update_selection_overlay()
 
     def _open_layout_builder(self):
         key = self._grid_combo.currentText()
@@ -621,5 +799,26 @@ class DensityMapDialog(QDialog):
                 border-radius: {BorderRadius.SM};
                 padding: {Spacing.XS}px {Spacing.SM}px;
                 font-size: {Fonts.SIZE_BASE};
+            }}
+        """
+
+    @staticmethod
+    def _checkbox_style() -> str:
+        return f"""
+            QCheckBox {{
+                color: {Colors.TEXT_PRIMARY};
+                font-size: {Fonts.SIZE_BASE};
+                spacing: 6px;
+            }}
+            QCheckBox::indicator {{
+                width: 14px;
+                height: 14px;
+                border: 1px solid {Colors.BORDER_DEFAULT};
+                border-radius: 3px;
+                background-color: {Colors.BG_PRIMARY};
+            }}
+            QCheckBox::indicator:checked {{
+                background-color: {Colors.BLUE_500};
+                border-color: {Colors.BLUE_500};
             }}
         """
