@@ -32,6 +32,8 @@ The dialog is split into a **sidebar** on the left and a **plot area** on the ri
 |---------|-------------|
 | **Grid** | Select which electrode grid to display when the file contains multiple grids. |
 | **Edit Layout…** | Opens the custom layout builder for electrode models not yet recognised by the application (see [Custom Layouts](#custom-layouts)). |
+| **Signal View** | Choose the spatial derivation shown in the heatmap: **MP** (Monopolar), **SD** (Single Differential), or **DD** (Double Differential). Differential signals are computed along the muscle-fiber direction (as set by the grid orientation). |
+| **Filter Settings…** | Configures the zero-phase Butterworth bandpass applied before differencing (order, low/high cutoff). Only active in SD/DD mode. Defaults: order 4, 20 – 450 Hz. |
 | **Reference Signal** | Choose which aux/reference channel to display below the heatmap. Performed Path and Requested Path channels are listed first when present. |
 | **ARV Window** | Width of the centred time window used to compute the ARV at the current cursor position (10 – 2000 ms, default 250 ms). Larger values smooth out transient bursts; smaller values show faster changes. |
 | **Scale** | Upper bound of the colour scale in mV. Automatically set to the 99.5th-percentile absolute amplitude of the selected grid's channels when a grid is (re-)loaded. Adjust manually if the colours are washed out or too dark. |

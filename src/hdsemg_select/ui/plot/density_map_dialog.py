@@ -14,13 +14,17 @@ from matplotlib.figure import Figure
 from matplotlib.gridspec import GridSpec
 from matplotlib.patches import Rectangle
 
+from hdsemg_shared.preprocessing.differential import to_differential
+
 from hdsemg_select._log.log_config import logger
 from hdsemg_select.config.config_enums import Settings
 from hdsemg_select.config.config_manager import config
 from hdsemg_select.controller.grid_setup_handler import GridSetupHandler
 from hdsemg_select.logic.density.arv import compute_arv_window, channels_to_grid, ms_to_samples
+from hdsemg_select.state.enum.layout_mode_enums import LayoutMode
 from hdsemg_select.state.state import global_state
 from hdsemg_select.ui.dialog.density_layout_builder import LayoutBuilderDialog
+from hdsemg_select.ui.dialog.differential_filter_settings_dialog import DifferentialFilterSettingsDialog
 from hdsemg_select.ui.electrode_layout import get_display_grid
 from hdsemg_select.ui.theme import Colors, Spacing, BorderRadius, Fonts, Styles
 
@@ -80,6 +84,13 @@ class DensityMapDialog(QDialog):
         self._electrode_name: str = ""
         self._n_grid_channels: int = 0
         self._grid_max_amplitude: float = 1.0
+
+        # Differential signal view
+        self._signal_view: str = "MP"
+        self._diff_filter_params: dict = {"n": 4, "low": 20.0, "up": 450.0}
+        self._diff_data: Optional[np.ndarray] = None
+        self._diff_display_grid: Optional[np.ndarray] = None
+        self._diff_emg_indices: list = []
 
         # Reference signal cache
         self._ref_idx: Optional[int] = None
@@ -153,6 +164,25 @@ class DensityMapDialog(QDialog):
         self._edit_layout_btn.clicked.connect(self._open_layout_builder)
         grid_box_layout.addWidget(self._edit_layout_btn)
         sidebar_layout.addWidget(grid_box)
+
+        # Signal view group
+        sig_view_box = QGroupBox("Signal View")
+        sig_view_box.setStyleSheet(self._groupbox_style())
+        sig_view_box_layout = QVBoxLayout(sig_view_box)
+        self._signal_view_combo = QComboBox()
+        self._signal_view_combo.addItems(
+            ["Monopolar (MP)", "Single Differential (SD)", "Double Differential (DD)"]
+        )
+        self._signal_view_combo.setStyleSheet(self._combobox_style())
+        self._signal_view_combo.currentTextChanged.connect(self._on_signal_view_changed)
+        sig_view_box_layout.addWidget(self._signal_view_combo)
+        self._filter_btn = QPushButton("Filter Settings…")
+        self._filter_btn.setStyleSheet(Styles.button_secondary())
+        self._filter_btn.setEnabled(False)
+        self._filter_btn.setToolTip("Configure Butterworth bandpass filter for SD/DD")
+        self._filter_btn.clicked.connect(self._open_filter_settings)
+        sig_view_box_layout.addWidget(self._filter_btn)
+        sidebar_layout.addWidget(sig_view_box)
 
         # Reference signal group
         ref_box = QGroupBox("Reference Signal")
@@ -442,14 +472,120 @@ class DensityMapDialog(QDialog):
         self._reset_plot()
 
     def _compute_grid_max(self) -> float:
-        """99.5th-percentile absolute value across the current grid's channels."""
-        if self._data is None or not self._emg_indices:
-            return 1.0
-        valid_cols = [i for i in self._emg_indices if i < self._data.shape[1]]
+        """99.5th-percentile absolute value across active (MP/SD/DD) grid channels."""
+        data, _, emg_indices = self._get_active_data()
+        if data is None or not emg_indices:
+            # Fallback to raw MP data so the spinbox is not stuck at 1.0
+            if self._data is None or not self._emg_indices:
+                return 1.0
+            valid_cols = [i for i in self._emg_indices if i < self._data.shape[1]]
+            if not valid_cols:
+                return 1.0
+            val = float(np.percentile(np.abs(self._data[:, valid_cols]), 99.5))
+            return max(val, 0.001)
+        valid_cols = [i for i in emg_indices if i < data.shape[1]]
         if not valid_cols:
             return 1.0
-        val = float(np.percentile(np.abs(self._data[:, valid_cols]), 99.5))
+        val = float(np.percentile(np.abs(data[:, valid_cols]), 99.5))
         return max(val, 0.001)
+
+    def _get_layout_mode(self) -> LayoutMode:
+        """Return the LayoutMode that matches the current fiber orientation."""
+        fiber_mode = self._grid_handler.get_orientation()
+        if fiber_mode is None:
+            return LayoutMode.COLUMNS
+        return global_state.get_layout_for_fiber(fiber_mode)
+
+    def _get_active_data(self):
+        """Return (data, display_grid, emg_indices) for the current signal view."""
+        if self._signal_view == "MP":
+            return self._data, self._display_grid, self._emg_indices
+        return self._diff_data, self._diff_display_grid, self._diff_emg_indices
+
+    def _precompute_differential(self) -> None:
+        """Build _diff_data and _diff_display_grid for SD or DD mode."""
+        self._diff_data = None
+        self._diff_display_grid = None
+        self._diff_emg_indices = []
+
+        if self._signal_view == "MP":
+            return
+        if self._data is None or self._display_grid is None or not self._emg_indices:
+            return
+
+        layout_mode = self._get_layout_mode()
+        # axis 0 → diff along rows (fibers along columns); axis 1 → diff along cols
+        axis = 0 if layout_mode == LayoutMode.COLUMNS else 1
+        n_diff_steps = 1 if self._signal_view == "SD" else 2
+
+        n_rows, n_cols = self._display_grid.shape
+        if axis == 0:
+            result_shape = (max(0, n_rows - n_diff_steps), n_cols)
+            n_lines = n_cols
+        else:
+            result_shape = (n_rows, max(0, n_cols - n_diff_steps))
+            n_lines = n_rows
+
+        if result_shape[0] == 0 or result_shape[1] == 0:
+            logger.warning(
+                "Grid too small for %s (%dx%d). Need at least %d channels along fiber.",
+                self._signal_view, n_rows, n_cols, n_diff_steps + 1,
+            )
+            return
+
+        diff_grid = np.full(result_shape, np.nan)
+        diff_channels: list = []
+
+        for line_idx in range(n_lines):
+            if axis == 0:
+                locals_in_line = [
+                    (r, int(self._display_grid[r, line_idx]))
+                    for r in range(n_rows)
+                    if not np.isnan(self._display_grid[r, line_idx])
+                ]
+            else:
+                locals_in_line = [
+                    (c, int(self._display_grid[line_idx, c]))
+                    for c in range(n_cols)
+                    if not np.isnan(self._display_grid[line_idx, c])
+                ]
+
+            if len(locals_in_line) < n_diff_steps + 1:
+                continue
+
+            try:
+                mp_mat = np.array(
+                    [self._data[:, self._emg_indices[loc]] for _, loc in locals_in_line],
+                    dtype=float,
+                )  # shape (n_valid, T)
+            except IndexError:
+                continue
+
+            try:
+                sd_mats, _ = to_differential([mp_mat], self._fs, self._diff_filter_params)
+                final_mat = sd_mats[0]  # (n_valid-1, T)
+                if self._signal_view == "DD":
+                    dd_mats, _ = to_differential([final_mat], self._fs, self._diff_filter_params)
+                    final_mat = dd_mats[0]  # (n_valid-2, T)
+            except Exception as exc:
+                logger.warning("to_differential failed for line %d: %s", line_idx, exc)
+                continue
+
+            for diff_i in range(final_mat.shape[0]):
+                r_pos = diff_i if axis == 0 else line_idx
+                c_pos = line_idx if axis == 0 else diff_i
+                if 0 <= r_pos < result_shape[0] and 0 <= c_pos < result_shape[1]:
+                    diff_grid[r_pos, c_pos] = len(diff_channels)
+                    diff_channels.append(final_mat[diff_i, :])
+
+        if diff_channels:
+            self._diff_data = np.stack(diff_channels, axis=1)  # (T, n_diff_channels)
+            self._diff_display_grid = diff_grid
+            self._diff_emg_indices = list(range(len(diff_channels)))
+            logger.debug(
+                "Precomputed %s: %d channels, grid %s",
+                self._signal_view, len(diff_channels), result_shape,
+            )
 
     def _resolve_grid_layout(self):
         """Determine physical layout and emg_indices for the selected grid key."""
@@ -459,6 +595,9 @@ class DensityMapDialog(QDialog):
         self._emg_indices = []
         self._electrode_name = ""
         self._n_grid_channels = 0
+        self._diff_data = None
+        self._diff_display_grid = None
+        self._diff_emg_indices = []
 
         emg_file = global_state.get_emg_file()
         if not emg_file or not key:
@@ -472,6 +611,9 @@ class DensityMapDialog(QDialog):
         self._n_grid_channels = len(self._emg_indices)
         self._electrode_name = self._grid_handler._extract_electrode_name(grid.emg_indices)
         self._display_grid = get_display_grid(self._electrode_name, grid.rows, grid.cols)
+
+        # Precompute differential data (no-op for MP)
+        self._precompute_differential()
 
         self._grid_max_amplitude = self._compute_grid_max()
         self._scale_spin.blockSignals(True)
@@ -504,12 +646,25 @@ class DensityMapDialog(QDialog):
         self._ref_ax = None
         self._cursor_line = None
 
+        active_data, active_grid, active_emg = self._get_active_data()
+
         if self._display_grid is None:
             self._show_no_layout_placeholder()
             self._set_transport_enabled(False)
             return
 
-        if self._data is None:
+        if active_grid is None:
+            if self._signal_view != "MP":
+                self._show_no_data_placeholder(
+                    f"Not enough channels for {self._signal_view}.\n"
+                    "Need ≥ 2 channels along fiber direction for SD, ≥ 3 for DD."
+                )
+            else:
+                self._show_no_layout_placeholder()
+            self._set_transport_enabled(False)
+            return
+
+        if active_data is None:
             self._show_no_data_placeholder("No data available.")
             self._set_transport_enabled(False)
             return
@@ -534,11 +689,11 @@ class DensityMapDialog(QDialog):
 
         # --- Heatmap ---
         arv = compute_arv_window(
-            self._data,
+            active_data,
             self._cursor_sample,
             ms_to_samples(self._arv_spin.value(), self._fs),
         )
-        grid_vals = channels_to_grid(arv, self._display_grid, self._emg_indices)
+        grid_vals = channels_to_grid(arv, active_grid, active_emg)
         masked = np.ma.masked_invalid(grid_vals)
 
         interp = "bilinear" if self._smooth_check.isChecked() else "nearest"
@@ -552,15 +707,17 @@ class DensityMapDialog(QDialog):
             origin="upper",
         )
         self._colorbar = self._figure.colorbar(self._image, cax=self._cbar_ax)
-        self._colorbar.set_label("ARV (mV)", color=Colors.TEXT_SECONDARY)
+        cbar_label = f"ARV {self._signal_view} (mV)"
+        self._colorbar.set_label(cbar_label, color=Colors.TEXT_SECONDARY)
         self._colorbar.ax.yaxis.set_tick_params(color=Colors.TEXT_SECONDARY)
         for lbl in self._colorbar.ax.get_yticklabels():
             lbl.set_color(Colors.TEXT_SECONDARY)
         self._ax.set_xlabel("Column", color=Colors.TEXT_SECONDARY)
         self._ax.set_ylabel("Row", color=Colors.TEXT_SECONDARY)
         self._ax.tick_params(colors=Colors.TEXT_SECONDARY)
+        base_title = self._electrode_name or self._grid_key or ""
         self._ax.set_title(
-            self._electrode_name or self._grid_key,
+            f"{base_title} — {self._signal_view}" if base_title else self._signal_view,
             color=Colors.TEXT_PRIMARY,
             fontsize=10,
         )
@@ -660,7 +817,8 @@ class DensityMapDialog(QDialog):
                 pass
         self._ch_num_texts = []
 
-        if not self._ch_num_check.isChecked() or self._ax is None or self._display_grid is None:
+        if (not self._ch_num_check.isChecked() or self._ax is None
+                or self._display_grid is None or self._signal_view != "MP"):
             self._canvas.draw_idle()
             return
 
@@ -692,7 +850,8 @@ class DensityMapDialog(QDialog):
                 pass
         self._sel_patches = []
 
-        if not self._sel_check.isChecked() or self._ax is None or self._display_grid is None:
+        if (not self._sel_check.isChecked() or self._ax is None
+                or self._display_grid is None or self._signal_view != "MP"):
             self._canvas.draw_idle()
             return
 
@@ -816,6 +975,7 @@ class DensityMapDialog(QDialog):
             self._data_id = id(current_data)
             self._n_samples = current_data.shape[0]
             self._cursor_sample = 0
+            self._precompute_differential()
             self._resolve_ref_signal()
             if self._ref_ax is not None:
                 self._draw_ref_plot()
@@ -832,15 +992,18 @@ class DensityMapDialog(QDialog):
         self._render_frame()
 
     def _render_frame(self):
-        if self._image is None or self._data is None or self._display_grid is None:
+        if self._image is None:
+            return
+        active_data, active_grid, active_emg = self._get_active_data()
+        if active_data is None or active_grid is None:
             return
 
         arv = compute_arv_window(
-            self._data,
+            active_data,
             self._cursor_sample,
             ms_to_samples(self._arv_spin.value(), self._fs),
         )
-        grid_vals = channels_to_grid(arv, self._display_grid, self._emg_indices)
+        grid_vals = channels_to_grid(arv, active_grid, active_emg)
         masked = np.ma.masked_invalid(grid_vals)
         self._image.set_data(masked)
         self._image.set_clim(0.0, self._scale_spin.value())
@@ -945,6 +1108,33 @@ class DensityMapDialog(QDialog):
         if dlg.exec_() == QDialog.Accepted:
             logger.info("Custom layout saved for '%s'", name)
             self.refresh_grid()
+
+    def _on_signal_view_changed(self, text: str) -> None:
+        if "SD" in text and "DD" not in text:
+            self._signal_view = "SD"
+        elif "DD" in text:
+            self._signal_view = "DD"
+        else:
+            self._signal_view = "MP"
+        self._filter_btn.setEnabled(self._signal_view != "MP")
+        self._precompute_differential()
+        new_max = self._compute_grid_max()
+        self._scale_spin.blockSignals(True)
+        self._scale_spin.setValue(new_max)
+        self._scale_spin.blockSignals(False)
+        self._reset_plot()
+
+    def _open_filter_settings(self) -> None:
+        dlg = DifferentialFilterSettingsDialog(self._diff_filter_params, parent=self)
+        if dlg.exec_() == QDialog.Accepted:
+            self._diff_filter_params = dlg.params
+            if self._signal_view != "MP":
+                self._precompute_differential()
+                new_max = self._compute_grid_max()
+                self._scale_spin.blockSignals(True)
+                self._scale_spin.setValue(new_max)
+                self._scale_spin.blockSignals(False)
+                self._reset_plot()
 
     # ------------------------------------------------------------------
     # Style helpers
