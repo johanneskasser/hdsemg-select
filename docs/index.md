@@ -22,6 +22,7 @@ Welcome to the documentation for hdsemg-select, a sophisticated graphical user i
 
 - [Installation Guide](installation.md): Step-by-step instructions for setting up hdsemg-select
 - [Getting Started](usage/getting_started.md): Learn how to get started with the application. The documentation will guide you through the first steps of using the hdsemg-select application to inspect and clean your high-density surface EMG (HD-sEMG) data.
+- [Density Map](usage/density_map.md): Animated ARV heatmap with reference signal scrubbing (`Ctrl + D`)
 - [Developer Guide](developer.md): Information for contributors and developers
 
 ## Core Functionality
@@ -31,6 +32,7 @@ Welcome to the documentation for hdsemg-select, a sophisticated graphical user i
 - Time-domain and frequency spectrum analysis
 - Multi-channel overview with pagination
 - Reference signal overlay capabilities
+- [Animated ARV density map](usage/density_map.md) with interactive scrubbing (`Ctrl + D`)
 
 ### Channel Management
 - Manual and automatic channel selection

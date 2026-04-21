@@ -20,6 +20,7 @@ from hdsemg_select.state.state import global_state
 from hdsemg_select.ui.dialog.channel_details import ChannelDetailWindow
 from hdsemg_select.ui.dialog.channel_spectrum import ChannelSpectrum
 from hdsemg_select.ui.dialog.crop_signal import CropSignalDialog
+from hdsemg_select.ui.plot.density_map_dialog import DensityMapDialog
 from hdsemg_select.ui.dialog.grid_orientation_dialog import GridOrientationDialog
 from hdsemg_select.ui.plot.channel_widget import ChannelWidget
 from hdsemg_select.ui.widgets.electrode_widget import ElectrodeWidget
@@ -170,7 +171,9 @@ class ChannelSelector(QMainWindow):
         self.zero_line_menu = self.menu_manager.get_zero_line_menu()
         self.suggest_flags_action = self.menu_manager.get_suggest_flags_action()
         self.crop_signal_action = self.menu_manager.get_crop_signal_action()
+        self.density_map_action = self.menu_manager.get_density_map_action()
         self.toggle_signal_overview_action = self.menu_manager.get_toggle_signal_overview_action()
+        self._density_map_dialog = None
 
     def ref_sig_signal_changed(self):
         """Handles changes in the reference signal checkbox."""
@@ -261,6 +264,8 @@ class ChannelSelector(QMainWindow):
             if hasattr(self, 'suggest_flags_action') and self.suggest_flags_action: self.suggest_flags_action.setEnabled(True)
             if hasattr(self, 'crop_signal_action') and self.crop_signal_action:
                 self.crop_signal_action.setEnabled(True)
+            if hasattr(self, 'density_map_action') and self.density_map_action:
+                self.density_map_action.setEnabled(True)
             if hasattr(self, 'toggle_signal_overview_action') and self.toggle_signal_overview_action:
                 self.toggle_signal_overview_action.setEnabled(True)
             if hasattr(self, 'zero_line_menu') and self.zero_line_menu:
@@ -303,6 +308,7 @@ class ChannelSelector(QMainWindow):
 
             # Invalidate cached signal overview dialog — grid context changed
             self.electrode_widget.invalidate_signal_overview()
+            self.invalidate_density_map()
 
             # Update UI elements based on new grid setup
             self.electrode_widget.set_grid_shape((self.rows, self.cols))
@@ -693,11 +699,28 @@ class ChannelSelector(QMainWindow):
         if self.change_grid_action: self.change_grid_action.setEnabled(False)
         if hasattr(self, 'crop_signal_action') and self.crop_signal_action:
             self.crop_signal_action.setEnabled(False)
+        if hasattr(self, 'density_map_action') and self.density_map_action:
+            self.density_map_action.setEnabled(False)
         if hasattr(self, 'toggle_signal_overview_action') and self.toggle_signal_overview_action:
             self.toggle_signal_overview_action.setEnabled(False)
         if hasattr(self, 'zero_line_menu') and self.zero_line_menu:
             self.zero_line_menu.setEnabled(False)
         self.electrode_widget.invalidate_signal_overview()
+        self.invalidate_density_map()
+
+    def open_density_map_dialog(self):
+        """Open (or reuse the cached) animated ARV density map dialog."""
+        if self._density_map_dialog is None:
+            self._density_map_dialog = DensityMapDialog(self.grid_setup_handler, parent=self)
+        self._density_map_dialog.show()
+        self._density_map_dialog.raise_()
+        self._density_map_dialog.activateWindow()
+
+    def invalidate_density_map(self):
+        """Close and discard the cached density map dialog."""
+        if self._density_map_dialog is not None:
+            self._density_map_dialog.close()
+            self._density_map_dialog = None
 
     def open_crop_dialog(self):
         """Open the interactive crop signal dialog."""
