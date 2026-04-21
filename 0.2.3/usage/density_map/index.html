@@ -1,0 +1,1076 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A Python application for cleaning and visualizing high-density surface electromyography (HDsEMG) data.">
+      
+      
+        <meta name="author" content="Johannes Kasser">
+      
+      
+        <link rel="canonical" href="https://johanneskasser.github.io/hdsemg-select/0.2.3/usage/density_map/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Density map - hdsemg_select</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#density-map" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="hdsemg_select" class="md-header__button md-logo" aria-label="hdsemg_select" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            hdsemg_select
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Density map
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/johanneskasser/hdsemg-select" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    hdsemg_select
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="hdsemg_select" class="md-nav__button md-logo" aria-label="hdsemg_select" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    hdsemg_select
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/johanneskasser/hdsemg-select" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    hdsemg_select
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Usage Documentation
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Usage Documentation
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting_started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dashboard
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../automatic_selection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Automatic Selection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../channel_flagging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Channel Flagging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../signal_overview_plot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Signal Overview Plot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../crop_signal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Crop Signal
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../signal_details/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Signal Details
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../application_output/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Application Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../application_settings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Application Settings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#density-map" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Density Map
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#opening-the-dialog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Opening the Dialog
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#layout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Layout
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Layout">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#plot-area" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Plot area
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sidebar-controls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sidebar controls
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#playback" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Playback
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Playback">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#transport-bar" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Transport bar
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scrubbing-via-the-reference-signal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scrubbing via the reference signal
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#arv-computation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ARV computation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#custom-layouts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Custom Layouts
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#interaction-with-the-rest-of-the-application" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interaction with the rest of the application
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+  <h1>Density map</h1>
+
+<h2 id="density-map">Density Map<a class="headerlink" href="#density-map" title="Permanent link">&para;</a></h2>
+<p>The <strong>Density Map</strong> shows how EMG intensity is distributed across the physical electrode grid over time. Each cell in the grid is coloured by its <strong>Average Rectified Value (ARV)</strong>, using a dark-blue (0) → cyan → yellow → red (max) colour scale. A reference signal plot below the heatmap doubles as an interactive scrubber — you can play the recording and watch the activation pattern evolve.</p>
+<p><img alt="Density Map" src="../../img/density_map.png" /></p>
+<hr />
+<h2 id="opening-the-dialog">Opening the Dialog<a class="headerlink" href="#opening-the-dialog" title="Permanent link">&para;</a></h2>
+<p>Go to <strong>Signal → Density Map…</strong> or press <code>Ctrl + D</code>.</p>
+<blockquote>
+<p>The menu item is only enabled after a file has been loaded and a grid has been configured.</p>
+</blockquote>
+<hr />
+<h2 id="layout">Layout<a class="headerlink" href="#layout" title="Permanent link">&para;</a></h2>
+<p>The dialog is split into a <strong>sidebar</strong> on the left and a <strong>plot area</strong> on the right.</p>
+<h3 id="plot-area">Plot area<a class="headerlink" href="#plot-area" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Element</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Heatmap</strong></td>
+<td>ARV per electrode cell. Grey cells indicate physically empty positions (connector pin, no electrode). The colour scale is shown in the vertical bar on the right (unit: mV).</td>
+</tr>
+<tr>
+<td><strong>Reference signal</strong></td>
+<td>Full-recording overview of the selected reference/aux channel. Acts as a scrubber — click or drag to seek.</td>
+</tr>
+<tr>
+<td><strong>Cursor line</strong></td>
+<td>Red vertical line in the reference signal plot marking the current playback position.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sidebar-controls">Sidebar controls<a class="headerlink" href="#sidebar-controls" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Control</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Grid</strong></td>
+<td>Select which electrode grid to display when the file contains multiple grids.</td>
+</tr>
+<tr>
+<td><strong>Edit Layout…</strong></td>
+<td>Opens the custom layout builder for electrode models not yet recognised by the application (see <a href="#custom-layouts">Custom Layouts</a>).</td>
+</tr>
+<tr>
+<td><strong>Reference Signal</strong></td>
+<td>Choose which aux/reference channel to display below the heatmap. Performed Path and Requested Path channels are listed first when present.</td>
+</tr>
+<tr>
+<td><strong>ARV Window</strong></td>
+<td>Width of the centred time window used to compute the ARV at the current cursor position (10 – 2000 ms, default 250 ms). Larger values smooth out transient bursts; smaller values show faster changes.</td>
+</tr>
+<tr>
+<td><strong>Scale</strong></td>
+<td>Upper bound of the colour scale in mV. Automatically set to the 99.5th-percentile absolute amplitude of the selected grid's channels when a grid is (re-)loaded. Adjust manually if the colours are washed out or too dark.</td>
+</tr>
+<tr>
+<td><strong>Playback – Speed</strong></td>
+<td>Playback multiplier: 0.5×, 1×, 2×, 4×.</td>
+</tr>
+<tr>
+<td><strong>Playback – FPS</strong></td>
+<td>Timer rate for animation frames (10 – 60 fps, default 30).</td>
+</tr>
+<tr>
+<td><strong>Smooth interpolation</strong></td>
+<td>Toggles between nearest-neighbour (crisp cell borders, default) and bilinear (smoothed) rendering of the heatmap.</td>
+</tr>
+<tr>
+<td><strong>Channel numbers</strong></td>
+<td>Overlays the 1-based channel number on each electrode cell.</td>
+</tr>
+<tr>
+<td><strong>Selection status</strong></td>
+<td>Overlays a green (selected) or red (deselected) tint on each cell. Clicking a cell in the heatmap toggles that channel's selection status, identical to clicking the checkbox in the main window.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="playback">Playback<a class="headerlink" href="#playback" title="Permanent link">&para;</a></h2>
+<h3 id="transport-bar">Transport bar<a class="headerlink" href="#transport-bar" title="Permanent link">&para;</a></h3>
+<p>The bar at the bottom of the dialog contains three buttons:</p>
+<table>
+<thead>
+<tr>
+<th>Button</th>
+<th>Shortcut</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>⏪</td>
+<td>—</td>
+<td>Seek backward 2 s</td>
+</tr>
+<tr>
+<td>▶ / ⏸</td>
+<td>—</td>
+<td>Play / Pause</td>
+</tr>
+<tr>
+<td>⏩</td>
+<td>—</td>
+<td>Seek forward 2 s</td>
+</tr>
+</tbody>
+</table>
+<p>The time label on the right (<code>t = X.XXX s / Y.YYY s</code>) always shows the current cursor position and the total recording length.</p>
+<h3 id="scrubbing-via-the-reference-signal">Scrubbing via the reference signal<a class="headerlink" href="#scrubbing-via-the-reference-signal" title="Permanent link">&para;</a></h3>
+<p>Click anywhere on the reference signal plot to jump to that time. Hold and drag left or right to scrub continuously. The heatmap updates on every drag step.</p>
+<blockquote>
+<p>Pan and zoom on the reference plot (via the matplotlib toolbar) is supported. While the toolbar's pan or zoom mode is active, click and drag navigate the view instead of seeking.</p>
+</blockquote>
+<hr />
+<h2 id="arv-computation">ARV computation<a class="headerlink" href="#arv-computation" title="Permanent link">&para;</a></h2>
+<p>For every displayed frame the ARV is computed as:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">arv</span><span class="o">[</span><span class="n">ch</span><span class="o">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mean</span><span class="p">(</span><span class="w"> </span><span class="o">|</span><span class="k">data</span><span class="o">[</span><span class="n">center − w/2 : center + w/2, ch</span><span class="o">]|</span><span class="w"> </span><span class="p">)</span>
+</code></pre></div>
+
+<p>where <code>center</code> is the current sample and <code>w</code> is the ARV window in samples. The window is clamped to the recording boundaries. The result is then mapped from channel indices to grid positions using the physical electrode layout.</p>
+<hr />
+<h2 id="custom-layouts">Custom Layouts<a class="headerlink" href="#custom-layouts" title="Permanent link">&para;</a></h2>
+<p>If the application does not recognise the electrode model (the plot shows <em>"No physical layout found for …"</em>), click <strong>Edit Layout…</strong> in the sidebar. The builder lets you:</p>
+<ol>
+<li>Set the number of rows and columns with the spin boxes.</li>
+<li>Assign a channel number (1-based) to each cell using the dropdown per cell. Leave cells set to <em>(empty)</em> for physically absent electrodes.</li>
+<li>Click <strong>OK</strong> to save. The layout is persisted in the application config and reloaded automatically on future sessions.</li>
+</ol>
+<hr />
+<h2 id="interaction-with-the-rest-of-the-application">Interaction with the rest of the application<a class="headerlink" href="#interaction-with-the-rest-of-the-application" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Grid change</strong> (main window): the density map dialog is invalidated and must be reopened.</li>
+<li><strong>Crop</strong>: if a crop is applied while the dialog is open and playback is running, the data reference changes on the next timer tick; the cursor resets to 0 and the reference signal redraws to show only the cropped range.</li>
+<li><strong>Channel selection</strong>: toggling a cell via the <em>Selection status</em> overlay calls the same handler as the main-window channel checkboxes — the selected-channel count label and electrode overview update immediately.</li>
+</ul>
+<hr />
+<h2 id="summary">Summary<a class="headerlink" href="#summary" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Access</td>
+<td>Signal → Density Map… / <code>Ctrl + D</code></td>
+</tr>
+<tr>
+<td>Colour scale</td>
+<td>Dark blue (0 mV) → cyan → yellow → red (max mV)</td>
+</tr>
+<tr>
+<td>ARV window</td>
+<td>Centred, 10 – 2000 ms, default 250 ms</td>
+</tr>
+<tr>
+<td>Scrubbing</td>
+<td>Click or drag on the reference signal plot</td>
+</tr>
+<tr>
+<td>Playback speeds</td>
+<td>0.5×, 1×, 2×, 4×</td>
+</tr>
+<tr>
+<td>Display overlays</td>
+<td>Smooth interpolation, channel numbers, selection status</td>
+</tr>
+<tr>
+<td>Custom layouts</td>
+<td>Persisted per electrode model via the layout builder</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": [], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
