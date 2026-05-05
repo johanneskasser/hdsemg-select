@@ -41,7 +41,7 @@ def build_grid_label(rows: int, cols: int, layout_mode_name: str, orientation_na
 class ChannelSelector(QMainWindow):
     def __init__(self, input_file=None, output_file=None):
         super().__init__()
-        self.setWindowTitle("hdsemg_select")
+        self.setWindowTitle("hdsemg-select")
         self.setWindowIcon(QIcon(":/resources/icon.png"))
         self.setGeometry(100, 100, 1200, 800)
         self.setFocusPolicy(Qt.StrongFocus)
@@ -276,7 +276,7 @@ class ChannelSelector(QMainWindow):
 
             self.electrode_widget.setHidden(False)
             self.show_ref_signals.setEnabled(True)
-            self.setWindowTitle(f"hdsemg_select - Amplitude over Time - {global_state.get_emg_file().file_name}")
+            self.setWindowTitle(f"hdsemg-select - Amplitude over Time - {global_state.get_emg_file().file_name}")
         else:
             self.reset_to_start_state()
 
@@ -690,7 +690,7 @@ class ChannelSelector(QMainWindow):
         self.select_all_checkbox.setEnabled(False)
         self.select_all_checkbox.setChecked(False)
         self.electrode_widget.setHidden(True)
-        self.setWindowTitle("hdsemg_select")
+        self.setWindowTitle("hdsemg-select")
         self.clear_grid_display()  # Clear the visual grid layout
         self.populate_ref_signal_dropdown()
 
