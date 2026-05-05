@@ -29,3 +29,4 @@ instance/
 /src/hdsemg_select/resources_rc.py
 /docs/plans/*
 /src/config/config.json
+.superpowers/

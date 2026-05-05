@@ -128,6 +128,16 @@ class MenuManager:
         self.density_map_action.triggered.connect(parent_window.open_density_map_dialog)
         signal_menu.addAction(self.density_map_action)
 
+        signal_menu.addSeparator()
+
+        self.fiber_trajectory_action = QAction("Fiber Trajectory Analysis...", parent_window)
+        self.fiber_trajectory_action.setStatusTip(
+            "Estimate muscle fiber angle, conduction velocity, and innervation zone"
+        )
+        self.fiber_trajectory_action.setEnabled(False)
+        self.fiber_trajectory_action.triggered.connect(parent_window.open_fiber_trajectory_dialog)
+        signal_menu.addAction(self.fiber_trajectory_action)
+
         signal_menu.setObjectName("Signal")
         return signal_menu
 
@@ -217,6 +227,9 @@ class MenuManager:
 
     def get_density_map_action(self):
         return self.density_map_action
+
+    def get_fiber_trajectory_action(self):
+        return self.fiber_trajectory_action
 
     def get_toggle_signal_overview_action(self):
         return self.toggle_signal_overview_action

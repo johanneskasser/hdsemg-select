@@ -1,12 +1,45 @@
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtCore import Qt, QObject, QThread, QTimer, pyqtSignal
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QLabel, QComboBox, QPushButton,
     QHBoxLayout, QFrame, QScrollArea, QWidget, QButtonGroup, QRadioButton,
 )
 
+import numpy as np
+
+from hdsemg_select.select_logic.fiber_trajectory import FiberTrajectoryAnalyzer
 from hdsemg_select.state.enum.layout_mode_enums import FiberMode, LayoutMode
 from hdsemg_select.state.state import global_state
+from hdsemg_select.ui.electrode_layout import get_display_grid
 from hdsemg_select.ui.theme import Colors, Spacing, BorderRadius, Fonts, Styles
+
+_SPINNER = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+
+
+class _QuickAnalysisWorker(QObject):
+    finished = pyqtSignal(float, float)   # (fiber_angle_deg, r_squared)
+    error = pyqtSignal(str)
+
+    def __init__(self, grid_key: str, parent_handler):
+        super().__init__()
+        self._grid_key = grid_key
+        self._handler = parent_handler
+
+    def run(self):
+        try:
+            emg_file = global_state.get_emg_file()
+            grid = emg_file.get_grid(grid_key=self._grid_key)
+            electrode_name = self._handler._extract_electrode_name(grid.emg_indices)
+            display_grid = get_display_grid(electrode_name, grid.rows, grid.cols)
+            if display_grid is None:
+                display_grid = np.arange(
+                    grid.rows * grid.cols, dtype=float
+                ).reshape(grid.rows, grid.cols)
+            signals = global_state.get_effective_emg_data()
+            fs = float(emg_file.sampling_frequency)
+            result = FiberTrajectoryAnalyzer().analyze(signals, grid, display_grid, fs)
+            self.finished.emit(result.fiber_angle_deg, result.r_squared)
+        except Exception as exc:
+            self.error.emit(str(exc))
 
 
 class GridCard(QFrame):
@@ -157,6 +190,12 @@ class GridOrientationDialog(QDialog):
         self.setWindowTitle("Select Grid and Orientation")
         self.setMinimumWidth(400)
         self.apply_callback = apply_callback
+        self._thread = None
+        self._worker = None
+        self._spinner_idx = 0
+        self._spinner_timer = QTimer(self)
+        self._spinner_timer.setInterval(80)
+        self._spinner_timer.timeout.connect(self._tick_spinner)
 
         grids = global_state.get_emg_file().grids
         if not grids:
@@ -200,6 +239,9 @@ class GridOrientationDialog(QDialog):
         orientation_label_layout.addStretch(1)
         layout.addLayout(orientation_label_layout)
 
+        # Combo + Auto Detect side by side
+        combo_row = QHBoxLayout()
+        combo_row.setSpacing(Spacing.SM)
         self.orientation_combo = QComboBox()
         self.orientation_combo.setStyleSheet(Styles.combobox())
         self.orientation_combo.addItem("Rows parallel to fibers", LayoutMode.ROWS)
@@ -213,13 +255,141 @@ class GridOrientationDialog(QDialog):
         else:
             self.orientation_combo.setCurrentIndex(LayoutMode.COLUMNS)
 
-        layout.addWidget(self.orientation_combo)
+        self._auto_btn = QPushButton("Auto Detect")
+        self._auto_btn.setFixedWidth(110)
+        self._auto_btn.setStyleSheet(
+            f"QPushButton {{ background-color: {Colors.BG_PRIMARY}; color: {Colors.BLUE_600}; "
+            f"border: 1px solid {Colors.BLUE_500}; border-radius: 4px; "
+            f"padding: 4px 10px; font-weight: 600; }}"
+            f"QPushButton:hover {{ background-color: {Colors.BLUE_50}; }}"
+            f"QPushButton:disabled {{ color: {Colors.TEXT_MUTED}; "
+            f"border-color: {Colors.BORDER_DEFAULT}; }}"
+        )
+        self._auto_btn.setToolTip(
+            "Analyse the signal to detect the fiber angle and set the orientation automatically"
+        )
+        self._auto_btn.clicked.connect(self._start_auto_detect)
 
-        # --- OK button ---
-        ok_button = QPushButton("Apply")
-        ok_button.setStyleSheet(Styles.button_primary())
-        ok_button.clicked.connect(self.on_ok)
-        layout.addWidget(ok_button)
+        combo_row.addWidget(self.orientation_combo, stretch=1)
+        combo_row.addWidget(self._auto_btn)
+        layout.addLayout(combo_row)
+
+        # Status label (hidden until auto-detect runs)
+        self._status_lbl = QLabel("")
+        self._status_lbl.setWordWrap(True)
+        self._status_lbl.setStyleSheet(
+            f"font-size: 11px; color: {Colors.TEXT_SECONDARY}; "
+            f"padding: 4px 6px; border-radius: 4px;"
+        )
+        self._status_lbl.setVisible(False)
+        layout.addWidget(self._status_lbl)
+
+        # --- Apply button ---
+        self._ok_button = QPushButton("Apply")
+        self._ok_button.setStyleSheet(Styles.button_primary())
+        self._ok_button.clicked.connect(self.on_ok)
+        layout.addWidget(self._ok_button)
+
+    # ------------------------------------------------------------------
+    # Auto Detect
+    # ------------------------------------------------------------------
+
+    def _start_auto_detect(self):
+        grid_key = self._grid_selector.current_key()
+        if not grid_key:
+            return
+        parent = self.parent()
+        if not parent or not hasattr(parent, "grid_setup_handler"):
+            return
+
+        self._auto_btn.setEnabled(False)
+        self._ok_button.setEnabled(False)
+        self._spinner_idx = 0
+        self._spinner_timer.start()
+        self._set_status("", visible=False)
+
+        worker = _QuickAnalysisWorker(grid_key, parent.grid_setup_handler)
+        thread = QThread(self)
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+        worker.finished.connect(self._on_detect_done)
+        worker.error.connect(self._on_detect_error)
+        worker.finished.connect(thread.quit)
+        worker.error.connect(thread.quit)
+        thread.finished.connect(worker.deleteLater)
+        thread.finished.connect(self._clear_thread)
+        thread.finished.connect(thread.deleteLater)
+        self._thread = thread
+        self._worker = worker
+        thread.start()
+
+    def _on_detect_done(self, angle: float, r2: float):
+        self._spinner_timer.stop()
+        self._auto_btn.setText("Auto Detect")
+        self._auto_btn.setEnabled(True)
+        self._ok_button.setEnabled(True)
+
+        abs_angle = abs(angle)
+        if abs_angle <= 20:
+            mode = LayoutMode.COLUMNS
+            description = f"columns parallel to fibers"
+        elif abs_angle >= 70:
+            mode = LayoutMode.ROWS
+            description = f"rows parallel to fibers"
+        else:
+            mode = None
+            description = "oblique"
+
+        confidence = "good" if r2 >= 0.80 else ("moderate" if r2 >= 0.60 else "low")
+        conf_color = Colors.GREEN_600 if r2 >= 0.80 else ("#b45309" if r2 >= 0.60 else "#dc2626")
+
+        if mode is not None:
+            idx = self.orientation_combo.findData(mode)
+            if idx >= 0:
+                self.orientation_combo.setCurrentIndex(idx)
+            status = (
+                f"✓ Detected {angle:.1f}° → set to <b>{description}</b>  "
+                f"<span style='color:{conf_color}'>(R²={r2:.2f}, {confidence} confidence)</span>"
+            )
+        else:
+            status = (
+                f"Detected {angle:.1f}° — fibers are <b>oblique</b>, "
+                f"no standard orientation applies.  "
+                f"<span style='color:{conf_color}'>(R²={r2:.2f}, {confidence} confidence)</span>"
+            )
+            if r2 < 0.60:
+                status += (
+                    "<br><span style='color:#dc2626'>Low R² — consider using a "
+                    "crop range around a clean contraction burst.</span>"
+                )
+
+        self._set_status(status, visible=True)
+
+    def _on_detect_error(self, message: str):
+        self._spinner_timer.stop()
+        self._auto_btn.setText("Auto Detect")
+        self._auto_btn.setEnabled(True)
+        self._ok_button.setEnabled(True)
+        self._set_status(
+            f"<span style='color:#dc2626'>Error: {message}</span>", visible=True
+        )
+
+    def _clear_thread(self):
+        self._thread = None
+        self._worker = None
+
+    def _tick_spinner(self):
+        frame = _SPINNER[self._spinner_idx % len(_SPINNER)]
+        self._auto_btn.setText(f"{frame} Detecting…")
+        self._spinner_idx += 1
+
+    def _set_status(self, html: str, visible: bool):
+        self._status_lbl.setText(html)
+        self._status_lbl.setTextFormat(Qt.RichText)
+        self._status_lbl.setVisible(visible)
+        self.adjustSize()
+
+    # ------------------------------------------------------------------
 
     def on_ok(self):
         selected_grid = self._grid_selector.current_key()
@@ -232,3 +402,14 @@ class GridOrientationDialog(QDialog):
         else:
             global_state.set_fiber_layout(selected_fiber_mode, selected_layout_mode)
             self.apply_callback(selected_grid, selected_fiber_mode, self, orientation_changed=True)
+
+    def closeEvent(self, event):
+        if self._thread is not None:
+            try:
+                if self._thread.isRunning():
+                    self._thread.quit()
+                    self._thread.wait(2000)
+            except RuntimeError:
+                pass
+            self._thread = None
+        super().closeEvent(event)
