@@ -172,8 +172,10 @@ class ChannelSelector(QMainWindow):
         self.suggest_flags_action = self.menu_manager.get_suggest_flags_action()
         self.crop_signal_action = self.menu_manager.get_crop_signal_action()
         self.density_map_action = self.menu_manager.get_density_map_action()
+        self.fiber_trajectory_action = self.menu_manager.get_fiber_trajectory_action()
         self.toggle_signal_overview_action = self.menu_manager.get_toggle_signal_overview_action()
         self._density_map_dialog = None
+        self._fiber_trajectory_dialog = None
 
     def ref_sig_signal_changed(self):
         """Handles changes in the reference signal checkbox."""
@@ -266,6 +268,8 @@ class ChannelSelector(QMainWindow):
                 self.crop_signal_action.setEnabled(True)
             if hasattr(self, 'density_map_action') and self.density_map_action:
                 self.density_map_action.setEnabled(True)
+            if hasattr(self, 'fiber_trajectory_action') and self.fiber_trajectory_action:
+                self.fiber_trajectory_action.setEnabled(True)
             if hasattr(self, 'toggle_signal_overview_action') and self.toggle_signal_overview_action:
                 self.toggle_signal_overview_action.setEnabled(True)
             if hasattr(self, 'zero_line_menu') and self.zero_line_menu:
@@ -701,6 +705,8 @@ class ChannelSelector(QMainWindow):
             self.crop_signal_action.setEnabled(False)
         if hasattr(self, 'density_map_action') and self.density_map_action:
             self.density_map_action.setEnabled(False)
+        if hasattr(self, 'fiber_trajectory_action') and self.fiber_trajectory_action:
+            self.fiber_trajectory_action.setEnabled(False)
         if hasattr(self, 'toggle_signal_overview_action') and self.toggle_signal_overview_action:
             self.toggle_signal_overview_action.setEnabled(False)
         if hasattr(self, 'zero_line_menu') and self.zero_line_menu:
@@ -721,6 +727,19 @@ class ChannelSelector(QMainWindow):
         if self._density_map_dialog is not None:
             self._density_map_dialog.close()
             self._density_map_dialog = None
+
+    def open_fiber_trajectory_dialog(self):
+        """Open the fiber trajectory analysis dialog."""
+        if global_state.get_emg_file() is None:
+            return
+        from hdsemg_select.ui.dialog.fiber_trajectory_dialog import FiberTrajectoryDialog
+        if self._fiber_trajectory_dialog is None:
+            self._fiber_trajectory_dialog = FiberTrajectoryDialog(
+                self.grid_setup_handler, parent=self
+            )
+        self._fiber_trajectory_dialog.show()
+        self._fiber_trajectory_dialog.raise_()
+        self._fiber_trajectory_dialog.activateWindow()
 
     def open_crop_dialog(self):
         """Open the interactive crop signal dialog."""
