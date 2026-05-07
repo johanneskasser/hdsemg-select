@@ -172,3 +172,16 @@ class TestFiberTrajectoryAnalyzerEdgeCases:
         display_grid[3, 3] = np.nan
         result = FiberTrajectoryAnalyzer().analyze(signals, grid, display_grid, fs=2048.0)
         assert isinstance(result, FiberTrajectoryResult)
+
+    def test_zero_line_channels_excluded(self):
+        """Zero-line (dead) channels must not contaminate the analysis."""
+        rows, cols, angle, cv = 8, 8, 0.0, 4.0
+        signals = _make_propagating_wave(rows, cols, angle, cv, fs=2048.0, ied_mm=10.0)
+        # Zero out the leftmost column — at 0° this is the anchor, worst-case position
+        signals[:, 0:rows] = 0.0
+        grid = FakeGrid(rows, cols)
+        display_grid = _simple_display_grid(rows, cols)
+        result = FiberTrajectoryAnalyzer().analyze(signals, grid, display_grid, fs=2048.0)
+        # Analysis must still complete with a plausible angle and non-trivial R²
+        assert abs(result.fiber_angle_deg - angle) <= 5.0
+        assert result.r_squared >= 0.70
