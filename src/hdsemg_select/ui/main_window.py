@@ -2,9 +2,9 @@
 
 import numpy as np
 from PyQt5.QtCore import Qt, QSignalBlocker
-from PyQt5.QtGui import QIcon, QFont
-from PyQt5.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QFrame, QVBoxLayout, QLabel, QScrollArea, QGridLayout, \
-    QPushButton, QStyle, QCheckBox, QFileDialog, QMessageBox, QComboBox
+from PyQt5.QtGui import QIcon, QFont, QResizeEvent
+from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QHBoxLayout, QFrame, QVBoxLayout, QLabel, QScrollArea, \
+    QGridLayout, QPushButton, QStyle, QCheckBox, QFileDialog, QMessageBox, QComboBox
 
 from hdsemg_select._log.log_config import logger
 from hdsemg_select.config.config_enums import Settings
@@ -27,6 +27,7 @@ from hdsemg_select.ui.widgets.electrode_widget import ElectrodeWidget
 from hdsemg_select.ui.selection.amplitude_based import AutomaticAmplitudeSelection
 from hdsemg_select.ui.selection.zero_line_selection import ZeroLineSelection
 from hdsemg_select.config.config_manager import config
+from hdsemg_shared.fileio.file_io import EMGFile
 # noinspection PyUnresolvedReferences
 import hdsemg_select.resources_rc
 from hdsemg_select.ui.widgets.clickable_info_widget import ClickableGridInfoWidget
@@ -70,28 +71,39 @@ class ChannelSelector(QMainWindow):
         self.main_widget = QWidget(self)
         self.setCentralWidget(self.main_widget)
 
+        screen_width = QApplication.primaryScreen().geometry().width()
+        max_electrode_width = int(screen_width * 0.30)
+
         self.outer_layout = QHBoxLayout(self.main_widget)
         self.electrode_widget = ElectrodeWidget(self)
         self.electrode_widget.signal_overview_plot_applied.connect(lambda: self.display_page(True))
-        self.outer_layout.addWidget(self.electrode_widget)
-        self.electrode_widget.setHidden(True)
+
+        self.electrode_scroll = QScrollArea()
+        self.electrode_scroll.setWidget(self.electrode_widget)
+        self.electrode_scroll.setWidgetResizable(True)
+        self.electrode_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.electrode_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.electrode_scroll.setMaximumWidth(max_electrode_width)
+        self.electrode_scroll.setHidden(True)
+        self.outer_layout.addWidget(self.electrode_scroll)
 
         # Add a vertical line separator
-        line = QFrame()
-        line.setFrameShape(QFrame.VLine)
-        line.setFrameShadow(QFrame.Sunken)
-        self.outer_layout.addWidget(line)
+        self.separator_line = QFrame()
+        self.separator_line.setFrameShape(QFrame.VLine)
+        self.separator_line.setFrameShadow(QFrame.Sunken)
+        self.separator_line.setHidden(True)
+        self.outer_layout.addWidget(self.separator_line)
 
         # Right side vertical layout
         self.layout = QVBoxLayout()
-        self.outer_layout.addLayout(self.layout)
+        self.outer_layout.addLayout(self.layout, 1)
 
         # Header layout
         self.header_layout = QHBoxLayout()
         self.layout.addLayout(self.header_layout)
 
         # File info label
-        self.info_label = QLabel("No file loaded. Use File -> Open... to load a .mat file.")
+        self.info_label = QLabel("No file loaded. Use File -> Open... to load a EMG file.")
         self.header_layout.addWidget(self.info_label)
 
         # Scroll area for channel plots
@@ -100,7 +112,7 @@ class ChannelSelector(QMainWindow):
         self.grid_layout = QGridLayout(self.scroll_widget)
         self.scroll_area.setWidget(self.scroll_widget)
         self.scroll_area.setWidgetResizable(True)
-        self.layout.addWidget(self.scroll_area)
+        self.layout.addWidget(self.scroll_area, 1)
 
         # Pagination controls
         self.pagination_layout = QHBoxLayout()
@@ -241,8 +253,10 @@ class ChannelSelector(QMainWindow):
     def load_file(self):
         """Opens a file dialog and triggers file loading."""
         options = QFileDialog.Options()
-        file_filter = "MAT/OTB Files (*.mat *.otb *.otb4 *.otb+)"
-        file_path, _ = QFileDialog.getOpenFileName(self, "Open File", "", file_filter, options=options)
+        supported_file_format_exts = EMGFile.supported_extensions()
+        ext_glob = " ".join(f"*{e}" for e in supported_file_format_exts)
+        qt_filter = f"EMG Files ({ext_glob});;All Files (*)"
+        file_path, _ = QFileDialog.getOpenFileName(self, "Open File", "", qt_filter, options=options)
         if file_path:
             self.load_file_path(file_path)
 
@@ -278,7 +292,8 @@ class ChannelSelector(QMainWindow):
             # Trigger grid selection after successful file processing
             self.select_grid_and_orientation()
 
-            self.electrode_widget.setHidden(False)
+            self.electrode_scroll.setHidden(False)
+            self.separator_line.setHidden(False)
             self.show_ref_signals.setEnabled(True)
             self.setWindowTitle(f"hdsemg-select - Amplitude over Time - {global_state.get_emg_file().file_name}")
         else:
@@ -693,7 +708,8 @@ class ChannelSelector(QMainWindow):
             self.grid_label_widget.clearText()
         self.select_all_checkbox.setEnabled(False)
         self.select_all_checkbox.setChecked(False)
-        self.electrode_widget.setHidden(True)
+        self.electrode_scroll.setHidden(True)
+        self.separator_line.setHidden(True)
         self.setWindowTitle("hdsemg-select")
         self.clear_grid_display()  # Clear the visual grid layout
         self.populate_ref_signal_dropdown()
@@ -740,6 +756,12 @@ class ChannelSelector(QMainWindow):
         self._fiber_trajectory_dialog.show()
         self._fiber_trajectory_dialog.raise_()
         self._fiber_trajectory_dialog.activateWindow()
+
+    def resizeEvent(self, event: QResizeEvent) -> None:
+        super().resizeEvent(event)
+        if hasattr(self, 'electrode_scroll'):
+            screen_width = QApplication.primaryScreen().geometry().width()
+            self.electrode_scroll.setMaximumWidth(int(screen_width * 0.30))
 
     def open_crop_dialog(self):
         """Open the interactive crop signal dialog."""
