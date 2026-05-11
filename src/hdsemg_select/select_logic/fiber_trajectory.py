@@ -142,7 +142,10 @@ class FiberTrajectoryAnalyzer:
                 global_ch_idx = emg_indices[local_electrode_idx]  # column in signals
                 if global_ch_idx >= signals.shape[1]:
                     continue
-                mono[(r, c)] = signals[:, global_ch_idx].astype(np.float64)
+                sig = signals[:, global_ch_idx].astype(np.float64)
+                if np.linalg.norm(sig) < 1e-12:
+                    continue  # zero-line / dead channel — exclude from analysis
+                mono[(r, c)] = sig
         return mono
 
     # ------------------------------------------------------------------
