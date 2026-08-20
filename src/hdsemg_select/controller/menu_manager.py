@@ -20,6 +20,7 @@ class MenuManager:
         self.suggest_flags_action = None  # New action
         self.crop_signal_action = None
         self.toggle_signal_overview_action = None
+        self.global_amplitude_qc_action = None
 
     def create_menus(self, menubar, parent_window):
         """Creates and adds menus to the given menubar."""
@@ -138,6 +139,16 @@ class MenuManager:
         self.fiber_trajectory_action.triggered.connect(parent_window.open_fiber_trajectory_dialog)
         signal_menu.addAction(self.fiber_trajectory_action)
 
+        self.global_amplitude_qc_action = QAction("Global Amplitude QC...", parent_window)
+        self.global_amplitude_qc_action.setStatusTip(
+            "Check the grid's global amplitude against its resting noise and grade the channels"
+        )
+        self.global_amplitude_qc_action.setEnabled(False)
+        self.global_amplitude_qc_action.triggered.connect(
+            parent_window.open_global_amplitude_qc_dialog
+        )
+        signal_menu.addAction(self.global_amplitude_qc_action)
+
         signal_menu.setObjectName("Signal")
         return signal_menu
 
@@ -230,6 +241,9 @@ class MenuManager:
 
     def get_fiber_trajectory_action(self):
         return self.fiber_trajectory_action
+
+    def get_global_amplitude_qc_action(self):
+        return self.global_amplitude_qc_action
 
     def get_toggle_signal_overview_action(self):
         return self.toggle_signal_overview_action

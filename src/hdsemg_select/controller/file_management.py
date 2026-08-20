@@ -278,9 +278,13 @@ def save_selection_to_json(file_path: str,
     }
 
     grids_out = []
+    qc_reports = global_state.get_all_ga_qc_reports()
 
     if isinstance(grids, list):
         for grid in grids:
+
+            qc_report = qc_reports.get(grid.grid_key)
+            qc_channels = (qc_report or {}).get("channels", {})
 
             rows      = grid.rows
             cols      = grid.cols
@@ -304,13 +308,21 @@ def save_selection_to_json(file_path: str,
                     else:
                         ch_descr = f"Channel {ch_idx + 1}"
 
-                    ch_objects.append({
+                    channel_entry = {
                         "channel_index":   int(ch_idx),
                         "channel_number":  int(ch_idx + 1),
                         "selected":        is_selected,
                         "description":     str(ch_descr),
                         "labels":          label_names.get(ch_idx, [])
-                    })
+                    }
+
+                    # QC evidence sits next to the human decision it informed,
+                    # so either can be re-derived without the other.
+                    channel_qc = qc_channels.get(str(int(ch_idx)))
+                    if channel_qc is not None:
+                        channel_entry["qc"] = channel_qc
+
+                    ch_objects.append(channel_entry)
 
             # ---------- Reference Signals ----------
             ref_objects = []
@@ -329,14 +341,22 @@ def save_selection_to_json(file_path: str,
                     "labels":      label_names.get(ref_idx, [])
                 })
 
-            grids_out.append({
+            grid_entry = {
                 "grid_key":  grid.grid_key,
                 "rows":      rows,
                 "columns":   cols,
                 "inter_electrode_distance_mm": scale,
                 "channels":  ch_objects,
                 "reference_signals": ref_objects
-            })
+            }
+
+            if qc_report is not None:
+                grid_entry["global_amplitude"] = {
+                    key: value for key, value in qc_report.items()
+                    if key != "channels"
+                }
+
+            grids_out.append(grid_entry)
     else:
         logger.warning("grid_info is not a List of Grids but %s", type(grids))
 
