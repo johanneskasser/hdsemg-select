@@ -23,9 +23,10 @@ from matplotlib.backends.backend_qt5agg import (
 from matplotlib.widgets import SpanSelector
 from PyQt5.QtCore import QObject, QThread, Qt, QTimer, pyqtSignal
 from PyQt5.QtWidgets import (
-    QAbstractItemView, QComboBox, QDialog, QFileDialog, QGroupBox, QHBoxLayout,
-    QHeaderView, QLabel, QMessageBox, QPushButton, QSizePolicy, QTabWidget,
-    QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
+    QAbstractItemView, QApplication, QComboBox, QDialog, QFileDialog, QGroupBox,
+    QHBoxLayout, QHeaderView, QLabel, QMessageBox, QPushButton, QScrollArea,
+    QSizePolicy, QSplitter, QTabWidget, QTableWidget, QTableWidgetItem,
+    QVBoxLayout, QWidget,
 )
 
 from hdsemg_select._log.log_config import logger
@@ -119,7 +120,8 @@ class GlobalAmplitudeQCDialog(QDialog):
         self.setWindowFlags(flags)
         self.setWindowTitle("Global Amplitude QC")
         self.setStyleSheet(f"QDialog {{ background-color: {Colors.BG_SECONDARY}; }}")
-        self.resize(1120, 780)
+        self.setMinimumSize(760, 520)
+        self._fit_to_screen()
 
         self._build_ui()
         self._populate_grid_combo()
@@ -127,6 +129,24 @@ class GlobalAmplitudeQCDialog(QDialog):
     # ------------------------------------------------------------------
     # UI construction
     # ------------------------------------------------------------------
+
+    def _fit_to_screen(self):
+        """Open at a comfortable size that still fits the actual display.
+
+        A fixed size is wrong on a laptop panel: the preferred 1180x820 is
+        wider than the usable area on a 13\" Mac, and the right-hand column
+        gets clipped off the edge of the screen.
+        """
+        screen = QApplication.primaryScreen()
+        if screen is None:
+            self.resize(1180, 820)
+            return
+        available = screen.availableGeometry()
+        width = min(1180, int(available.width() * 0.92))
+        height = min(820, int(available.height() * 0.92))
+        self.resize(width, height)
+        self.move(available.center().x() - width // 2,
+                  available.center().y() - height // 2)
 
     def _build_ui(self):
         root = QVBoxLayout(self)
@@ -139,9 +159,9 @@ class GlobalAmplitudeQCDialog(QDialog):
         self._tabs.addTab(self._build_channels_tab(), "Channels")
         root.addWidget(self._tabs, stretch=1)
 
-    def _build_top_bar(self) -> QHBoxLayout:
-        bar = QHBoxLayout()
-        bar.setSpacing(8)
+    def _build_top_bar(self) -> QVBoxLayout:
+        bar = QVBoxLayout()
+        bar.setSpacing(6)
 
         self._grid_combo = self._combo(160)
         self._grid_combo.currentIndexChanged.connect(self._on_grid_changed)
@@ -202,31 +222,41 @@ class GlobalAmplitudeQCDialog(QDialog):
         self._export_btn.setEnabled(False)
         self._export_btn.clicked.connect(self._export_json)
 
-        bar.addWidget(self._label("Grid:"))
-        bar.addWidget(self._grid_combo)
-        bar.addSpacing(6)
-        bar.addWidget(self._label("Derivation:"))
-        bar.addWidget(self._derivation_combo)
-        bar.addWidget(self._label("Method:"))
-        bar.addWidget(self._method_combo)
-        bar.addWidget(self._label("Difference along:"))
-        bar.addWidget(self._axis_combo)
-        bar.addWidget(self._label("Measure:"))
-        bar.addWidget(self._scope_combo)
-        bar.addSpacing(6)
-        bar.addWidget(self._status_lbl)
-        bar.addStretch()
-        bar.addWidget(self._method_btn)
-        bar.addWidget(self._redetect_btn)
-        bar.addWidget(self._run_btn)
-        bar.addWidget(self._export_btn)
+        # Row one: what is measured. Row two: what to do about it. Splitting
+        # them keeps the header's minimum width under a laptop screen.
+        settings_row = QHBoxLayout()
+        settings_row.setSpacing(6)
+        settings_row.addWidget(self._label("Grid:"))
+        settings_row.addWidget(self._grid_combo, stretch=1)
+        settings_row.addSpacing(4)
+        settings_row.addWidget(self._label("Derivation:"))
+        settings_row.addWidget(self._derivation_combo)
+        settings_row.addWidget(self._label("Method:"))
+        settings_row.addWidget(self._method_combo)
+        settings_row.addWidget(self._label("Difference along:"))
+        settings_row.addWidget(self._axis_combo)
+        settings_row.addWidget(self._label("Measure:"))
+        settings_row.addWidget(self._scope_combo)
+        settings_row.addStretch()
+
+        action_row = QHBoxLayout()
+        action_row.setSpacing(6)
+        action_row.addWidget(self._status_lbl)
+        action_row.addStretch()
+        action_row.addWidget(self._method_btn)
+        action_row.addWidget(self._redetect_btn)
+        action_row.addWidget(self._run_btn)
+        action_row.addWidget(self._export_btn)
+
+        bar.addLayout(settings_row)
+        bar.addLayout(action_row)
         return bar
 
     # -- grid tab ------------------------------------------------------
 
     def _build_grid_tab(self) -> QWidget:
         page = QWidget()
-        body = QHBoxLayout(page)
+        body = QVBoxLayout(page)
         body.setSpacing(8)
         body.setContentsMargins(8, 8, 8, 8)
 
@@ -250,7 +280,6 @@ class GlobalAmplitudeQCDialog(QDialog):
         self._windows_lbl.setStyleSheet(f"font-size: 11px; color: {Colors.TEXT_SECONDARY};")
         drag_row.addWidget(self._windows_lbl, stretch=1)
         left.addLayout(drag_row)
-        body.addLayout(left, stretch=62)
 
         right = QVBoxLayout()
         right.setSpacing(8)
@@ -312,7 +341,12 @@ class GlobalAmplitudeQCDialog(QDialog):
             f"border: 1px solid {Colors.BORDER_MUTED}; border-radius: 4px; padding: 6px;"
         )
         right.addWidget(note)
-        body.addLayout(right, stretch=38)
+
+        plot_pane = self._pane(left)
+        plot_pane.setMinimumWidth(380)
+        results_pane = self._pane(right, scrollable=True)
+        results_pane.setMinimumWidth(300)
+        body.addWidget(self._split(plot_pane, results_pane, (620, 380)))
 
         self._draw_empty_plot()
         return page
@@ -321,7 +355,7 @@ class GlobalAmplitudeQCDialog(QDialog):
 
     def _build_channels_tab(self) -> QWidget:
         page = QWidget()
-        body = QHBoxLayout(page)
+        body = QVBoxLayout(page)
         body.setSpacing(8)
         body.setContentsMargins(8, 8, 8, 8)
 
@@ -348,7 +382,6 @@ class GlobalAmplitudeQCDialog(QDialog):
         self._evidence_table.horizontalHeader().setSectionResizeMode(
             4, QHeaderView.Stretch)
         left.addWidget(self._evidence_table)
-        body.addLayout(left, stretch=42)
 
         right = QVBoxLayout()
         right.setSpacing(4)
@@ -370,7 +403,12 @@ class GlobalAmplitudeQCDialog(QDialog):
         self._channel_summary_lbl.setStyleSheet(
             f"font-size: 11px; color: {Colors.TEXT_MUTED};")
         right.addWidget(self._channel_summary_lbl)
-        body.addLayout(right, stretch=58)
+
+        heatmap_pane = self._pane(left)
+        heatmap_pane.setMinimumWidth(300)
+        table_pane = self._pane(right)
+        table_pane.setMinimumWidth(360)
+        body.addWidget(self._split(heatmap_pane, table_pane, (440, 620)))
 
         self._draw_empty_heatmap()
         return page
@@ -392,10 +430,43 @@ class GlobalAmplitudeQCDialog(QDialog):
     @staticmethod
     def _combo(width: int, items=None) -> QComboBox:
         combo = QComboBox()
-        combo.setMinimumWidth(width)
+        # A preferred width, not a floor: the header has to be able to
+        # compress on a narrow display rather than push content off-screen.
+        combo.setMinimumWidth(min(width, 64))
+        combo.setSizeAdjustPolicy(QComboBox.AdjustToContents)
         if items:
             combo.addItems(items)
         return combo
+
+    @staticmethod
+    def _pane(layout, scrollable: bool = False) -> QWidget:
+        """Wrap a layout as a splitter pane, optionally scrolling.
+
+        The results column scrolls: on a short display the verdict, the
+        cards and the grade summary together exceed the height, and a
+        button the user cannot reach is the same as a missing button.
+        """
+        holder = QWidget()
+        holder.setLayout(layout)
+        if not scrollable:
+            return holder
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QScrollArea.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll.setWidget(holder)
+        return scroll
+
+    @staticmethod
+    def _split(first: QWidget, second: QWidget, ratio) -> QSplitter:
+        splitter = QSplitter(Qt.Horizontal)
+        splitter.setChildrenCollapsible(False)
+        splitter.addWidget(first)
+        splitter.addWidget(second)
+        splitter.setStretchFactor(0, ratio[0])
+        splitter.setStretchFactor(1, ratio[1])
+        splitter.setSizes(list(ratio))
+        return splitter
 
     def _make_toolbar(self, canvas: FigureCanvas) -> NavigationToolbar:
         """The standard matplotlib toolbar — Save, zoom, pan, reset.
