@@ -159,7 +159,14 @@ class GlobalAmplitudeQCDialog(QDialog):
             "Point it along the muscle fibres — Signal ▸ Fiber Trajectory\n"
             "Analysis measures which way they actually run."
         )
-        for combo in (self._derivation_combo, self._method_combo, self._axis_combo):
+        self._scope_combo = self._combo(120, ["all channels", "selected channels"])
+        self._scope_combo.setToolTip(
+            "Which channels of the grid enter the global amplitude.\n"
+            "A freshly loaded file has no selection yet — QC is the step that\n"
+            "informs one — so 'all channels' is the default until you make one."
+        )
+        for combo in (self._derivation_combo, self._method_combo, self._axis_combo,
+                      self._scope_combo):
             combo.currentIndexChanged.connect(self._on_definition_changed)
 
         self._status_lbl = QLabel("")
@@ -201,6 +208,8 @@ class GlobalAmplitudeQCDialog(QDialog):
         bar.addWidget(self._method_combo)
         bar.addWidget(self._label("Difference along:"))
         bar.addWidget(self._axis_combo)
+        bar.addWidget(self._label("Measure:"))
+        bar.addWidget(self._scope_combo)
         bar.addSpacing(6)
         bar.addWidget(self._status_lbl)
         bar.addStretch()
@@ -479,8 +488,25 @@ class GlobalAmplitudeQCDialog(QDialog):
 
         self._grid_key = grid_key
         self._display_grid = self._resolve_display_grid(grid)
+        self._default_scope_for(grid)
         self._run_btn.setEnabled(True)
         self._show_result(self._results_by_grid.get(grid_key))
+
+    def _default_scope_for(self, grid):
+        """Measure the selection when there is one, the whole grid otherwise.
+
+        A file straight off disk has every EMG channel deselected, so insisting
+        on a selection would make QC unusable exactly when it is most needed.
+        """
+        status = global_state.get_channel_status()
+        selected = any(
+            channel is not None and channel < len(status) and status[channel]
+            for channel in grid.emg_indices
+        )
+        self._scope_combo.blockSignals(True)
+        self._scope_combo.setCurrentText(
+            "selected channels" if selected else "all channels")
+        self._scope_combo.blockSignals(False)
 
     def _resolve_display_grid(self, grid) -> np.ndarray:
         """The physical electrode layout, or a plain column-major fallback."""
@@ -541,6 +567,8 @@ class GlobalAmplitudeQCDialog(QDialog):
             data=data, time=time, fs=float(emg_file.sampling_frequency), grid=grid,
             display_grid=self._display_grid,
             channel_status=list(global_state.get_channel_status()),
+            channel_scope=("all" if self._scope_combo.currentText() == "all channels"
+                           else "selected"),
             thresholds=self._settings.thresholds,
             derivation=self._derivation_combo.currentText(),
             method=self._method_combo.currentText(),
@@ -566,7 +594,7 @@ class GlobalAmplitudeQCDialog(QDialog):
 
     def _set_busy(self, busy: bool):
         for widget in (self._run_btn, self._grid_combo, self._derivation_combo,
-                       self._method_combo, self._axis_combo):
+                       self._method_combo, self._axis_combo, self._scope_combo):
             widget.setEnabled(not busy)
         self._redetect_btn.setEnabled(not busy and self._result is not None)
         if busy:
@@ -651,6 +679,9 @@ class GlobalAmplitudeQCDialog(QDialog):
             detail = (f"Amplitude at the peak is <b>{_fmt(result.activation_ratio, 2)} ×</b> "
                       f"the resting floor; this grid needs "
                       f"<b>{result.thresholds.grid_pass:.2f} ×</b>.")
+        if result.channel_scope == "all":
+            detail += ("<br><i>Measured over every channel of the grid — no selection "
+                       "was applied.</i>")
         self._verdict_lbl.setText(
             f"<b>{_VERDICT_TEXT[result.verdict]}</b><br>{detail}")
 
@@ -661,10 +692,13 @@ class GlobalAmplitudeQCDialog(QDialog):
                        GRADE_COLOR[result.verdict])
         self._set_card(self._channels_card,
                        f"{result.n_selected} / {result.n_grid_channels}")
+        scope = ("every channel of the grid was measured (no selection applied)"
+                 if result.channel_scope == "all"
+                 else f"{result.n_selected} of {result.n_grid_channels} channels are "
+                      f"selected")
         self._channels_card.findChild(QLabel, "value").setToolTip(
-            f"{result.n_selected} of {result.n_grid_channels} channels are selected; "
-            f"the {result.derivation} derivation reduced them to {result.n_channels} "
-            f"channels of global amplitude."
+            f"{scope}; the {result.derivation} derivation reduced them to "
+            f"{result.n_channels} channels of global amplitude."
         )
 
     def _update_grades(self, result):
@@ -967,25 +1001,38 @@ class GlobalAmplitudeQCDialog(QDialog):
     def _open_suggestion_dialog(self):
         if self._result is None or not self._result.failing:
             return
-        dialog = GaQcSuggestionDialog(self._result, self)
+
+        status = global_state.get_channel_status()
+        grid_channels = [channel.channel_index for channel in self._result.channels]
+        seeds_selection = not any(
+            channel < len(status) and status[channel] for channel in grid_channels)
+
+        dialog = GaQcSuggestionDialog(self._result, self, seeds_selection=seeds_selection)
         if dialog.exec_() != QDialog.Accepted:
             return
 
-        channels = dialog.selected_channels()
-        if not channels:
-            return
-        status = global_state.get_channel_status()
-        for channel_index in channels:
-            status[channel_index] = False
+        rejected = set(dialog.selected_channels())
+        for channel in grid_channels:
+            if channel in rejected:
+                status[channel] = False
+            elif seeds_selection:
+                # First selection for this grid: everything that was not
+                # rejected is selected, rather than left deselected forever.
+                status[channel] = True
         global_state.set_channel_status(status)
         if self._main_window is not None and hasattr(self._main_window, "display_page"):
             self._main_window.display_page()
 
+        if seeds_selection:
+            summary = (f"{len(grid_channels) - len(rejected)} channels selected and "
+                       f"{len(rejected)} left out in grid '{self._result.grid_key}'.")
+        else:
+            summary = (f"{len(rejected)} channels deselected in grid "
+                       f"'{self._result.grid_key}'.")
         QMessageBox.information(
             self, "Global Amplitude QC",
-            f"{len(channels)} channels deselected in grid '{self._result.grid_key}'.\n\n"
-            "Run QC again to recompute the global amplitude over the channels "
-            "that remain."
+            f"{summary}\n\nRun QC again to recompute the global amplitude over the "
+            "channels that remain."
         )
 
     def _export_json(self):

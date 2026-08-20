@@ -293,14 +293,59 @@ def test_deselected_channels_do_not_reach_the_global_amplitude():
     assert result.n_grid_channels == N_CHANNELS
 
 
-def test_a_grid_with_nothing_selected_raises():
+def test_a_grid_with_nothing_selected_raises_and_points_at_the_way_out():
     data, time, _ = _trial()
     grid = _Grid(range(N_CHANNELS))
     status = [False] * (N_CHANNELS + 1)
 
-    with pytest.raises(ValueError, match="no channel|No channel"):
+    with pytest.raises(ValueError, match="all channels"):
         analyze(data, time, FS, grid, _display_grid(), status, QCThresholds(),
-                derivation="MP", reference_index=N_CHANNELS)
+                channel_scope="selected", derivation="MP",
+                reference_index=N_CHANNELS)
+
+
+def test_scope_all_measures_a_grid_that_has_no_selection_yet():
+    """A file straight off disk has every EMG channel deselected — QC is the
+    step that informs a selection, so it must run before one exists."""
+    data, time, _ = _trial(activation=3.0)
+    grid = _Grid(range(N_CHANNELS))
+    status = [False] * (N_CHANNELS + 1)
+
+    result = analyze(data, time, FS, grid, _display_grid(), status, QCThresholds(),
+                     channel_scope="all", derivation="MP",
+                     reference_index=N_CHANNELS)
+
+    assert result.channel_scope == "all"
+    assert result.n_selected == N_CHANNELS
+    assert result.verdict == PASS
+
+
+def test_scope_all_ignores_the_selection_entirely():
+    data, time, _ = _trial()
+    grid = _Grid(range(N_CHANNELS))
+    status = [True] * (N_CHANNELS + 1)
+    for channel in range(20):
+        status[channel] = False
+
+    selected = analyze(data, time, FS, grid, _display_grid(), status, QCThresholds(),
+                       channel_scope="selected", derivation="MP",
+                       reference_index=N_CHANNELS)
+    every = analyze(data, time, FS, grid, _display_grid(), status, QCThresholds(),
+                    channel_scope="all", derivation="MP",
+                    reference_index=N_CHANNELS)
+
+    assert selected.n_selected == N_CHANNELS - 20
+    assert every.n_selected == N_CHANNELS
+    assert not np.allclose(selected.amplitude, every.amplitude)
+
+
+def test_an_unknown_scope_is_rejected():
+    data, time, _ = _trial()
+    grid = _Grid(range(N_CHANNELS))
+
+    with pytest.raises(ValueError, match="channel_scope"):
+        analyze(data, time, FS, grid, _display_grid(), [True] * (N_CHANNELS + 1),
+                QCThresholds(), channel_scope="everything", derivation="MP")
 
 
 def test_a_mostly_deselected_grid_gets_no_verdict():
@@ -312,7 +357,8 @@ def test_a_mostly_deselected_grid_gets_no_verdict():
         status[channel] = False
 
     result = analyze(data, time, FS, grid, _display_grid(), status, QCThresholds(),
-                     derivation="MP", reference_index=N_CHANNELS)
+                     channel_scope="selected", derivation="MP",
+                     reference_index=N_CHANNELS)
 
     assert result.verdict == NOT_AVAILABLE
     assert np.isfinite(result.activation_ratio)  # the number is still measured

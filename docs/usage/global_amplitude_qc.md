@@ -14,7 +14,7 @@ Go to **Signal → Global Amplitude QC…**
 
 > The menu item is only enabled after a file has been loaded and a grid has been configured.
 >
-> The step needs `hdsemg-shared >= 0.15.0`. With an older version installed the dialog says so instead of opening.
+> The step needs `hdsemg-shared >= 0.14.1`. With an older version installed the dialog says so instead of opening.
 
 ---
 
@@ -47,7 +47,7 @@ activation ratio  =  mean(amplitude over the peak window)
 | **pass** | The peak reaches the required multiple of the resting floor (default 1.50 ×) |
 | **borderline** | Between the borderline and pass marks (default 1.30 – 1.50 ×) |
 | **fail** | The contraction never leaves the noise floor |
-| **no verdict** | Fewer than half the grid's channels are selected — a verdict on a selection is not a verdict on a grid. The ratio is still measured and still stored |
+| **no verdict** | Measuring the selection, and fewer than half the grid's channels are in it — a verdict on a selection is not a verdict on a grid. The ratio is still measured and still stored |
 
 ### Adjusting the windows
 
@@ -56,6 +56,21 @@ Windows are detected from the performed path: rest is where the path sits within
 To correct a badly segmented trial, pick **peak window** or **rest window** in the drop-down under the plot and drag across the plot. The analysis re-runs on the new window. **Re-detect windows** discards your drag and segments from the performed path again.
 
 If the grid has no reference signal, the first and last three seconds are used as rest instead, and the JSON records `"window_source": "fallback"` so a pooled analysis can filter those trials out.
+
+### Which channels are measured
+
+A file straight off disk has **every EMG channel deselected** — only reference signals start selected. QC is the step that *informs* a selection, so requiring one first would be backwards.
+
+**Measure** in the top bar therefore offers:
+
+| Setting | Meaning |
+|---------|---------|
+| **all channels** | Every channel of the grid enters the global amplitude, whatever the selection says. Defaults to this when the grid has no selection yet |
+| **selected channels** | Only the selected channels. Defaults to this as soon as the grid has a selection |
+
+The choice is recorded as `"channel_scope"` in the JSON — a ratio over the whole grid and one over a selection are not the same measurement, so it has to stay readable afterwards.
+
+When the grid has no selection yet, **Suggest deselection** becomes **Suggested Selection**: it selects the channels that passed and leaves the failing ones out, making the first selection rather than deselecting from an empty one.
 
 ### The definition
 
@@ -116,6 +131,7 @@ Per grid, alongside the existing `channels` and `reference_signals`:
     "derivation": "DD",
     "method": "RMS",
     "diff_direction": "cols",
+    "channel_scope": "selected",
     "rest_windows_s": [[0.0, 7.4], [24.6, 31.0]],
     "peak_window_s": [13.86, 14.11],
     "window_source": "force",

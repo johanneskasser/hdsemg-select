@@ -17,12 +17,18 @@ from hdsemg_select.ui.theme import Colors, Fonts
 class GaQcSuggestionDialog(QDialog):
     """Lists the failing channels with the reason each was flagged."""
 
-    def __init__(self, result, parent=None):
+    def __init__(self, result, parent=None, seeds_selection=False):
         super().__init__(parent)
         self._result = result
         self._failing = list(result.failing)
+        # True when the grid has no selection yet: QC is about to make the
+        # first one, so the passing channels get selected rather than only
+        # the failing ones deselected.
+        self._seeds_selection = seeds_selection
+        self._keeping = len(result.channels) - len(self._failing)
 
-        self.setWindowTitle("Suggested Deselection")
+        self.setWindowTitle(
+            "Suggested Selection" if seeds_selection else "Suggested Deselection")
         self.setStyleSheet(f"QDialog {{ background-color: {Colors.BG_SECONDARY}; }}")
         self.resize(660, 580)
         self._build_ui()
@@ -32,11 +38,22 @@ class GaQcSuggestionDialog(QDialog):
         root.setSpacing(10)
         root.setContentsMargins(12, 12, 12, 12)
 
+        if self._seeds_selection:
+            message = (
+                f"No channel of grid '{self._result.grid_key}' is selected yet, so this "
+                f"will make the first selection: the <b>{self._keeping} channels</b> that "
+                f"passed are selected, and the <b>{len(self._failing)}</b> ticked below "
+                f"are left out. Untick any you want to keep."
+            )
+        else:
+            message = (
+                f"QC found <b>{len(self._failing)} channels</b> in grid "
+                f"'{self._result.grid_key}' that fail at least one check. Nothing is "
+                f"deselected until you confirm."
+            )
         banner = QLabel(
-            f"QC found <b>{len(self._failing)} channels</b> in grid "
-            f"'{self._result.grid_key}' that fail at least one check. Nothing is "
-            f"deselected until you confirm, and every measured value is stored in the "
-            f"JSON whichever way you decide."
+            message + " Every measured value is stored in the JSON whichever way "
+                      "you decide."
         )
         banner.setWordWrap(True)
         banner.setStyleSheet(
@@ -72,8 +89,8 @@ class GaQcSuggestionDialog(QDialog):
 
         note = QLabel(
             "Deselected channels keep their data in the .mat file — the JSON records the "
-            "selection. Re-running QC after deselecting recomputes the global amplitude "
-            "over the channels that remain."
+            "selection. Re-running QC afterwards recomputes the global amplitude over the "
+            "channels that remain."
         )
         note.setWordWrap(True)
         note.setStyleSheet(f"font-size: {Fonts.SIZE_XS}; color: {Colors.TEXT_MUTED};")
@@ -95,7 +112,9 @@ class GaQcSuggestionDialog(QDialog):
         footer.addStretch()
 
         buttons = QDialogButtonBox(QDialogButtonBox.Cancel)
-        self._apply_btn = buttons.addButton("Deselect channels", QDialogButtonBox.AcceptRole)
+        self._apply_btn = buttons.addButton(
+            "Apply selection" if self._seeds_selection else "Deselect channels",
+            QDialogButtonBox.AcceptRole)
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         footer.addWidget(buttons)
@@ -114,9 +133,14 @@ class GaQcSuggestionDialog(QDialog):
     def _update_count(self):
         chosen = len(self.selected_channels())
         self._count_lbl.setText(f"{chosen} of {len(self._failing)} ticked")
-        self._apply_btn.setText(
-            "Deselect channels" if chosen == 0 else f"Deselect {chosen} channels")
-        self._apply_btn.setEnabled(chosen > 0)
+        if self._seeds_selection:
+            keeping = len(self._result.channels) - chosen
+            self._apply_btn.setText(f"Select {keeping} channels")
+            self._apply_btn.setEnabled(keeping > 0)
+        else:
+            self._apply_btn.setText(
+                "Deselect channels" if chosen == 0 else f"Deselect {chosen} channels")
+            self._apply_btn.setEnabled(chosen > 0)
 
     def selected_channels(self) -> list:
         """The channel indices the user left ticked."""

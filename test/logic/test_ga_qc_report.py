@@ -36,6 +36,7 @@ def _result(**overrides):
                           source="force"),
         resting_floor=8.58, peak_mean=11.47, activation_ratio=1.34, verdict=FAIL,
         n_channels=48, n_selected=58, n_grid_channels=64,
+        channel_scope="selected",
         channels=[grade_channel(0, {
             "activation_ratio": 1.21, "amplitude_z": -2.4, "spectrum_z": 0.8,
             "line_noise": 1.6, "clipping": 0.0, "neighbor_correlation": 0.27,
@@ -59,6 +60,13 @@ def test_the_report_carries_the_definition_that_produced_it():
     assert report["derivation"] == "DD"
     assert report["method"] == "RMS"
     assert report["diff_direction"] == "cols"
+
+
+def test_the_report_says_which_channels_produced_the_number():
+    """A ratio over the whole grid and one over a selection are not the
+    same measurement, so the scope has to be readable afterwards."""
+    assert qc_report(_result(), FS)["channel_scope"] == "selected"
+    assert qc_report(_result(channel_scope="all"), FS)["channel_scope"] == "all"
 
 
 def test_windows_are_reported_in_seconds_not_samples():

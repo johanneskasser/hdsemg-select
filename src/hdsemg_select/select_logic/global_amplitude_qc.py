@@ -202,6 +202,7 @@ class GlobalAmplitudeQCResult:
     n_channels: int
     n_selected: int
     n_grid_channels: int
+    channel_scope: str
     channels: list
     thresholds: QCThresholds
 
@@ -403,6 +404,7 @@ def grade_channel(channel_index: int, values: dict, thresholds: QCThresholds) ->
 # ----------------------------------------------------------------------
 
 def analyze(data, time, fs, grid, display_grid, channel_status, thresholds,
+            channel_scope="selected",
             derivation="DD", method="RMS", diff_direction="cols",
             reference_index=None, reference_label="", windows=None,
             rest_below_pct=2.0, min_rest_s=2.0, peak_ms=250.0, fallback_s=3.0,
@@ -418,6 +420,12 @@ def analyze(data, time, fs, grid, display_grid, channel_status, thresholds,
     grid:           hdsemg-shared Grid object
     display_grid:   (rows, cols) local electrode indices, NaN where unwired
     channel_status: per-channel selection flags, indexed globally
+    channel_scope:  'selected' measures only the selected channels of the
+                    grid; 'all' ignores the selection and measures every
+                    channel. 'all' is what a freshly loaded file needs —
+                    QC is the step that informs a selection, so requiring
+                    one first would be backwards. The scope is reported
+                    and stored, never inferred silently downstream.
     thresholds:     QCThresholds
     windows:        reuse an existing QCWindows instead of detecting them
     bpf, smooth:    band-pass and smoothing options, see hdsemg-shared's
@@ -425,8 +433,9 @@ def analyze(data, time, fs, grid, display_grid, channel_status, thresholds,
 
     Raises
     ------
-    ValueError: when no channel survives the selection, or the grid is too
-        small for the requested derivation (raised by hdsemg-shared).
+    ValueError: when the grid has no channels, when scope is 'selected' and
+        none of them are, or when the grid is too small for the requested
+        derivation (raised by hdsemg-shared).
     """
     grid_channels = [ch for ch in grid.emg_indices if ch is not None]
     if not grid_channels:
@@ -435,13 +444,18 @@ def analyze(data, time, fs, grid, display_grid, channel_status, thresholds,
     global_to_local = {ch: i for i, ch in enumerate(grid_channels)}
     sub = np.asarray(data[:, grid_channels], dtype=np.float64).T  # channels-by-samples
 
-    map_selected = _remap(build_emg_map(grid, display_grid, channel_status), global_to_local)
+    channel_scope = _check_scope(channel_scope)
     map_all = _remap(build_emg_map(grid, display_grid, None), global_to_local)
+    map_selected = (
+        map_all if channel_scope == "all"
+        else _remap(build_emg_map(grid, display_grid, channel_status), global_to_local)
+    )
 
     n_selected = int(np.count_nonzero(~np.isnan(map_selected)))
     if n_selected == 0:
         raise ValueError(
-            f"No channel of grid '{grid.grid_key}' is selected — nothing to measure."
+            f"No channel of grid '{grid.grid_key}' is selected. Switch "
+            f"'Measure' to 'all channels' to grade the grid before selecting."
         )
 
     result = global_amplitude(sub, map_selected, fs, method=method,
@@ -480,9 +494,16 @@ def analyze(data, time, fs, grid, display_grid, channel_status, thresholds,
         resting_floor=resting_floor, peak_mean=peak_mean, activation_ratio=ratio,
         verdict=_grid_verdict(ratio, n_selected, len(grid_channels), thresholds),
         n_channels=int(result.n_channels), n_selected=n_selected,
-        n_grid_channels=len(grid_channels),
+        n_grid_channels=len(grid_channels), channel_scope=channel_scope,
         channels=channels, thresholds=thresholds,
     )
+
+
+def _check_scope(channel_scope: str) -> str:
+    if channel_scope not in ("selected", "all"):
+        raise ValueError(
+            f"channel_scope must be 'selected' or 'all', got {channel_scope!r}.")
+    return channel_scope
 
 
 def _grid_verdict(ratio, n_selected, n_total, thresholds) -> str:
@@ -559,6 +580,7 @@ def qc_report(result: GlobalAmplitudeQCResult, fs: float) -> dict:
         "derivation": result.derivation,
         "method": result.method,
         "diff_direction": result.diff_direction,
+        "channel_scope": result.channel_scope,
         "rest_windows_s": [[start / fs, stop / fs] for start, stop in result.windows.rest],
         "peak_window_s": [result.windows.peak[0] / fs, result.windows.peak[1] / fs],
         "window_source": result.windows.source,
