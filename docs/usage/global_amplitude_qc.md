@@ -49,6 +49,12 @@ activation ratio  =  mean(amplitude over the peak window)
 | **fail** | The contraction never leaves the noise floor |
 | **no verdict** | Measuring the selection, and fewer than half the grid's channels are in it — a verdict on a selection is not a verdict on a grid. The ratio is still measured and still stored |
 
+### Saving the plot
+
+Both the global amplitude plot and the CQI heatmap carry the standard matplotlib toolbar — **Save** writes a PNG, PDF or SVG, alongside zoom, pan and reset, exactly as in Crop Signal and the Density Map.
+
+While pan or zoom is active the toolbar owns the drag, so dragging then adjusts the view rather than the analysis windows. Switch the mode off to go back to setting windows.
+
 ### Adjusting the windows
 
 Windows are detected from the performed path: rest is where the path sits within a few percent of its own force span above its own baseline, for at least two seconds; the peak window is placed at the highest global amplitude outside rest.

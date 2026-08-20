@@ -16,7 +16,10 @@ from typing import Optional
 
 import numpy as np
 from matplotlib.figure import Figure
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qt5agg import (
+    FigureCanvasQTAgg as FigureCanvas,
+    NavigationToolbar2QT as NavigationToolbar,
+)
 from matplotlib.widgets import SpanSelector
 from PyQt5.QtCore import QObject, QThread, Qt, QTimer, pyqtSignal
 from PyQt5.QtWidgets import (
@@ -35,7 +38,7 @@ from hdsemg_select.state.state import global_state
 from hdsemg_select.ui.dialog.ga_qc_method_dialog import GaQcMethodDialog
 from hdsemg_select.ui.dialog.ga_qc_suggestion_dialog import GaQcSuggestionDialog
 from hdsemg_select.ui.electrode_layout import get_display_grid
-from hdsemg_select.ui.theme import Colors
+from hdsemg_select.ui.theme import BorderRadius, Colors, Spacing
 
 #: Grade colours, shared by the heatmap, the table and the chips.
 GRADE_COLOR = {
@@ -234,6 +237,8 @@ class GlobalAmplitudeQCDialog(QDialog):
         self._plot_ax = figure.add_subplot(111)
         self._plot_canvas = FigureCanvas(figure)
         self._plot_canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self._plot_toolbar = self._make_toolbar(self._plot_canvas)
+        left.addWidget(self._plot_toolbar)
         left.addWidget(self._plot_canvas, stretch=1)
 
         drag_row = QHBoxLayout()
@@ -328,6 +333,8 @@ class GlobalAmplitudeQCDialog(QDialog):
         self._heatmap_canvas = FigureCanvas(figure)
         self._heatmap_canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self._heatmap_canvas.mpl_connect("button_press_event", self._on_heatmap_click)
+        self._heatmap_toolbar = self._make_toolbar(self._heatmap_canvas)
+        left.addWidget(self._heatmap_toolbar)
         left.addWidget(self._heatmap_canvas, stretch=1)
 
         left.addWidget(self._section("Evidence"))
@@ -389,6 +396,33 @@ class GlobalAmplitudeQCDialog(QDialog):
         if items:
             combo.addItems(items)
         return combo
+
+    def _make_toolbar(self, canvas: FigureCanvas) -> NavigationToolbar:
+        """The standard matplotlib toolbar — Save, zoom, pan, reset.
+
+        Same treatment as Crop Signal and the Density Map, so the Save
+        button sits where it does in every other plot in the app.
+        """
+        toolbar = NavigationToolbar(canvas, self)
+        toolbar.setStyleSheet(f"""
+            QToolBar {{
+                background-color: {Colors.BG_SECONDARY};
+                border: 1px solid {Colors.BORDER_DEFAULT};
+                border-radius: {BorderRadius.SM};
+                padding: {Spacing.XS}px;
+            }}
+            QToolButton {{
+                background-color: transparent;
+                border: 1px solid transparent;
+                border-radius: {BorderRadius.SM};
+                padding: {Spacing.XS}px;
+            }}
+            QToolButton:hover {{
+                background-color: {Colors.GRAY_100};
+                border-color: {Colors.BORDER_DEFAULT};
+            }}
+        """)
+        return toolbar
 
     @staticmethod
     def _outline_button(text: str, tooltip: str) -> QPushButton:
@@ -788,6 +822,7 @@ class GlobalAmplitudeQCDialog(QDialog):
         axes.legend(fontsize=7, loc="upper right", framealpha=0.9)
         figure.tight_layout()
         self._attach_span(axes)
+        self._plot_toolbar.update()  # the axes are new; drop the old view stack
         self._plot_canvas.draw_idle()
 
     def _draw_reference(self, axes, result):
@@ -826,6 +861,8 @@ class GlobalAmplitudeQCDialog(QDialog):
     def _on_span_selected(self, t_min: float, t_max: float):
         if self._result is None or t_max <= t_min:
             return
+        if self._plot_toolbar.mode != "":
+            return  # the toolbar owns this drag: zooming, not windowing
         time = self._result.time
         start = int(np.searchsorted(time, t_min))
         stop = int(np.searchsorted(time, t_max))
@@ -898,10 +935,13 @@ class GlobalAmplitudeQCDialog(QDialog):
         for spine in axes.spines.values():
             spine.set_visible(False)
         axes.figure.tight_layout()
+        self._heatmap_toolbar.update()
         self._heatmap_canvas.draw_idle()
 
     def _on_heatmap_click(self, event):
         if event.inaxes is not self._heatmap_ax or self._result is None:
+            return
+        if self._heatmap_toolbar.mode != "":
             return
         cell = (int(round(event.ydata)), int(round(event.xdata)))
         channel_index = getattr(self, "_heatmap_cells", {}).get(cell)
