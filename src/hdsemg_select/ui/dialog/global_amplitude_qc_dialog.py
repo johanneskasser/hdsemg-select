@@ -33,9 +33,12 @@ from hdsemg_select._log.log_config import logger
 from hdsemg_select.select_logic import ga_qc_config
 from hdsemg_select.select_logic.global_amplitude_qc import (
     BORDERLINE, CHECK_LABELS, CHECKS, FAIL, NOT_AVAILABLE, PASS,
-    GlobalAmplitudeQCResult, QCWindows, analyze, qc_report,
+    GlobalAmplitudeQCResult, QCWindows, analyze, channel_trace, qc_report,
 )
 from hdsemg_select.state.state import global_state
+from hdsemg_select.ui.dialog.ga_qc_channel_inspect_dialog import (
+    KEEP, GaQcChannelInspectDialog,
+)
 from hdsemg_select.ui.dialog.ga_qc_method_dialog import GaQcMethodDialog
 from hdsemg_select.ui.dialog.ga_qc_suggestion_dialog import GaQcSuggestionDialog
 from hdsemg_select.ui.electrode_layout import get_display_grid
@@ -110,6 +113,7 @@ class GlobalAmplitudeQCDialog(QDialog):
         self._thread: Optional[QThread] = None
         self._worker: Optional[_QCWorker] = None
         self._span: Optional[SpanSelector] = None
+        self._focused_channel = None
         self._spinner_idx = 0
         self._spinner_timer = QTimer(self)
         self._spinner_timer.setInterval(80)
@@ -383,6 +387,14 @@ class GlobalAmplitudeQCDialog(QDialog):
             4, QHeaderView.Stretch)
         left.addWidget(self._evidence_table)
 
+        self._inspect_btn = self._outline_button(
+            "Show this channel's signal",
+            "Plot the trace this channel contributes, to judge a borderline "
+            "grade by eye and keep or discard it")
+        self._inspect_btn.setEnabled(False)
+        self._inspect_btn.clicked.connect(self._open_inspect_dialog)
+        left.addWidget(self._inspect_btn)
+
         right = QVBoxLayout()
         right.setSpacing(4)
         right.addWidget(self._section(
@@ -397,6 +409,8 @@ class GlobalAmplitudeQCDialog(QDialog):
         self._channel_table.horizontalHeader().setSectionResizeMode(
             len(_TABLE_COLUMNS) - 1, QHeaderView.Stretch)
         self._channel_table.itemSelectionChanged.connect(self._on_channel_selected)
+        self._channel_table.itemDoubleClicked.connect(
+            lambda _: self._open_inspect_dialog())
         right.addWidget(self._channel_table, stretch=1)
 
         self._channel_summary_lbl = QLabel("Run QC to grade the channels.")
@@ -760,6 +774,8 @@ class GlobalAmplitudeQCDialog(QDialog):
             self._windows_lbl.setText("")
             self._channel_table.setRowCount(0)
             self._evidence_table.setRowCount(0)
+            self._focused_channel = None
+            self._inspect_btn.setEnabled(False)
             self._channel_summary_lbl.setText("Run QC to grade the channels.")
             self._draw_empty_plot()
             self._draw_empty_heatmap()
@@ -1075,6 +1091,8 @@ class GlobalAmplitudeQCDialog(QDialog):
                         if c.channel_index == channel_index), None)
         if channel is None:
             return
+        self._focused_channel = channel
+        self._inspect_btn.setEnabled(True)
         self._fill_evidence_table(channel)
         self._draw_heatmap(self._result, focus=channel_index)
 
@@ -1105,6 +1123,48 @@ class GlobalAmplitudeQCDialog(QDialog):
     # ------------------------------------------------------------------
     # Actions
     # ------------------------------------------------------------------
+
+    def _open_inspect_dialog(self):
+        """Show the focused channel's own trace and take a keep/discard call."""
+        channel = self._focused_channel
+        if self._result is None or channel is None or self._display_grid is None:
+            return
+        emg_file = global_state.get_emg_file()
+        data = global_state.get_effective_emg_data()
+        time = global_state.get_effective_time()
+        grid = emg_file.get_grid(grid_key=self._result.grid_key) if emg_file else None
+        if grid is None or data is None or time is None:
+            return
+
+        try:
+            trace, label, _ = channel_trace(
+                data, grid, self._display_grid, channel.channel_index,
+                float(emg_file.sampling_frequency),
+                derivation=self._result.derivation,
+                diff_direction=self._result.diff_direction,
+                bpf=self._settings.bpf,
+            )
+        except ValueError as exc:
+            QMessageBox.warning(self, "Global Amplitude QC", str(exc))
+            return
+
+        status = global_state.get_channel_status()
+        dialog = GaQcChannelInspectDialog(
+            channel, trace, label, time, self._result.windows,
+            float(emg_file.sampling_frequency),
+            is_selected=bool(status[channel.channel_index]), parent=self)
+        if dialog.exec_() != QDialog.Accepted or dialog.decision is None:
+            return
+
+        status[channel.channel_index] = dialog.decision == KEEP
+        global_state.set_channel_status(status)
+        if self._main_window is not None and hasattr(self._main_window, "display_page"):
+            self._main_window.display_page()
+        verb = "kept" if dialog.decision == KEEP else "discarded"
+        self._channel_summary_lbl.setText(
+            f"Channel {channel.channel_index + 1} {verb}. Run QC again to "
+            f"recompute the global amplitude over the channels that remain."
+        )
 
     def _open_method_dialog(self):
         GaQcMethodDialog(self).exec_()

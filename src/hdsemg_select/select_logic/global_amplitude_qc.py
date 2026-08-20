@@ -32,7 +32,10 @@ from typing import Optional
 
 import numpy as np
 
+from hdsemg_shared.filters.bandpass import bandpass_filter_exact_corners
+from hdsemg_shared.filters.padding import pad_samples, reflect_pad, trim_pad
 from hdsemg_shared.global_parameters import global_amplitude
+from hdsemg_shared.preprocessing.grid_map import map_to_columns
 from hdsemg_shared.quality import (
     channel_amplitude,
     channel_spectrum,
@@ -74,6 +77,12 @@ CHECK_LABELS = {
     "neighbor_correlation": "Neighbour correlation",
     "flat": "Flat (dead channel)",
 }
+
+#: How many times the grid is differenced for each derivation.
+_DERIVATION_ORDER = {"MP": 0, "SD": 1, "DD": 2}
+
+#: Which grid axis SD/DD difference along. 'cols' walks DOWN a column.
+_DIFF_AXIS = {"cols": 1, "rows": 0}
 
 #: Which direction is good. "up" means a larger value is better.
 _DIRECTION = {
@@ -620,3 +629,92 @@ def _clean(value):
     except (TypeError, ValueError):
         return value
     return number if np.isfinite(number) else None
+
+
+# ----------------------------------------------------------------------
+# One channel's own trace, for looking at a borderline grade by eye
+# ----------------------------------------------------------------------
+
+def channel_trace(data, grid, display_grid, channel_index, fs,
+                  derivation="DD", diff_direction="cols", bpf=None):
+    """The band-passed signal of ONE channel, in the chosen derivation.
+
+    A grade is a number; deciding whether to keep a borderline channel
+    means looking at the signal behind it. This returns exactly the trace
+    that channel contributes to the global amplitude.
+
+    Returns
+    -------
+    (trace, label, is_derived)
+        ``trace`` is 1-D over the same samples as ``data``. ``is_derived``
+        is False when the requested derivation has no value at this grid
+        position — the last rows of a column carry no SD/DD, because the
+        difference needs the electrodes below them — in which case the
+        monopolar trace is returned and ``label`` says so.
+
+    Raises
+    ------
+    ValueError: when the channel is not part of the grid.
+    """
+    grid_channels = [ch for ch in grid.emg_indices if ch is not None]
+    if channel_index not in grid_channels:
+        raise ValueError(
+            f"Channel {channel_index} is not part of grid '{grid.grid_key}'.")
+
+    global_to_local = {ch: i for i, ch in enumerate(grid_channels)}
+    sub = np.asarray(data[:, grid_channels], dtype=np.float64).T
+    emg_map = _remap(build_emg_map(grid, display_grid, None), global_to_local)
+
+    position = _position_of(emg_map, global_to_local[channel_index])
+    if position is None:
+        raise ValueError(
+            f"Channel {channel_index} has no position in grid '{grid.grid_key}'.")
+
+    stacked = np.stack(map_to_columns(sub, emg_map))  # (nCols, nRows, nSamples)
+    order = _DERIVATION_ORDER[_check_choice(derivation)]
+    column, row = position
+
+    trace, is_derived = stacked[column, row], not order
+    if order:
+        axis = _DIFF_AXIS[diff_direction]
+        index = row if axis == 1 else column
+        if stacked.shape[axis] - order > index:
+            # np.diff drops `order` entries from that axis; the survivor at
+            # (column, row) is the difference anchored at this electrode.
+            trace = np.diff(stacked, n=order, axis=axis)[column, row]
+            is_derived = True
+
+    axis_name = "columns" if diff_direction == "cols" else "rows"
+    if not order:
+        label = "monopolar"
+    elif is_derived:
+        label = f"{derivation} along {axis_name}"
+    else:
+        label = (f"monopolar — this electrode sits at the edge of the {axis_name}, "
+                 f"so no {derivation} is defined for it")
+    return _bandpass_one(trace, bpf, fs), label, is_derived
+
+
+def _position_of(emg_map, local_index):
+    """(column, row) of a channel in the map, or None."""
+    hits = np.argwhere(emg_map == float(local_index))
+    return tuple(int(value) for value in hits[0]) if hits.size else None
+
+
+def _bandpass_one(trace, bpf, fs):
+    """One channel band-passed in the same band every other measure uses."""
+    options = {'N': 2, 'fcl': 15.0, 'fch': 450.0, 'corners': 'exact', **(bpf or {})}
+    data = np.asarray(trace, dtype=np.float64)[np.newaxis, :]
+    if not np.all(np.isfinite(data)):
+        return np.asarray(trace, dtype=np.float64)
+    pad = pad_samples(data.shape[-1], fs, 0.25)
+    filtered = bandpass_filter_exact_corners(
+        reflect_pad(data, pad), options['N'], options['fcl'], options['fch'], fs)
+    return trim_pad(filtered, pad)[0]
+
+
+def _check_choice(derivation):
+    if derivation not in _DERIVATION_ORDER:
+        raise ValueError(
+            f"derivation must be one of {list(_DERIVATION_ORDER)}, got {derivation!r}.")
+    return derivation

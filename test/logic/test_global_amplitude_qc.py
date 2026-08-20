@@ -17,6 +17,7 @@ from hdsemg_select.select_logic.global_amplitude_qc import (
     QCThresholds,
     QCWindows,
     build_emg_map,
+    channel_trace,
     detect_windows,
     grade_channel,
     analyze,
@@ -416,3 +417,57 @@ def test_supplied_windows_are_used_instead_of_detection():
 
     assert result.windows.source == "manual"
     assert result.windows.peak == (int(12 * FS), int(12.25 * FS))
+
+
+# ----------------------------------------------------------------------
+# One channel's own trace
+# ----------------------------------------------------------------------
+
+def test_channel_trace_returns_the_derived_signal_not_the_monopolar_one():
+    data, _, _ = _trial()
+    grid = _Grid(range(N_CHANNELS))
+
+    double, label, derived = channel_trace(data, grid, _display_grid(), 0, FS,
+                                           derivation="DD")
+    monopolar, _, _ = channel_trace(data, grid, _display_grid(), 0, FS,
+                                    derivation="MP")
+
+    assert derived is True
+    assert label == "DD along columns"
+    assert not np.allclose(double, monopolar)
+
+
+def test_channel_trace_amplifies_uncorrelated_noise_as_differencing_should():
+    """SD is a first difference and DD a second, so on independent noise
+    their RMS rises by roughly sqrt(2) and sqrt(6)."""
+    data, _, _ = _trial()
+    grid = _Grid(range(N_CHANNELS))
+
+    def rms(derivation):
+        trace, _, _ = channel_trace(data, grid, _display_grid(), 0, FS,
+                                    derivation=derivation)
+        return float(np.sqrt(np.mean(trace ** 2)))
+
+    assert rms("SD") > rms("MP")
+    assert rms("DD") > rms("SD")
+
+
+def test_channel_trace_falls_back_at_the_edge_of_the_difference():
+    """The last rows of a column carry no DD — there is nothing below them."""
+    data, _, _ = _trial()
+    grid = _Grid(range(N_CHANNELS))
+
+    trace, label, derived = channel_trace(data, grid, _display_grid(),
+                                          N_CHANNELS - 1, FS, derivation="DD")
+
+    assert derived is False
+    assert "no DD is defined" in label
+    assert trace.size == data.shape[0]
+
+
+def test_channel_trace_rejects_a_channel_outside_the_grid():
+    data, _, _ = _trial()
+    grid = _Grid(range(N_CHANNELS))
+
+    with pytest.raises(ValueError, match="not part of grid"):
+        channel_trace(data, grid, _display_grid(), 9999, FS)

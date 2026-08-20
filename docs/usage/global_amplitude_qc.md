@@ -118,6 +118,16 @@ Amplitude and spectrum are scored against the channel's own grid with a **median
 
 Neighbour correlation is measured **inside the peak window only**. Over a whole tracking trial — which is mostly rest — neighbouring monopolar channels share little but uncorrelated noise, so it collapses toward zero for good channels too. Calibrate its threshold on data you know to be good before rejecting anything with it.
 
+### Looking at a borderline channel
+
+A grade is a number; deciding whether to keep a borderline channel means looking at the signal behind it.
+
+Select a channel — in the table, or by clicking its cell on the heatmap — and press **Show this channel's signal** (or double-click the row). The dialog plots the exact trace that channel contributes to the global amplitude, in the chosen derivation, with the rest and peak windows shaded so you can see what the grade was measured inside. Its own toolbar saves the plot.
+
+**Keep channel** and **Discard channel** apply the decision to that one channel straight away.
+
+> SD and DD are differences between neighbouring electrodes, so the electrodes at the edge of the difference axis have none — the last two rows of each column for DD. For those the dialog shows the monopolar trace and says so, rather than silently plotting something else.
+
 ---
 
 ## Deselecting failing channels
