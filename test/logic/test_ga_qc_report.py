@@ -17,6 +17,7 @@ from hdsemg_select.select_logic.global_amplitude_qc import (
     QCThresholds,
     QCWindows,
     ChannelQC,
+    resolve_amplitude_unit,
     GlobalAmplitudeQCResult,
     channel_report,
     grade_channel,
@@ -43,6 +44,8 @@ def _result(**overrides):
             "flat": False,
         }, QCThresholds())],
         thresholds=QCThresholds(),
+        # The figures here are already microvolts.
+        unit=resolve_amplitude_unit("uV", 8.58),
     )
     defaults.update(overrides)
     return GlobalAmplitudeQCResult(**defaults)
@@ -84,6 +87,39 @@ def test_the_report_carries_the_evidence_and_the_verdict_together():
     assert report["resting_floor_uv"] == pytest.approx(8.58)
     assert report["verdict"] == FAIL
     assert report["thresholds"]["pass"] == 1.50
+
+
+def test_the_report_records_the_unit_and_where_it_came_from():
+    report = qc_report(_result(), FS)
+
+    assert report["amplitude_unit"] == "uV"
+    assert report["amplitude_unit_source"] == "file"
+    assert report["amplitude_unit_warning"] is None
+    # Raw and converted sit side by side, so neither has to be trusted blind.
+    assert report["resting_floor_raw"] == pytest.approx(8.58)
+    assert report["resting_floor_uv"] == pytest.approx(8.58)
+
+
+def test_the_report_converts_raw_amplitudes_into_microvolts():
+    """An OTB file in millivolts must not report 0.00858 as a uV figure."""
+    result = _result(resting_floor=0.00858, peak_mean=0.01147,
+                     unit=resolve_amplitude_unit("mV", 0.00858))
+
+    report = qc_report(result, FS)
+
+    assert report["resting_floor_raw"] == pytest.approx(0.00858)
+    assert report["resting_floor_uv"] == pytest.approx(8.58)
+    assert report["peak_mean_uv"] == pytest.approx(11.47)
+    assert report["amplitude_unit_warning"] is None
+
+
+def test_the_report_carries_an_implausible_unit_warning():
+    result = _result(resting_floor=0.00858,
+                     unit=resolve_amplitude_unit("uV", 0.00858))
+
+    report = qc_report(result, FS)
+
+    assert "outside the plausible" in report["amplitude_unit_warning"]
 
 
 def test_a_fallback_window_says_so_in_the_report():

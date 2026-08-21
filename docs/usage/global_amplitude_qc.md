@@ -49,6 +49,16 @@ activation ratio  =  mean(amplitude over the peak window)
 | **fail** | The contraction never leaves the noise floor |
 | **no verdict** | Measuring the selection, and fewer than half the grid's channels are in it — a verdict on a selection is not a verdict on a grid. The ratio is still measured and still stored |
 
+### Amplitude units
+
+`EMGFile` does not yet declare what unit its data is in ([hdsemg-shared#53](https://github.com/johanneskasser/hdsemg-shared/issues/53)), and OTB loaders return **millivolts**. QC therefore assumes millivolts and converts to microvolts for display and for the `*_uv` keys in the JSON, recording both the raw value and the unit it assumed.
+
+If the resulting resting floor is not physiologically plausible — outside roughly 0.5 – 500 µV, which catches a factor of 1000 rather than a factor of two — the dialog shows a **Check the amplitude unit** warning naming the unit that *would* make it plausible, and the same warning is written to the JSON.
+
+> The activation ratio is a ratio, so it is unaffected by the unit either way. Only the absolute amplitudes can be wrong.
+
+Once `EMGFile` gains a `unit` attribute, QC reads it and stops assuming; the JSON records `"amplitude_unit_source": "file"` rather than `"assumed"`.
+
 ### Saving the plot
 
 Both the global amplitude plot and the CQI heatmap carry the standard matplotlib toolbar — **Save** writes a PNG, PDF or SVG, alongside zoom, pan and reset, exactly as in Crop Signal and the Density Map.
@@ -148,6 +158,10 @@ Per grid, alongside the existing `channels` and `reference_signals`:
     "method": "RMS",
     "diff_direction": "cols",
     "channel_scope": "selected",
+    "amplitude_unit": "mV",
+    "amplitude_unit_source": "assumed",
+    "amplitude_unit_warning": null,
+    "resting_floor_raw": 0.00858,
     "rest_windows_s": [[0.0, 7.4], [24.6, 31.0]],
     "peak_window_s": [13.86, 14.11],
     "window_source": "force",

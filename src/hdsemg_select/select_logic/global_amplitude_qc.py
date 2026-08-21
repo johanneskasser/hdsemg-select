@@ -48,6 +48,19 @@ from hdsemg_shared.quality import (
 
 from hdsemg_select._log.log_config import logger
 
+#: How many microvolts one unit of each declared unit is worth.
+UNIT_TO_UV = {"V": 1e6, "mV": 1e3, "uV": 1.0, "µV": 1.0}
+
+#: The unit assumed when the file does not declare one. OTB loaders return
+#: millivolts, which is what every recording this tool has seen carries.
+ASSUMED_UNIT = "mV"
+
+#: What a resting global amplitude plausibly is, in microvolts. Wide on
+#: purpose: this catches a factor of 1000, not a factor of 2. A quiet
+#: recording sits near 5 uV and a noisy one near 50; nothing physiological
+#: rests below 0.5 uV or above 500.
+PLAUSIBLE_REST_UV = (0.5, 500.0)
+
 PASS = "pass"
 BORDERLINE = "borderline"
 FAIL = "fail"
@@ -145,6 +158,77 @@ class QCThresholds:
 
 
 @dataclass(frozen=True)
+class AmplitudeUnit:
+    """How raw amplitudes turn into microvolts, and how sure we are.
+
+    ``source`` is 'file' when EMGFile declared the unit, 'assumed' when it
+    did not. ``warning`` is set when the resulting microvolt value is not
+    physiologically plausible, which is what a silent factor of 1000 looks
+    like from the outside.
+    """
+
+    label: str
+    scale: float
+    source: str
+    warning: Optional[str] = None
+
+    def to_uv(self, value):
+        """A raw amplitude in microvolts, or None."""
+        if value is None or not np.isfinite(value):
+            return None
+        return float(value) * self.scale
+
+
+def resolve_amplitude_unit(declared, resting_floor) -> AmplitudeUnit:
+    """Work out the amplitude unit, and check the answer is plausible.
+
+    ``declared`` is whatever EMGFile says (hdsemg-shared#53) or None. The
+    resting floor is the test value: it is the most stable number the QC
+    step produces and the one with the tightest physiological range.
+    """
+    label = str(declared) if declared else ASSUMED_UNIT
+    scale = UNIT_TO_UV.get(label)
+    source = "file" if declared else "assumed"
+
+    if scale is None:
+        return AmplitudeUnit(
+            label, 1.0, source,
+            f"The file declares its amplitude unit as {label!r}, which is not one "
+            f"of {sorted(set(UNIT_TO_UV) - {'µV'})}. Amplitudes are shown in that "
+            f"unit unconverted; the activation ratio is unaffected because it is "
+            f"a ratio."
+        )
+
+    warning = None
+    if resting_floor is not None and np.isfinite(resting_floor) and resting_floor > 0:
+        in_uv = resting_floor * scale
+        low, high = PLAUSIBLE_REST_UV
+        if not (low <= in_uv <= high):
+            better = _plausible_alternative(resting_floor)
+            suggestion = (f" A resting floor of {resting_floor * UNIT_TO_UV[better]:.2f} uV "
+                          f"would follow from {better}.") if better else ""
+            warning = (
+                f"Reading the data as {label} puts the resting floor at {in_uv:.4g} uV, "
+                f"outside the plausible {low:g}-{high:g} uV.{suggestion} "
+                f"The activation ratio is a ratio and is unaffected, but the absolute "
+                f"amplitudes and the µV figures in the JSON would be wrong."
+            )
+            if source == "assumed":
+                warning += (" The unit was assumed, not read from the file — "
+                            "see hdsemg-shared#53.")
+    return AmplitudeUnit(label, scale, source, warning)
+
+
+def _plausible_alternative(resting_floor):
+    """The unit that would make this resting floor physiological, if any."""
+    low, high = PLAUSIBLE_REST_UV
+    for candidate in ("uV", "mV", "V"):
+        if low <= resting_floor * UNIT_TO_UV[candidate] <= high:
+            return candidate
+    return None
+
+
+@dataclass(frozen=True)
 class QCWindows:
     """The rest and peak windows every measurement is taken inside.
 
@@ -214,6 +298,7 @@ class GlobalAmplitudeQCResult:
     channel_scope: str
     channels: list
     thresholds: QCThresholds
+    unit: AmplitudeUnit
 
     @property
     def grades(self) -> dict:
@@ -413,7 +498,7 @@ def grade_channel(channel_index: int, values: dict, thresholds: QCThresholds) ->
 # ----------------------------------------------------------------------
 
 def analyze(data, time, fs, grid, display_grid, channel_status, thresholds,
-            channel_scope="selected",
+            channel_scope="selected", unit=None,
             derivation="DD", method="RMS", diff_direction="cols",
             reference_index=None, reference_label="", windows=None,
             rest_below_pct=2.0, min_rest_s=2.0, peak_ms=250.0, fallback_s=3.0,
@@ -436,6 +521,9 @@ def analyze(data, time, fs, grid, display_grid, channel_status, thresholds,
                     one first would be backwards. The scope is reported
                     and stored, never inferred silently downstream.
     thresholds:     QCThresholds
+    unit:           the unit EMGFile declares for the data, or None. When
+                    None the documented assumption is used and the result
+                    says so, and warns if that makes the numbers implausible
     windows:        reuse an existing QCWindows instead of detecting them
     bpf, smooth:    band-pass and smoothing options, see hdsemg-shared's
                     global_amplitude; None means its documented defaults
@@ -505,6 +593,7 @@ def analyze(data, time, fs, grid, display_grid, channel_status, thresholds,
         n_channels=int(result.n_channels), n_selected=n_selected,
         n_grid_channels=len(grid_channels), channel_scope=channel_scope,
         channels=channels, thresholds=thresholds,
+        unit=resolve_amplitude_unit(unit, resting_floor),
     )
 
 
@@ -594,8 +683,13 @@ def qc_report(result: GlobalAmplitudeQCResult, fs: float) -> dict:
         "peak_window_s": [result.windows.peak[0] / fs, result.windows.peak[1] / fs],
         "window_source": result.windows.source,
         "reference_signal": result.ref_label or None,
-        "resting_floor_uv": _clean(result.resting_floor),
-        "peak_mean_uv": _clean(result.peak_mean),
+        "amplitude_unit": result.unit.label,
+        "amplitude_unit_source": result.unit.source,
+        "amplitude_unit_warning": result.unit.warning,
+        "resting_floor_raw": _clean(result.resting_floor),
+        "peak_mean_raw": _clean(result.peak_mean),
+        "resting_floor_uv": _clean(result.unit.to_uv(result.resting_floor)),
+        "peak_mean_uv": _clean(result.unit.to_uv(result.peak_mean)),
         "activation_ratio": _clean(result.activation_ratio),
         "verdict": result.verdict,
         "thresholds": {"pass": thresholds.grid_pass,

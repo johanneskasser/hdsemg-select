@@ -293,6 +293,16 @@ class GlobalAmplitudeQCDialog(QDialog):
         self._set_verdict_style(NOT_AVAILABLE)
         right.addWidget(self._verdict_lbl)
 
+        self._unit_lbl = QLabel("")
+        self._unit_lbl.setWordWrap(True)
+        self._unit_lbl.setStyleSheet(
+            f"background-color: {Colors.YELLOW_50}; "
+            f"border: 1px solid {Colors.YELLOW_600}; border-radius: 6px; "
+            f"padding: 8px 10px; color: {Colors.YELLOW_600}; font-size: 11px;"
+        )
+        self._unit_lbl.setVisible(False)
+        right.addWidget(self._unit_lbl)
+
         right.addWidget(self._section("Grid evidence"))
         cards = QVBoxLayout()
         cards.setSpacing(6)
@@ -686,6 +696,7 @@ class GlobalAmplitudeQCDialog(QDialog):
             data=data, time=time, fs=float(emg_file.sampling_frequency), grid=grid,
             display_grid=self._display_grid,
             channel_status=list(global_state.get_channel_status()),
+            unit=getattr(emg_file, "unit", None),  # hdsemg-shared#53
             channel_scope=("all" if self._scope_combo.currentText() == "all channels"
                            else "selected"),
             thresholds=self._settings.thresholds,
@@ -767,6 +778,7 @@ class GlobalAmplitudeQCDialog(QDialog):
         if result is None:
             self._verdict_lbl.setText("Run QC to measure this grid.")
             self._set_verdict_style(NOT_AVAILABLE)
+            self._unit_lbl.setVisible(False)
             for card in (self._floor_card, self._peak_card, self._ratio_card,
                          self._channels_card):
                 self._set_card(card, "—")
@@ -781,6 +793,7 @@ class GlobalAmplitudeQCDialog(QDialog):
             self._draw_empty_heatmap()
             return
 
+        self._update_unit_warning(result)
         self._update_verdict(result)
         self._update_cards(result)
         self._update_grades(result)
@@ -788,6 +801,13 @@ class GlobalAmplitudeQCDialog(QDialog):
         self._draw_plot(result)
         self._draw_heatmap(result)
         self._fill_channel_table(result)
+
+    def _update_unit_warning(self, result):
+        """Say so when the amplitudes cannot be what the unit claims."""
+        warning = result.unit.warning
+        self._unit_lbl.setVisible(bool(warning))
+        if warning:
+            self._unit_lbl.setText(f"<b>Check the amplitude unit.</b> {warning}")
 
     def _update_verdict(self, result):
         self._set_verdict_style(result.verdict)
@@ -807,8 +827,9 @@ class GlobalAmplitudeQCDialog(QDialog):
             f"<b>{_VERDICT_TEXT[result.verdict]}</b><br>{detail}")
 
     def _update_cards(self, result):
-        self._set_card(self._floor_card, _fmt(result.resting_floor, 2))
-        self._set_card(self._peak_card, _fmt(result.peak_mean, 2))
+        unit = result.unit
+        self._set_card(self._floor_card, _fmt(unit.to_uv(result.resting_floor), 2))
+        self._set_card(self._peak_card, _fmt(unit.to_uv(result.peak_mean), 2))
         self._set_card(self._ratio_card, f"{_fmt(result.activation_ratio, 2)}×",
                        GRADE_COLOR[result.verdict])
         self._set_card(self._channels_card,
@@ -874,6 +895,7 @@ class GlobalAmplitudeQCDialog(QDialog):
         axes = figure.add_subplot(111)
         self._plot_ax = axes
 
+        unit = result.unit
         time = result.time
         floor = result.resting_floor
         pass_mark = floor * result.thresholds.grid_pass if np.isfinite(floor) else np.nan
@@ -889,7 +911,8 @@ class GlobalAmplitudeQCDialog(QDialog):
                   label=f"{result.derivation} global amplitude", zorder=3)
         if np.isfinite(floor):
             axes.axhline(floor, color=Colors.RED_700, linewidth=1.2,
-                         label=f"resting floor {floor:.2f} µV", zorder=4)
+                         label=f"resting floor {_fmt(unit.to_uv(floor), 2)} µV",
+                         zorder=4)
             axes.axhline(pass_mark, color=Colors.RED_700, linewidth=1.2, linestyle="--",
                          label=f"pass mark {result.thresholds.grid_pass:.2f} × the floor",
                          zorder=4)
@@ -901,10 +924,11 @@ class GlobalAmplitudeQCDialog(QDialog):
         if np.isfinite(result.peak_mean):
             axes.plot([time[peak_start], time[min(peak_stop, time.size - 1)]],
                       [result.peak_mean] * 2, color=Colors.GREEN_700, linewidth=3,
-                      label=f"window mean {result.peak_mean:.2f} µV", zorder=5)
+                      label=f"window mean {_fmt(unit.to_uv(result.peak_mean), 2)} µV",
+                      zorder=5)
 
         axes.set_xlabel("time [s]", fontsize=9)
-        axes.set_ylabel("global amplitude [µV]", fontsize=9)
+        axes.set_ylabel(f"global amplitude [{unit.label}]", fontsize=9)
         axes.tick_params(labelsize=8)
         axes.legend(fontsize=7, loc="upper right", framealpha=0.9)
         figure.tight_layout()

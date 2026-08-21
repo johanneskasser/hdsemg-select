@@ -21,6 +21,7 @@ from hdsemg_select.select_logic.global_amplitude_qc import (
     detect_windows,
     grade_channel,
     analyze,
+    resolve_amplitude_unit,
 )
 
 FS = 2000.0
@@ -471,3 +472,71 @@ def test_channel_trace_rejects_a_channel_outside_the_grid():
 
     with pytest.raises(ValueError, match="not part of grid"):
         channel_trace(data, grid, _display_grid(), 9999, FS)
+
+
+# ----------------------------------------------------------------------
+# Amplitude units
+# ----------------------------------------------------------------------
+
+def test_a_declared_unit_is_believed():
+    unit = resolve_amplitude_unit("mV", 0.0095)
+
+    assert unit.label == "mV"
+    assert unit.source == "file"
+    assert unit.to_uv(0.0095) == pytest.approx(9.5)
+    assert unit.warning is None
+
+
+def test_millivolts_are_assumed_when_the_file_says_nothing():
+    """OTB loaders return mV; the result has to say the unit was assumed."""
+    unit = resolve_amplitude_unit(None, 0.0095)
+
+    assert unit.label == "mV"
+    assert unit.source == "assumed"
+    assert unit.warning is None
+
+
+def test_an_implausible_resting_floor_warns_and_names_the_way_out():
+    """0.0095 read as microvolts is 0.0095 uV — a thousand times too quiet."""
+    unit = resolve_amplitude_unit("uV", 0.0095)
+
+    assert unit.warning is not None
+    assert "outside the plausible" in unit.warning
+    assert "mV" in unit.warning  # the unit that would make it physiological
+
+
+def test_a_plausible_floor_never_warns():
+    for declared, floor in (("uV", 9.5), ("mV", 0.0095), ("V", 0.0000095)):
+        assert resolve_amplitude_unit(declared, floor).warning is None
+
+
+def test_an_assumed_unit_that_looks_wrong_points_at_the_shared_issue():
+    unit = resolve_amplitude_unit(None, 9.5)  # already uV, assumed to be mV
+
+    assert unit.warning is not None
+    assert "assumed" in unit.warning
+
+
+def test_an_unknown_unit_is_not_converted_and_says_so():
+    unit = resolve_amplitude_unit("counts", 0.0095)
+
+    assert unit.scale == 1.0
+    assert unit.to_uv(0.0095) == pytest.approx(0.0095)
+    assert "not one of" in unit.warning
+
+
+def test_the_ratio_is_unaffected_by_the_unit():
+    """A ratio is unit-free, which is why the verdict survived the bug."""
+    data, time, _ = _trial(activation=3.0)
+    grid = _Grid(range(N_CHANNELS))
+    status = [True] * (N_CHANNELS + 1)
+
+    micro = analyze(data, time, FS, grid, _display_grid(), status, QCThresholds(),
+                    derivation="MP", reference_index=N_CHANNELS, unit="uV")
+    milli = analyze(data, time, FS, grid, _display_grid(), status, QCThresholds(),
+                    derivation="MP", reference_index=N_CHANNELS, unit="mV")
+
+    assert micro.activation_ratio == pytest.approx(milli.activation_ratio)
+    assert micro.verdict == milli.verdict
+    assert micro.unit.to_uv(micro.resting_floor) * 1000 == pytest.approx(
+        milli.unit.to_uv(milli.resting_floor))
