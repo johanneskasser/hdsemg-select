@@ -30,6 +30,7 @@ nav:
       - Channel Flagging: usage/channel_flagging.md
       - Signal Overview Plot: usage/signal_overview_plot.md
       - Crop Signal: usage/crop_signal.md
+      - Density Map: usage/density_map.md
       - Global Amplitude QC: usage/global_amplitude_qc.md
       - Signal Details: usage/signal_details.md
       - Application Output: usage/application_output.md

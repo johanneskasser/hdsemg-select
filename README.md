@@ -16,6 +16,7 @@ helps identify and exclude faulty channels and automatically flag potential arti
 - 🧠 Intelligent grid detection and configuration
 - 🖼 Comprehensive visualization tools
 - ⚡️ Advanced artifact detection
+- 📉 Global amplitude quality control with per-channel grading
 - 💾 Structured data export
 - 🔍 Detailed signal analysis capabilities
 

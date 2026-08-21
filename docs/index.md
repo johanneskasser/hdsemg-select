@@ -15,6 +15,7 @@ Welcome to the documentation for hdsemg-select, a sophisticated graphical user i
 - 🧠 Intelligent grid detection and configuration
 - 🖼 Comprehensive visualization tools
 - ⚡️ Advanced artifact detection
+- 📉 Global amplitude quality control with per-channel grading
 - 💾 Structured data export
 - 🔍 Detailed signal analysis capabilities
 
@@ -23,6 +24,7 @@ Welcome to the documentation for hdsemg-select, a sophisticated graphical user i
 - [Installation Guide](installation.md): Step-by-step instructions for setting up hdsemg-select
 - [Getting Started](usage/getting_started.md): Learn how to get started with the application. The documentation will guide you through the first steps of using the hdsemg-select application to inspect and clean your high-density surface EMG (HD-sEMG) data.
 - [Density Map](usage/density_map.md): Animated ARV heatmap with reference signal scrubbing (`Ctrl + D`)
+- [Global Amplitude QC](usage/global_amplitude_qc.md): Does this grid's amplitude rise above its own resting noise during the contraction, and which channels contributed?
 - [Developer Guide](developer.md): Information for contributors and developers
 
 ## Core Functionality
@@ -33,6 +35,11 @@ Welcome to the documentation for hdsemg-select, a sophisticated graphical user i
 - Multi-channel overview with pagination
 - Reference signal overlay capabilities
 - [Animated ARV density map](usage/density_map.md) with interactive scrubbing (`Ctrl + D`)
+
+### Quality Control
+- [Global amplitude QC](usage/global_amplitude_qc.md): activation ratio of a grid against its own resting floor
+- Seven measured checks per channel, graded by the worst of them
+- Evidence stored beside the verdict in the selection JSON, so either can be re-derived
 
 ### Channel Management
 - Manual and automatic channel selection

@@ -26,7 +26,7 @@ The global amplitude of the selected grid is drawn over the **performed path**, 
 
 | Overlay | Meaning |
 |---------|---------|
-| **Blue trace** | Global amplitude of the grid, in µV |
+| **Blue trace** | Global amplitude of the grid, in the file's own unit (see [Amplitude units](#amplitude-units)) |
 | **Amber fill** | The performed path (reference channel) on its own axis |
 | **Light blue bands** | Rest windows — where the resting floor is measured |
 | **Grey band** | Peak window — the 250 ms of highest amplitude inside the contraction |
@@ -93,6 +93,31 @@ When the grid has no selection yet, **Suggest deselection** becomes **Suggested 
 **Derivation** (MP / SD / DD), **Method** (RMS / ARV) and **Difference along** (columns / rows) are chosen in the top bar and apply to the whole grid. They are written to the grid's `global_amplitude` block in the selection JSON when you save.
 
 Point the difference axis along the muscle fibres. **Signal → Fiber Trajectory Analysis** measures which way they actually run, which is a better check than whether the orientation box was ticked correctly.
+
+### Choosing the derivation — it changes the ratio more than anything else
+
+> **The same grid can pass or fail depending only on the derivation.** Two analyses of the same recording that differ only in derivation are not comparable. Record which one was used — the JSON does this for you — and keep it fixed across a study.
+
+Measured on one 13×5 grid (8 mm IED, vastus lateralis) from a 30 %MVC trapezoid, resting floor against the amplitude at the contraction:
+
+| Derivation | floor | contraction | ratio |
+|---|---|---|---|
+| MP | 13.28 µV | 52.87 µV | **3.98** |
+| SD along columns | 5.44 µV | 11.92 µV | **2.19** |
+| SD along rows | 8.99 µV | 11.43 µV | **1.27** |
+| DD along columns | 9.59 µV | 9.30 µV | **0.97** |
+| DD along rows | 14.57 µV | 10.87 µV | **0.75** |
+
+Every individual channel of that grid was healthy — median per-channel activation 3.29×, no flat channels, no mains pickup. The collapse is not a fault in the data or in the computation.
+
+**Why a difference can destroy the contrast.** SD and DD are spatial high-pass filters. They cancel whatever neighbouring electrodes share and keep whatever they do not:
+
+- Correlated between neighbours: the EMG itself, and common-mode noise.
+- Uncorrelated between neighbours: each electrode's own contact and instrumentation noise, which DD *amplifies* by √6.
+
+On the grid above, DD cancelled 82 % of the EMG (52.87 → 9.30 µV) but barely touched the rest noise (13.28 → 9.59 µV), because that noise was per-electrode rather than common-mode. On a 10 mm grid from the same recording DD behaved the opposite way — the floor fell from 12.72 to 3.36 µV, because there the rest noise *was* common-mode — and the ratio stayed at 5.41.
+
+**What to do about it.** A low DD ratio next to a healthy MP ratio and healthy per-channel grades is itself a finding: it says the electrodes carry independent noise. Compare the derivations before concluding the contraction was weak, and prefer MP or SD when the DD floor barely drops below the MP floor.
 
 ---
 

@@ -52,6 +52,19 @@ If you want to add a custom flag, follow these steps:
 Now you can use the custom flag in the channel labeling dialog to mark channels with specific characteristics or issues.
 
 ---
+### Global Amplitude QC Settings
+
+Defaults for the [Global Amplitude QC](global_amplitude_qc.md) step, in four groups:
+
+| Group | What it sets |
+|---|---|
+| **Global amplitude definition** | Derivation (MP/SD/DD), method (RMS/ARV), difference axis, band-pass corners, smoothing, mains frequency |
+| **Windowing** | The rest threshold as a share of the trial's own peak force, the minimum rest duration, the peak window width, and the fallback rest length used when a grid has no reference signal |
+| **Grid verdict** | The activation ratio at which a grid passes, where borderline begins, and the minimum share of a grid that must be selected for a verdict to mean anything |
+| **Channel thresholds and weights** | Per check: on/off, the pass bound, the fail bound, and the weight used to rank the channel list |
+
+> Thresholds decide where a measured number becomes a verdict; they never change what was measured. Both are written to the selection JSON, so a result can be re-derived from the numbers that produced it after a threshold changes.
+
 ### Settings: Under the Hood
 
 The settings are stored in a JSON file located in the application data directory. The file is named `settings.json` and contains all the configuration options, including logging level, automatic channel flagging settings, and custom flags.
