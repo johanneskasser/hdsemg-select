@@ -1241,8 +1241,17 @@ class GlobalAmplitudeQCDialog(QDialog):
 # ----------------------------------------------------------------------
 
 def _fmt(value, digits: int) -> str:
+    """Format for reading, not for a fixed decimal count.
+
+    Amplitudes arrive in whatever unit the file carries — OTB files are in
+    millivolts — so a fixed two decimals renders a 9.5 uV floor as "0.01"
+    and makes the evidence unreadable. Fall back to significant figures
+    when the value is small.
+    """
     if value is None or not np.isfinite(value):
-        return "—"
+        return "\u2014"
+    if value != 0 and abs(value) < 10 ** -digits * 10:
+        return f"{value:.{digits + 2}g}"
     return f"{value:.{digits}f}"
 
 
