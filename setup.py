@@ -37,7 +37,7 @@ setup(
         "numpy>=1.21.0",
         "scipy>=1.7.0",
         "requests>=2.30.0",
-        "hdsemg-shared>=0.14.1",
+        "hdsemg-shared>=0.14.3",
         "pefile>=2023.2.7; sys_platform != 'win32'",
     ],
     python_requires=">=3.7",

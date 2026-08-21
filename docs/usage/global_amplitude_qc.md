@@ -14,7 +14,7 @@ Go to **Signal → Global Amplitude QC…**
 
 > The menu item is only enabled after a file has been loaded and a grid has been configured.
 >
-> The step needs `hdsemg-shared >= 0.14.1`. With an older version installed the dialog says so instead of opening.
+> The step needs `hdsemg-shared >= 0.14.3`. With an older version installed the dialog says so instead of opening.
 
 ---
 

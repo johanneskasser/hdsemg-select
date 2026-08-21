@@ -778,7 +778,7 @@ class ChannelSelector(QMainWindow):
             QMessageBox.warning(
                 self, "Global Amplitude QC",
                 "This step needs a newer hdsemg-shared than the one installed.\n\n"
-                f"Install hdsemg-shared >= 0.14.1 and restart.\n\nDetail: {exc}"
+                f"Install hdsemg-shared >= 0.14.3 and restart.\n\nDetail: {exc}"
             )
             return
         if self._global_amplitude_qc_dialog is None:
