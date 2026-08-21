@@ -97,7 +97,7 @@ Running [Global Amplitude QC](global_amplitude_qc.md) adds two things to the JSO
 "global_amplitude": {
     "derivation": "DD", "method": "RMS", "diff_direction": "cols",
     "channel_scope": "selected",
-    "amplitude_unit": "mV", "amplitude_unit_source": "assumed",
+    "amplitude_unit": "mV", "amplitude_unit_source": "file",
     "amplitude_unit_warning": null,
     "rest_windows_s": [[0.0, 7.4], [24.6, 31.0]],
     "peak_window_s": [13.86, 14.11],

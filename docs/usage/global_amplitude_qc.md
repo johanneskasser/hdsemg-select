@@ -51,13 +51,15 @@ activation ratio  =  mean(amplitude over the peak window)
 
 ### Amplitude units
 
-`EMGFile` does not yet declare what unit its data is in ([hdsemg-shared#53](https://github.com/johanneskasser/hdsemg-shared/issues/53)), and OTB loaders return **millivolts**. QC therefore assumes millivolts and converts to microvolts for display and for the `*_uv` keys in the JSON, recording both the raw value and the unit it assumed.
+`EMGFile.unit` says what the EMG grid channels are measured in — `"V"`, `"mV"`, `"uV"`, `"a.u."`, or `None` when the format declares nothing ([hdsemg-shared#53](https://github.com/johanneskasser/hdsemg-shared/issues/53), [#54](https://github.com/johanneskasser/hdsemg-shared/pull/54)). QC reads it and converts to microvolts for display and for the `*_uv` keys in the JSON, storing the raw value alongside.
+
+When the file declares nothing — a plain MATLAB export, or a file whose tracks disagree — QC falls back to **millivolts**, which is what the OTB loaders return, and the JSON records `"amplitude_unit_source": "assumed"` so the fallback is never mistaken for a declaration. Arbitrary units are never converted.
 
 If the resulting resting floor is not physiologically plausible — outside roughly 0.5 – 500 µV, which catches a factor of 1000 rather than a factor of two — the dialog shows a **Check the amplitude unit** warning naming the unit that *would* make it plausible, and the same warning is written to the JSON.
 
 > The activation ratio is a ratio, so it is unaffected by the unit either way. Only the absolute amplitudes can be wrong.
 
-Once `EMGFile` gains a `unit` attribute, QC reads it and stops assuming; the JSON records `"amplitude_unit_source": "file"` rather than `"assumed"`.
+> Reference and auxiliary channels — force, requested and performed path, AUX — are **not** in this unit; they carry their own scales. QC only converts the EMG amplitude.
 
 ### Saving the plot
 
@@ -184,7 +186,7 @@ Per grid, alongside the existing `channels` and `reference_signals`:
     "diff_direction": "cols",
     "channel_scope": "selected",
     "amplitude_unit": "mV",
-    "amplitude_unit_source": "assumed",
+    "amplitude_unit_source": "file",
     "amplitude_unit_warning": null,
     "resting_floor_raw": 0.00858,
     "rest_windows_s": [[0.0, 7.4], [24.6, 31.0]],

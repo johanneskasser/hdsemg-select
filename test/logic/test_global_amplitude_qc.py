@@ -23,6 +23,7 @@ from hdsemg_select.select_logic.global_amplitude_qc import (
     analyze,
     resolve_amplitude_unit,
 )
+from hdsemg_select.select_logic.global_amplitude_qc import _SHARED_UNITS
 
 FS = 2000.0
 ROWS, COLS = 8, 8
@@ -522,7 +523,33 @@ def test_an_unknown_unit_is_not_converted_and_says_so():
 
     assert unit.scale == 1.0
     assert unit.to_uv(0.0095) == pytest.approx(0.0095)
-    assert "not one of" in unit.warning
+    assert "does not recognise" in unit.warning
+
+
+def test_arbitrary_units_are_never_converted():
+    """'a.u.' is canonical but not convertible, by definition."""
+    unit = resolve_amplitude_unit("a.u.", 0.0095)
+
+    assert unit.label == "a.u."
+    assert unit.scale == 1.0
+    assert unit.to_uv(0.0095) == pytest.approx(0.0095)
+    assert "cannot be converted" in unit.warning
+
+
+def test_the_micro_sign_and_greek_mu_both_mean_microvolts():
+    """OTB files carry both U+00B5 and U+03BC. These spellings resolve
+    whether or not hdsemg-shared is new enough to normalise units."""
+    for spelling in ("uV", "\u00b5V", "\u03bcV"):
+        unit = resolve_amplitude_unit(spelling, 9.5)
+        assert unit.to_uv(9.5) == pytest.approx(9.5), spelling
+        assert unit.warning is None, spelling
+
+
+@pytest.mark.skipif(not _SHARED_UNITS,
+                    reason="richer aliases need hdsemg-shared's units module")
+def test_spelled_out_aliases_resolve_when_shared_can_normalise():
+    assert resolve_amplitude_unit("microvolts", 9.5).to_uv(9.5) == pytest.approx(9.5)
+    assert resolve_amplitude_unit("millivolt", 0.0095).to_uv(0.0095) == pytest.approx(9.5)
 
 
 def test_the_ratio_is_unaffected_by_the_unit():

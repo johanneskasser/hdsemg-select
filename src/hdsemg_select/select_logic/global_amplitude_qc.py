@@ -36,6 +36,12 @@ from hdsemg_shared.filters.bandpass import bandpass_filter_exact_corners
 from hdsemg_shared.filters.padding import pad_samples, reflect_pad, trim_pad
 from hdsemg_shared.global_parameters import global_amplitude
 from hdsemg_shared.preprocessing.grid_map import map_to_columns
+
+try:  # hdsemg-shared declares the unit from 0.14.3 on (shared#53, #54)
+    from hdsemg_shared.fileio.units import conversion_factor, normalize_unit
+    _SHARED_UNITS = True
+except ImportError:  # older release: fall back to the table below
+    _SHARED_UNITS = False
 from hdsemg_shared.quality import (
     channel_amplitude,
     channel_spectrum,
@@ -48,10 +54,14 @@ from hdsemg_shared.quality import (
 
 from hdsemg_select._log.log_config import logger
 
-#: How many microvolts one unit of each declared unit is worth.
-UNIT_TO_UV = {"V": 1e6, "mV": 1e3, "uV": 1.0, "µV": 1.0}
+#: Microvolts per unit. Only used when hdsemg-shared is too old to convert;
+#: it is the same table shared's units module owns.
+UNIT_TO_UV = {"V": 1e6, "mV": 1e3, "uV": 1.0, "µV": 1.0, "μV": 1.0}
 
-#: The unit assumed when the file does not declare one. OTB loaders return
+#: Arbitrary units cannot be converted, by definition.
+ARBITRARY_UNIT = "a.u."
+
+#: The unit assumed when the file declares none. OTB loaders return
 #: millivolts, which is what every recording this tool has seen carries.
 ASSUMED_UNIT = "mV"
 
@@ -182,21 +192,41 @@ class AmplitudeUnit:
 def resolve_amplitude_unit(declared, resting_floor) -> AmplitudeUnit:
     """Work out the amplitude unit, and check the answer is plausible.
 
-    ``declared`` is whatever EMGFile says (hdsemg-shared#53) or None. The
-    resting floor is the test value: it is the most stable number the QC
-    step produces and the one with the tightest physiological range.
-    """
-    label = str(declared) if declared else ASSUMED_UNIT
-    scale = UNIT_TO_UV.get(label)
-    source = "file" if declared else "assumed"
+    ``declared`` is ``EMGFile.unit`` — one of the canonical units, or None
+    when the format declared nothing. The conversion itself belongs to
+    hdsemg-shared, so it is used when available rather than duplicated.
 
+    The resting floor is the test value: it is the most stable number the
+    QC step produces and the one with the tightest physiological range.
+    """
+    label = _canonical(declared) if declared else None
+    source = "file" if label else "assumed"
+    if label is None:
+        if declared:
+            # The file said something the library does not recognise.
+            return AmplitudeUnit(
+                str(declared), 1.0, "file",
+                f"The file declares its amplitude unit as {str(declared)!r}, which "
+                f"hdsemg-shared does not recognise. Amplitudes are shown in that "
+                f"unit unconverted; the activation ratio is unaffected because it "
+                f"is a ratio."
+            )
+        label = ASSUMED_UNIT
+
+    if label == ARBITRARY_UNIT:
+        return AmplitudeUnit(
+            label, 1.0, source,
+            "The file declares arbitrary units, which cannot be converted to "
+            "microvolts. Amplitudes are shown as recorded; the activation ratio "
+            "is unaffected because it is a ratio."
+        )
+
+    scale = _scale_to_uv(label)
     if scale is None:
         return AmplitudeUnit(
             label, 1.0, source,
-            f"The file declares its amplitude unit as {label!r}, which is not one "
-            f"of {sorted(set(UNIT_TO_UV) - {'µV'})}. Amplitudes are shown in that "
-            f"unit unconverted; the activation ratio is unaffected because it is "
-            f"a ratio."
+            f"No conversion from {label!r} to microvolts is available. Amplitudes "
+            f"are shown as recorded; the activation ratio is unaffected."
         )
 
     warning = None
@@ -205,7 +235,8 @@ def resolve_amplitude_unit(declared, resting_floor) -> AmplitudeUnit:
         low, high = PLAUSIBLE_REST_UV
         if not (low <= in_uv <= high):
             better = _plausible_alternative(resting_floor)
-            suggestion = (f" A resting floor of {resting_floor * UNIT_TO_UV[better]:.2f} uV "
+            suggestion = (f" A resting floor of "
+                          f"{resting_floor * _scale_to_uv(better):.2f} uV "
                           f"would follow from {better}.") if better else ""
             warning = (
                 f"Reading the data as {label} puts the resting floor at {in_uv:.4g} uV, "
@@ -214,16 +245,38 @@ def resolve_amplitude_unit(declared, resting_floor) -> AmplitudeUnit:
                 f"amplitudes and the µV figures in the JSON would be wrong."
             )
             if source == "assumed":
-                warning += (" The unit was assumed, not read from the file — "
-                            "see hdsemg-shared#53.")
+                warning += (" The file declared no unit, so millivolts were "
+                            "assumed.")
     return AmplitudeUnit(label, scale, source, warning)
+
+
+def _canonical(declared):
+    """The declared unit as one of the canonical spellings, or None."""
+    if _SHARED_UNITS:
+        return normalize_unit(declared)
+    text = str(declared).strip()
+    for known in UNIT_TO_UV:
+        if text.lower() == known.lower():
+            return "uV" if known in ("µV", "μV") else known
+    return ARBITRARY_UNIT if text.lower() in ("a.u.", "au", "a.u") else None
+
+
+def _scale_to_uv(label):
+    """Microvolts per unit of `label`, from hdsemg-shared when it can."""
+    if _SHARED_UNITS:
+        try:
+            return float(conversion_factor(label, "uV"))
+        except ValueError:
+            return None
+    return UNIT_TO_UV.get(label)
 
 
 def _plausible_alternative(resting_floor):
     """The unit that would make this resting floor physiological, if any."""
     low, high = PLAUSIBLE_REST_UV
     for candidate in ("uV", "mV", "V"):
-        if low <= resting_floor * UNIT_TO_UV[candidate] <= high:
+        scale = _scale_to_uv(candidate)
+        if scale and low <= resting_floor * scale <= high:
             return candidate
     return None
 
