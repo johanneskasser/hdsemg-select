@@ -88,7 +88,7 @@ class GaQcSuggestionDialog(QDialog):
         root.addWidget(self._table, stretch=1)
 
         note = QLabel(
-            "Deselected channels keep their data in the .mat file — the JSON records the "
+            "Deselected channels keep their data in the .mat file - the JSON records the "
             "selection. Re-running QC afterwards recomputes the global amplitude over the "
             "channels that remain."
         )
@@ -159,9 +159,9 @@ def _reason(channel) -> str:
         return "fails an enabled check"
     label = CHECK_LABELS.get(check, check)
     if check == "flat":
-        return "Flat — no signal at all"
+        return "Flat - no signal at all"
     value = channel.values.get(check)
     if value is None:
-        return f"{label} — not measurable"
+        return f"{label} - not measurable"
     digits = 3 if check == "clipping" else 2
     return f"{label} {value:.{digits}f}"

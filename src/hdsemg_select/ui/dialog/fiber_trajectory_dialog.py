@@ -193,10 +193,10 @@ class FiberTrajectoryDialog(QDialog):
         cards_box = QGroupBox("Results")
         cards_layout = QHBoxLayout(cards_box)
         cards_layout.setSpacing(6)
-        self._angle_card = self._make_metric_card("—", "Fiber angle")
-        self._cv_card = self._make_metric_card("—", "Conduction velocity")
-        self._iz_card = self._make_metric_card("—", "IZ position")
-        self._r2_card = self._make_metric_card("—", "Alignment (R²)")
+        self._angle_card = self._make_metric_card("-", "Fiber angle")
+        self._cv_card = self._make_metric_card("-", "Conduction velocity")
+        self._iz_card = self._make_metric_card("-", "IZ position")
+        self._r2_card = self._make_metric_card("-", "Alignment (R²)")
         for card in (self._angle_card, self._cv_card, self._iz_card, self._r2_card):
             cards_layout.addWidget(card)
         layout.addWidget(cards_box)
@@ -304,7 +304,7 @@ class FiberTrajectoryDialog(QDialog):
         else:
             self._window_lbl.setText("Window: full signal")
             self._window_lbl.setToolTip(
-                "No crop range set — the full signal will be analysed.\n"
+                "No crop range set - the full signal will be analysed.\n"
                 "Use Signal → Crop Signal… (Ctrl+R) to restrict to a contraction burst."
             )
 
@@ -423,7 +423,7 @@ class FiberTrajectoryDialog(QDialog):
         reliability_note = ""
         if r2 < 0.60:
             reliability_note = (
-                "\n\n⚠️  R²={:.2f} — angle estimate is unreliable. "
+                "\n\n⚠️  R²={:.2f} - angle estimate is unreliable. "
                 "Consider checking signal quality or using a crop range around "
                 "a clean contraction burst.".format(r2)
             )
@@ -431,14 +431,14 @@ class FiberTrajectoryDialog(QDialog):
         if aligned:
             msg = (
                 f"Detected fiber angle: <b>{angle:.1f}°</b>  "
-                f"(CV: {cv:.2f} m/s, R²: {r2:.2f} — {quality})<br><br>"
+                f"(CV: {cv:.2f} m/s, R²: {r2:.2f} - {quality})<br><br>"
                 f"Fibers run approximately parallel to the <b>{axis_label}</b>.<br>"
                 f"Suggested grid orientation: <b>{orient_hint}</b>."
                 f"{reliability_note.replace(chr(10), '<br>')}"
                 "<br><br>Would you like to open Grid Orientation settings to confirm?"
             )
             box = QMessageBox(self)
-            box.setWindowTitle("Auto Detect — Grid Alignment")
+            box.setWindowTitle("Auto Detect - Grid Alignment")
             box.setTextFormat(Qt.RichText)
             box.setText(msg)
             open_btn = box.addButton("Open Grid Orientation…", QMessageBox.AcceptRole)
@@ -451,14 +451,14 @@ class FiberTrajectoryDialog(QDialog):
         else:
             msg = (
                 f"Detected fiber angle: <b>{angle:.1f}°</b>  "
-                f"(CV: {cv:.2f} m/s, R²: {r2:.2f} — {quality})<br><br>"
+                f"(CV: {cv:.2f} m/s, R²: {r2:.2f} - {quality})<br><br>"
                 f"Fibers run at an <b>oblique angle</b> to the electrode grid. "
-                f"This is normal for muscles like Vastus Medialis Oblique — "
+                f"This is normal for muscles like Vastus Medialis Oblique - "
                 f"no axis alignment change is needed."
                 f"{reliability_note.replace(chr(10), '<br>')}"
             )
             box = QMessageBox(self)
-            box.setWindowTitle("Auto Detect — Grid Alignment")
+            box.setWindowTitle("Auto Detect - Grid Alignment")
             box.setTextFormat(Qt.RichText)
             box.setText(msg)
             box.exec_()
@@ -478,7 +478,7 @@ class FiberTrajectoryDialog(QDialog):
             self._iz_card.setToolTip(
                 "No innervation zone detected.\n\n"
                 "The IZ is identified by a sign reversal in adjacent-electrode delays.\n"
-                "If none is found, the IZ is likely outside the electrode grid —\n"
+                "If none is found, the IZ is likely outside the electrode grid -\n"
                 "this is a normal result when the grid covers only one propagation side."
             )
         color = (Colors.GREEN_600 if r.r_squared >= 0.85
@@ -486,7 +486,7 @@ class FiberTrajectoryDialog(QDialog):
         self._set_card(self._r2_card, f"R²={r.r_squared:.2f}", color)
         if r.r_squared < 0.70:
             self._r2_card.setToolTip(
-                "Poor alignment — results may be unreliable. "
+                "Poor alignment - results may be unreliable. "
                 "Ensure the grid is placed parallel to the muscle fibers."
             )
 
@@ -586,7 +586,7 @@ class FiberTrajectoryDialog(QDialog):
         ax = self._search_ax
         ax.clear()
         ax.set_facecolor(Colors.BG_PRIMARY)
-        ax.text(0.5, 0.5, "—", ha="center", va="center",
+        ax.text(0.5, 0.5, "-", ha="center", va="center",
                 transform=ax.transAxes, color=Colors.TEXT_MUTED, fontsize=10)
         ax.set_axis_off()
         self._search_canvas.draw()
@@ -648,6 +648,6 @@ class FiberTrajectoryDialog(QDialog):
                     self._thread.quit()
                     self._thread.wait(2000)
             except RuntimeError:
-                pass  # C++ object already deleted — thread finished naturally
+                pass  # C++ object already deleted - thread finished naturally
             self._thread = None
         super().closeEvent(event)

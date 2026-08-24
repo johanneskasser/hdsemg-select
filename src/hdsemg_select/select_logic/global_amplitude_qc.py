@@ -4,14 +4,14 @@ Answers two questions about a recording:
 
 * **Did this grid record physiological signal during the contraction?**
   The global amplitude at the peak of the contraction, over the global
-  amplitude at rest — the activation ratio.
+  amplitude at rest - the activation ratio.
 * **Which channels contributed?** Seven measured numbers per channel, each
   turned into a pass/borderline/fail state by a configurable threshold.
 
 Every measurement comes from ``hdsemg_shared``; nothing here computes EMG
-maths of its own. What this module owns is the *plumbing* — turning a
+maths of its own. What this module owns is the *plumbing* - turning a
 hdsemg-select ``Grid`` plus the current channel selection into the
-``emg_map`` the shared functions expect — and the *thresholds*, which are
+``emg_map`` the shared functions expect - and the *thresholds*, which are
 deliberately not the shared library's business: where a threshold sits
 depends on the muscle, the electrode, the task and the population.
 
@@ -193,7 +193,7 @@ class AmplitudeUnit:
 def resolve_amplitude_unit(declared, resting_floor) -> AmplitudeUnit:
     """Work out the amplitude unit, and check the answer is plausible.
 
-    ``declared`` is ``EMGFile.unit`` — one of the canonical units, or None
+    ``declared`` is ``EMGFile.unit`` - one of the canonical units, or None
     when the format declared nothing. The conversion itself belongs to
     hdsemg-shared, so it is used when available rather than duplicated.
 
@@ -282,7 +282,7 @@ def _plausible_alternative(resting_floor):
     return None
 
 
-#: Below this propagation score the measured direction means nothing —
+#: Below this propagation score the measured direction means nothing -
 #: hdsemg-shared's own threshold for a trustworthy estimate.
 TRUSTWORTHY_PROPAGATION = 0.5
 
@@ -290,7 +290,7 @@ TRUSTWORTHY_PROPAGATION = 0.5
 _AXIS_BOUNDARY_DEG = 45.0
 
 #: Seconds of contraction used to measure the propagation direction. The
-#: 250 ms peak window is far too short for it — on one real trial it read
+#: 250 ms peak window is far too short for it - on one real trial it read
 #: 0 deg over 250 ms and -72 deg over 4.5 s, both at a score below 0.5.
 #: Capped rather than using the whole contraction, which is slow.
 DIRECTION_WINDOW_S = 4.0
@@ -320,10 +320,10 @@ class FibreDirection:
         return self.trustworthy and self.axis != chosen_axis
 
     def describe(self) -> str:
-        confidence = ("reliable" if self.trustworthy
-                      else "not reliable on this trial")
-        return (f"measured fibre direction {self.angle_deg:.0f}\u00b0 "
-                f"\u2192 {self.axis}, score {self.score:.2f} ({confidence})")
+        """A short label for the header. Detail belongs in the tooltip."""
+        confidence = "reliable" if self.trustworthy else "not reliable"
+        return (f"fibre {self.angle_deg:.0f}\u00b0 ({self.axis}), "
+                f"score {self.score:.2f}, {confidence}")
 
 
 def measure_fibre_direction(data, grid, display_grid, fs, window=None,
@@ -459,7 +459,7 @@ def build_emg_map(grid, display_grid: np.ndarray, channel_status=None) -> np.nda
     """Turn a hdsemg-select grid into the (cols, rows) map shared expects.
 
     ``display_grid`` is (rows, cols) of LOCAL electrode indices with NaN at
-    unwired positions — the same array the electrode layout and the fiber
+    unwired positions - the same array the electrode layout and the fiber
     trajectory analysis use. ``emg_indices`` maps local to the channel
     number in the data matrix.
 
@@ -511,7 +511,7 @@ def detect_windows(reference, amplitude, fs, rest_below_pct=2.0, min_rest_s=2.0,
     """Find the rest stretches and the peak window of a contraction.
 
     Rest is where the reference path sits within ``rest_below_pct`` of its
-    own span above its own baseline — a fraction of the trial's peak force
+    own span above its own baseline - a fraction of the trial's peak force
     rather than of an MVC, so it needs no calibration file and no units.
     The peak window is the ``peak_ms`` of highest mean global amplitude
     outside rest.
@@ -600,7 +600,7 @@ def grade_channel(channel_index: int, values: dict, thresholds: QCThresholds) ->
     """Turn one channel's measured values into states, a grade and a CQI.
 
     The grade is the **worst** state among the enabled checks, never an
-    average — one fatal defect must not be averaged away by six healthy
+    average - one fatal defect must not be averaged away by six healthy
     ones. The CQI is a weighted mean of the sub-scores and exists only to
     rank the list.
     """
@@ -654,7 +654,7 @@ def analyze(data, time, fs, grid, display_grid, channel_status, thresholds,
     channel_status: per-channel selection flags, indexed globally
     channel_scope:  'selected' measures only the selected channels of the
                     grid; 'all' ignores the selection and measures every
-                    channel. 'all' is what a freshly loaded file needs —
+                    channel. 'all' is what a freshly loaded file needs -
                     QC is the step that informs a selection, so requiring
                     one first would be backwards. The scope is reported
                     and stored, never inferred silently downstream.
@@ -761,7 +761,7 @@ def _direction_window(windows, n_samples, fs) -> slice:
 
 
 def _grid_verdict(ratio, n_selected, n_total, thresholds) -> str:
-    """Pass, borderline or fail — or n/a when too little of the grid is left.
+    """Pass, borderline or fail - or n/a when too little of the grid is left.
 
     A verdict on a grid whose channels have mostly been deselected is not a
     verdict on the grid.
@@ -820,7 +820,7 @@ def _value(array, index):
 
 
 # ----------------------------------------------------------------------
-# Report shape — shared by the dialog's export and the selection JSON
+# Report shape - shared by the dialog's export and the selection JSON
 # ----------------------------------------------------------------------
 
 def qc_report(result: GlobalAmplitudeQCResult, fs: float) -> dict:
@@ -881,7 +881,7 @@ def channel_report(channel) -> dict:
 
 
 def _clean(value):
-    """A float that JSON can hold — NaN and inf become null."""
+    """A float that JSON can hold - NaN and inf become null."""
     if isinstance(value, bool) or value is None:
         return value
     try:
@@ -908,8 +908,8 @@ def channel_trace(data, grid, display_grid, channel_index, fs,
     (trace, label, is_derived)
         ``trace`` is 1-D over the same samples as ``data``. ``is_derived``
         is False when the requested derivation has no value at this grid
-        position — the last rows of a column carry no SD/DD, because the
-        difference needs the electrodes below them — in which case the
+        position - the last rows of a column carry no SD/DD, because the
+        difference needs the electrodes below them - in which case the
         monopolar trace is returned and ``label`` says so.
 
     Raises
@@ -950,7 +950,7 @@ def channel_trace(data, grid, display_grid, channel_index, fs,
     elif is_derived:
         label = f"{derivation} along {axis_name}"
     else:
-        label = (f"monopolar — this electrode sits at the edge of the {axis_name}, "
+        label = (f"monopolar - this electrode sits at the edge of the {axis_name}, "
                  f"so no {derivation} is defined for it")
     return _bandpass_one(trace, bpf, fs), label, is_derived
 

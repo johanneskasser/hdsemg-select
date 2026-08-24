@@ -56,13 +56,13 @@ class SNRBasedSelection:
         method_layout.setSpacing(Spacing.SM)
 
         rb_amplitude = QRadioButton(
-            "Global amplitude spike — peak of channel > N × median peak across all channels\n"
+            "Global amplitude spike - peak of channel > N × median peak across all channels\n"
             "(works for any recording; does not need a rest period)"
         )
         rb_amplitude.setChecked(not self.use_rest_spike)
 
         rb_rest = QRadioButton(
-            "Rest-period spike — peak during rest > N × global noise floor\n"
+            "Rest-period spike - peak during rest > N × global noise floor\n"
             "(more targeted; requires a clear quiet period in the recording)"
         )
         rb_rest.setChecked(self.use_rest_spike)

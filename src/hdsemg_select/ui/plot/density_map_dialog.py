@@ -60,7 +60,7 @@ class DensityMapDialog(QDialog):
         flags |= Qt.WindowCloseButtonHint
         self.setWindowFlags(flags)
 
-        self.setWindowTitle("Density Map — ARV Heatmap")
+        self.setWindowTitle("Density Map - ARV Heatmap")
         self.setStyleSheet(f"QDialog {{ background-color: {Colors.BG_SECONDARY}; }}")
 
         # Playback state
@@ -311,7 +311,7 @@ class DensityMapDialog(QDialog):
         main_split.addLayout(plot_area, stretch=1)
         root.addLayout(main_split, stretch=1)
 
-        # --- Transport bar (no slider — reference plot is the scrubber) ---
+        # --- Transport bar (no slider - reference plot is the scrubber) ---
         transport = QWidget()
         transport.setFixedHeight(48)
         transport.setStyleSheet(f"""
@@ -367,8 +367,8 @@ class DensityMapDialog(QDialog):
         """Open the map on a given grid and derivation.
 
         Used by the Global Amplitude QC dialog to show the SD map of the grid
-        it is measuring, so the propagation of the action potentials — and any
-        innervation zone — can be seen rather than inferred from a number.
+        it is measuring, so the propagation of the action potentials - and any
+        innervation zone - can be seen rather than inferred from a number.
         """
         if grid_key and self._grid_combo.findText(grid_key) >= 0:
             self._grid_combo.setCurrentText(grid_key)
@@ -409,7 +409,7 @@ class DensityMapDialog(QDialog):
             self._ref_combo.blockSignals(False)
             return
 
-        descriptions = emg_file.description  # numpy array or dict — don't use truthiness
+        descriptions = emg_file.description  # numpy array or dict - don't use truthiness
 
         def _to_str(name) -> str:
             while isinstance(name, np.ndarray):
@@ -688,7 +688,7 @@ class DensityMapDialog(QDialog):
             return
 
         # Two rows: heatmap (tall) + reference signal (short).
-        # Two columns: axes + narrow colorbar — so both rows share the same left edge.
+        # Two columns: axes + narrow colorbar - so both rows share the same left edge.
         gs = GridSpec(
             2, 2,
             figure=self._figure,
@@ -735,7 +735,7 @@ class DensityMapDialog(QDialog):
         self._ax.tick_params(colors=Colors.TEXT_SECONDARY)
         base_title = self._electrode_name or self._grid_key or ""
         self._ax.set_title(
-            f"{base_title} — {self._signal_view}" if base_title else self._signal_view,
+            f"{base_title} - {self._signal_view}" if base_title else self._signal_view,
             color=Colors.TEXT_PRIMARY,
             fontsize=10,
         )
@@ -776,7 +776,7 @@ class DensityMapDialog(QDialog):
         for spine in ax.spines.values():
             spine.set_edgecolor(Colors.BORDER_DEFAULT)
 
-        # Cursor line — drawn on top; stored so we can update its x only
+        # Cursor line - drawn on top; stored so we can update its x only
         t_cursor = self._cursor_sample / self._fs if self._fs > 0 else 0.0
         self._cursor_line = ax.axvline(
             x=t_cursor, color="#FF4444", linewidth=1.5, zorder=5

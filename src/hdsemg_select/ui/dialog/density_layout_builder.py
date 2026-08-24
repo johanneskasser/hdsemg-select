@@ -33,7 +33,7 @@ class LayoutBuilderDialog(QDialog):
         self._initial = initial or {}
         self._cell_combos: list[list[QComboBox]] = []
 
-        self.setWindowTitle(f"Build Layout — {electrode_name}")
+        self.setWindowTitle(f"Build Layout - {electrode_name}")
         self.resize(700, 500)
         self.setStyleSheet(f"QDialog {{ background-color: {Colors.BG_SECONDARY}; }}")
         self._init_ui()

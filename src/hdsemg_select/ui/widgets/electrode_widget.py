@@ -45,10 +45,10 @@ class ElectrodeWidget(QWidget):
         self.fiber_orientation = None
         self.highlight_index = 0  # which row/column is currently highlighted
 
-        # Persistent dialog reference — kept alive for fast show/hide toggling
+        # Persistent dialog reference - kept alive for fast show/hide toggling
         self._signal_overview_dialog = None
 
-        # Physical electrode layout — set externally after grid selection
+        # Physical electrode layout - set externally after grid selection
         self._display_grid: Optional[np.ndarray] = None  # shape (rows, cols), float, nan=empty
 
         open_signal_overview_btn = QPushButton("Open Signal Overview")
@@ -132,7 +132,7 @@ class ElectrodeWidget(QWidget):
             self.electrode_labels[r][c].setStyleSheet(f"background-color: {Colors.BG_PRIMARY}; border: 1px solid {Colors.BORDER_DEFAULT};")
 
     def map_channel_to_grid(self, grid_idx):
-        # Row-major mapping — consistent with label_electrodes() and grid_channel_map
+        # Row-major mapping - consistent with label_electrodes() and grid_channel_map
         rows, cols = self.grid_shape
         r = grid_idx // cols
         c = grid_idx % cols

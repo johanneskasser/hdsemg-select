@@ -51,7 +51,7 @@ class GaQcChannelInspectDialog(QDialog):
         self._is_selected = is_selected
         self.decision = None
 
-        self.setWindowTitle(f"Channel {channel.channel_index + 1} — signal")
+        self.setWindowTitle(f"Channel {channel.channel_index + 1} - signal")
         self.setStyleSheet(f"QDialog {{ background-color: {Colors.BG_SECONDARY}; }}")
         self.setMinimumSize(720, 480)
         self.resize(960, 620)
@@ -91,7 +91,7 @@ class GaQcChannelInspectDialog(QDialog):
         background, border, text = _GRADE_STYLE[self._channel.grade]
         driver = (CHECK_LABELS.get(self._channel.worst_check, "")
                   if self._channel.worst_check else "")
-        detail = f" — worst check: <b>{driver}</b>" if driver else ""
+        detail = f" - worst check: <b>{driver}</b>" if driver else ""
         label = QLabel(
             f"<b>Channel {self._channel.channel_index + 1}</b> · grade "
             f"<b>{self._channel.grade}</b> · CQI <b>{self._channel.cqi}</b>{detail}"
@@ -112,7 +112,7 @@ class GaQcChannelInspectDialog(QDialog):
             if check == "flat":
                 shown = "yes" if value else "no"
             elif value is None:
-                shown = "—"
+                shown = "-"
             else:
                 shown = f"{value:.3f}" if check == "clipping" else f"{value:.2f}"
             parts.append(f"{CHECK_LABELS[check]} {shown} ({state})")

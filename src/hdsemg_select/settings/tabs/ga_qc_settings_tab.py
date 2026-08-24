@@ -96,7 +96,7 @@ class GaQcSettingsTab(QWidget):
         self.method_combo = self._combo(["RMS", "ARV"])
         form.addRow("Method:", self.method_combo)
         self._help(form, "RMS squares each channel, ARV rectifies it. The root is taken "
-                         "last, across the grid — never per channel.")
+                         "last, across the grid - never per channel.")
 
         self.axis_combo = self._combo(["columns", "rows"])
         form.addRow("Difference along:", self.axis_combo)
@@ -127,7 +127,7 @@ class GaQcSettingsTab(QWidget):
         self.rest_below_spin = self._spin(0.1, 50.0, 0.5, 1)
         form.addRow("Rest below [% of peak force]:", self.rest_below_spin)
         self._help(form, "Performed path under this share of the trial's own force span "
-                         "counts as rest — a fraction of the trial's peak, not of an MVC, "
+                         "counts as rest - a fraction of the trial's peak, not of an MVC, "
                          "so it needs no calibration file.")
 
         self.min_rest_spin = self._spin(0.1, 30.0, 0.5, 1)
@@ -221,7 +221,7 @@ class GaQcSettingsTab(QWidget):
         note = QLabel(
             "A channel's grade is the worst state among the enabled checks. Weights only "
             "rank the list; they never change a grade. Neighbour correlation is measured "
-            "inside the peak window — over a whole trial it collapses toward zero for "
+            "inside the peak window - over a whole trial it collapses toward zero for "
             "good channels too."
         )
         note.setWordWrap(True)

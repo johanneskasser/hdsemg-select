@@ -206,7 +206,7 @@ class State(QObject):
         return self._ga_qc_reports
 
     def clear_ga_qc_reports(self) -> None:
-        """Drop every report — the selection they describe has changed."""
+        """Drop every report - the selection they describe has changed."""
         self._ga_qc_reports = {}
 
     def set_crop_range(self, crop_range: tuple | None) -> None:

@@ -4,8 +4,8 @@ Two views on one analysis: the grid's activation check with the global
 amplitude drawn over the performed path, and the per-channel quality that
 says which electrodes contributed to it.
 
-The analysis runs in a background thread — a 64-channel grid over a 30 s
-trial takes a couple of seconds — so the dialog stays responsive.
+The analysis runs in a background thread - a 64-channel grid over a 30 s
+trial takes a couple of seconds - so the dialog stays responsive.
 """
 
 from __future__ import annotations
@@ -143,10 +143,10 @@ class GlobalAmplitudeQCDialog(QDialog):
         """
         screen = QApplication.primaryScreen()
         if screen is None:
-            self.resize(1180, 820)
+            self.resize(1100, 820)
             return
         available = screen.availableGeometry()
-        width = min(1180, int(available.width() * 0.92))
+        width = min(1100, int(available.width() * 0.92))
         height = min(820, int(available.height() * 0.92))
         self.resize(width, height)
         self.move(available.center().x() - width // 2,
@@ -183,14 +183,14 @@ class GlobalAmplitudeQCDialog(QDialog):
             "columns" if self._settings.diff_direction == "cols" else "rows")
         self._axis_combo.setToolTip(
             "Which grid axis SD and DD difference along.\n"
-            "Point it along the muscle fibres — Signal ▸ Fiber Trajectory\n"
+            "Point it along the muscle fibres - Signal ▸ Fiber Trajectory\n"
             "Analysis measures which way they actually run."
         )
         self._scope_combo = self._combo(120, ["all channels", "selected channels"])
         self._scope_combo.setToolTip(
             "Which channels of the grid enter the global amplitude.\n"
-            "A freshly loaded file has no selection yet — QC is the step that\n"
-            "informs one — so 'all channels' is the default until you make one."
+            "A freshly loaded file has no selection yet - QC is the step that\n"
+            "informs one - so 'all channels' is the default until you make one."
         )
         for combo in (self._derivation_combo, self._method_combo, self._axis_combo,
                       self._scope_combo):
@@ -232,13 +232,15 @@ class GlobalAmplitudeQCDialog(QDialog):
         self._export_btn.setEnabled(False)
         self._export_btn.clicked.connect(self._export_json)
 
-        # Row one: what is measured. Row two: what to do about it. Splitting
-        # them keeps the header's minimum width under a laptop screen.
+        # Row one: what is measured. Row two: what to do about it. Both keep
+        # their content together on the left rather than stretching apart,
+        # so the header stays compact on a wide window instead of scattering
+        # controls to opposite edges.
         settings_row = QHBoxLayout()
         settings_row.setSpacing(6)
         settings_row.addWidget(self._label("Grid:"))
-        settings_row.addWidget(self._grid_combo, stretch=1)
-        settings_row.addSpacing(4)
+        settings_row.addWidget(self._grid_combo)
+        settings_row.addSpacing(10)
         settings_row.addWidget(self._label("Derivation:"))
         settings_row.addWidget(self._derivation_combo)
         settings_row.addWidget(self._label("Method:"))
@@ -248,20 +250,22 @@ class GlobalAmplitudeQCDialog(QDialog):
         settings_row.addWidget(self._label("Measure:"))
         settings_row.addWidget(self._scope_combo)
         settings_row.addStretch()
+
         self._fibre_lbl = QLabel("")
         self._fibre_lbl.setStyleSheet(
             f"font-size: 10px; color: {Colors.TEXT_MUTED};")
-        settings_row.addWidget(self._fibre_lbl)
 
         action_row = QHBoxLayout()
         action_row.setSpacing(6)
-        action_row.addWidget(self._status_lbl)
-        action_row.addStretch()
         action_row.addWidget(self._sd_map_btn)
         action_row.addWidget(self._method_btn)
         action_row.addWidget(self._redetect_btn)
         action_row.addWidget(self._run_btn)
         action_row.addWidget(self._export_btn)
+        action_row.addSpacing(10)
+        action_row.addWidget(self._status_lbl)
+        action_row.addWidget(self._fibre_lbl)
+        action_row.addStretch()
 
         bar.addLayout(settings_row)
         bar.addLayout(action_row)
@@ -334,7 +338,7 @@ class GlobalAmplitudeQCDialog(QDialog):
         )
         grades_layout = QVBoxLayout(grades_box)
         grades_layout.setSpacing(8)
-        self._grades_lbl = QLabel("—")
+        self._grades_lbl = QLabel("-")
         self._grades_lbl.setWordWrap(True)
         self._grades_lbl.setStyleSheet(f"font-size: 12px; color: {Colors.TEXT_SECONDARY};")
         grades_layout.addWidget(self._grades_lbl)
@@ -371,6 +375,7 @@ class GlobalAmplitudeQCDialog(QDialog):
         plot_pane.setMinimumWidth(380)
         results_pane = self._pane(right, scrollable=True)
         results_pane.setMinimumWidth(300)
+        results_pane.setMaximumWidth(460)
         body.addWidget(self._split(plot_pane, results_pane, (620, 380)))
 
         self._draw_empty_plot()
@@ -419,7 +424,7 @@ class GlobalAmplitudeQCDialog(QDialog):
         right = QVBoxLayout()
         right.setSpacing(4)
         right.addWidget(self._section(
-            "All channels — measured values, never a bare verdict"))
+            "All channels - measured values, never a bare verdict"))
         self._channel_table = QTableWidget(0, len(_TABLE_COLUMNS))
         self._channel_table.setHorizontalHeaderLabels([c[0] for c in _TABLE_COLUMNS])
         self._channel_table.verticalHeader().setVisible(False)
@@ -504,7 +509,7 @@ class GlobalAmplitudeQCDialog(QDialog):
         return splitter
 
     def _make_toolbar(self, canvas: FigureCanvas) -> NavigationToolbar:
-        """The standard matplotlib toolbar — Save, zoom, pan, reset.
+        """The standard matplotlib toolbar - Save, zoom, pan, reset.
 
         Same treatment as Crop Signal and the Density Map, so the Save
         button sits where it does in every other plot in the app.
@@ -563,7 +568,7 @@ class GlobalAmplitudeQCDialog(QDialog):
         )
         layout = QVBoxLayout(box)
         layout.setSpacing(2)
-        value = QLabel("—")
+        value = QLabel("-")
         value.setAlignment(Qt.AlignCenter)
         value.setObjectName("value")
         value.setStyleSheet("font-size: 20px; font-weight: 700;")
@@ -661,7 +666,7 @@ class GlobalAmplitudeQCDialog(QDialog):
         """A different definition invalidates the result it produced."""
         self._settings = ga_qc_config.load()
         if self._grid_key and self._grid_key in self._results_by_grid:
-            self._status_lbl.setText("Definition changed — run QC again.")
+            self._status_lbl.setText("Definition changed - run QC again.")
 
     def _reference_for(self, grid):
         """The performed path if the grid names one, else its first reference."""
@@ -792,8 +797,8 @@ class GlobalAmplitudeQCDialog(QDialog):
             self._unit_lbl.setVisible(False)
             for card in (self._floor_card, self._peak_card, self._ratio_card,
                          self._channels_card):
-                self._set_card(card, "—")
-            self._grades_lbl.setText("—")
+                self._set_card(card, "-")
+            self._grades_lbl.setText("-")
             self._windows_lbl.setText("")
             self._channel_table.setRowCount(0)
             self._evidence_table.setRowCount(0)
@@ -815,7 +820,7 @@ class GlobalAmplitudeQCDialog(QDialog):
         self._fill_channel_table(result)
 
     def _open_sd_map(self):
-        """Show this grid's SD map — the propagation, not just the number."""
+        """Show this grid's SD map - the propagation, not just the number."""
         if self._main_window is None or not hasattr(
                 self._main_window, "open_density_map_dialog"):
             return
@@ -827,7 +832,7 @@ class GlobalAmplitudeQCDialog(QDialog):
 
         The researcher applied the electrodes and knows how the grid is
         aligned; a single trial's estimate is evidence, not an instruction,
-        and on a poor trial it is not even that — so it is shown with its
+        and on a poor trial it is not even that - so it is shown with its
         score and the decision stays with the user.
         """
         fibre = result.fibre
@@ -840,7 +845,7 @@ class GlobalAmplitudeQCDialog(QDialog):
         self._fibre_lbl.setToolTip(
             f"Conduction velocity {fibre.cv_ms:.2f} m/s ({fibre.cv_status}).\n"
             f"0\u00b0 is the column axis, \u00b190\u00b0 the row axis.\n"
-            f"Advisory only — the difference axis stays your choice."
+            f"Advisory only - the difference axis stays your choice."
         )
         if fibre.disagrees_with(result.diff_direction):
             self._fibre_lbl.setStyleSheet(
@@ -857,7 +862,7 @@ class GlobalAmplitudeQCDialog(QDialog):
             f"The action potentials measure as travelling at "
             f"{fibre.angle_deg:.0f}\u00b0 to the grid columns "
             f"(propagation score {fibre.score:.2f}), which points along the "
-            f"<b>{fibre.axis}</b> axis — but the amplitude was differenced along "
+            f"<b>{fibre.axis}</b> axis - but the amplitude was differenced along "
             f"<b>{chosen}</b>.\n\n"
             f"Differencing across the fibres cancels the travelling potentials "
             f"instead of following them, which lowers the ratio.\n\n"
@@ -889,7 +894,7 @@ class GlobalAmplitudeQCDialog(QDialog):
                       f"the resting floor; this grid needs "
                       f"<b>{result.thresholds.grid_pass:.2f} ×</b>.")
         if result.channel_scope == "all":
-            detail += ("<br><i>Measured over every channel of the grid — no selection "
+            detail += ("<br><i>Measured over every channel of the grid - no selection "
                        "was applied.</i>")
         self._verdict_lbl.setText(
             f"<b>{_VERDICT_TEXT[result.verdict]}</b><br>{detail}")
@@ -1146,7 +1151,7 @@ class GlobalAmplitudeQCDialog(QDialog):
                 _metric_item(values.get("clipping"), 3),
                 _metric_item(values.get("neighbor_correlation"), 2),
                 _grade_item(channel.grade),
-                QTableWidgetItem(CHECK_LABELS.get(channel.worst_check, "—")),
+                QTableWidgetItem(CHECK_LABELS.get(channel.worst_check, "-")),
             ]
             for column, item in enumerate(cells):
                 item.setData(Qt.UserRole + 1, channel.channel_index)
@@ -1156,7 +1161,7 @@ class GlobalAmplitudeQCDialog(QDialog):
         table.resizeColumnsToContents()
         counts = result.grades
         self._channel_summary_lbl.setText(
-            f"{len(result.channels)} channels — {counts[PASS]} pass, "
+            f"{len(result.channels)} channels - {counts[PASS]} pass, "
             f"{counts[BORDERLINE]} borderline, {counts[FAIL]} fail. "
             f"Click a row or an electrode to see its evidence."
         )
@@ -1335,8 +1340,8 @@ class GlobalAmplitudeQCDialog(QDialog):
 def _fmt(value, digits: int) -> str:
     """Format for reading, not for a fixed decimal count.
 
-    Amplitudes arrive in whatever unit the file carries — OTB files are in
-    millivolts — so a fixed two decimals renders a 9.5 uV floor as "0.01"
+    Amplitudes arrive in whatever unit the file carries - OTB files are in
+    millivolts - so a fixed two decimals renders a 9.5 uV floor as "0.01"
     and makes the evidence unreadable. Fall back to significant figures
     when the value is small.
     """

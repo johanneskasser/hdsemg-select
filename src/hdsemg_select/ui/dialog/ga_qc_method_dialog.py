@@ -19,7 +19,7 @@ _SECTIONS = [
         "3  smooth each channel         15 Hz equivalent, zero-lag\n"
         "4  mean across the channels    → mean square over the grid\n"
         "5  square-root, LAST           → A(t)  [µV]",
-        "The root comes <b>last</b>, after the mean across the grid — that is what makes "
+        "The root comes <b>last</b>, after the mean across the grid - that is what makes "
         "mean_space(RMS²) = mean_time(RMS²) hold. Rooting per channel first would make the "
         "result depend on how many channels survived the selection, by a factor of 0.94 at "
         "4 channels to 0.995 at 48. An MVC trial and a tracking trial rarely keep the same "
@@ -29,7 +29,7 @@ _SECTIONS = [
         "MP, SD and DD",
         None,
         "Differencing runs on the raw signal, before filtering. SD and DD walk along one "
-        "grid axis — point that along the muscle fibres. <b>Signal ▸ Fiber Trajectory "
+        "grid axis - point that along the muscle fibres. <b>Signal ▸ Fiber Trajectory "
         "Analysis</b> measures which way they actually run, which is a better check than "
         "whether the orientation box was ticked correctly.",
     ),
@@ -39,7 +39,7 @@ _SECTIONS = [
         "                     ────────────────────────────\n"
         "                      median(A over the rest windows)",
         "Rest is where the performed path sits within a few percent of its own span above "
-        "its own baseline — a fraction of the trial's peak force rather than of an MVC, so "
+        "its own baseline - a fraction of the trial's peak force rather than of an MVC, so "
         "it needs no calibration file. The peak window is the 250 ms of highest global "
         "amplitude outside rest. Both are drawn on the plot and can be dragged; everything "
         "downstream is measured inside them. With no reference channel the first and last "
@@ -51,20 +51,20 @@ _SECTIONS = [
         "Seven checks, each a measured number stored raw in the JSON. The grade is the "
         "<b>worst</b> state among them, never an average, so one fatal defect cannot be "
         "averaged away by six healthy ones. CQI is a weighted mean used only to rank the "
-        "list — it never decides a grade.<br><br>"
+        "list - it never decides a grade.<br><br>"
         "Amplitude and spectrum are scored against the channel's own grid with a "
         "median/MAD robust z rather than mean and SD, because the outliers being looked "
         "for are <i>in</i> the sample: with two bad channels a classical z-score is "
         "inflated by exactly those two and hides the second one.<br><br>"
         "Neighbour correlation is measured inside the peak window only. Over a whole "
-        "tracking trial — which is mostly rest — neighbouring monopolar channels share "
+        "tracking trial - which is mostly rest - neighbouring monopolar channels share "
         "little but uncorrelated noise, so it collapses toward zero for good channels too.",
     ),
     (
         "What this tool does not decide",
         None,
         "Nothing here returns a verdict on its own. Where a threshold sits depends on the "
-        "muscle, the electrode, the task and the population, not on the measurement — so "
+        "muscle, the electrode, the task and the population, not on the measurement - so "
         "the numbers and the thresholds that produced a grade are both written to the "
         "selection JSON, and either can be re-derived without the other. Deselection is "
         "always confirmed by hand.",
@@ -74,7 +74,7 @@ _SECTIONS = [
 _REFERENCES = [
     ("Merletti R, Cerone GL. <i>Techniques for information extraction from the surface "
      "EMG signal</i>, eq. 5.1–5.2. In: Merletti &amp; Farina (2016/2018).",
-     "The definition of amplitude over a region — the source of the root-last ordering."),
+     "The definition of amplitude over a region - the source of the root-last ordering."),
     ("Del Vecchio A et al. <i>J Appl Physiol</i> (2025). "
      "doi:10.1152/japplphysiol.00810.2024",
      "Contraction-to-rest ratio as a recording quality criterion."),
@@ -94,7 +94,7 @@ class GaQcMethodDialog(QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("About the Method — Global Amplitude QC")
+        self.setWindowTitle("About the Method - Global Amplitude QC")
         self.setStyleSheet(f"QDialog {{ background-color: {Colors.BG_SECONDARY}; }}")
         self.resize(720, 760)
         self._build_ui()
@@ -132,7 +132,7 @@ class GaQcMethodDialog(QDialog):
 
         footer = QHBoxLayout()
         source = QLabel(
-            "Implemented in hdsemg-shared — global_parameters.global_amplitude, quality")
+            "Implemented in hdsemg-shared - global_parameters.global_amplitude, quality")
         source.setStyleSheet(f"font-size: 11px; color: {Colors.TEXT_MUTED};")
         footer.addWidget(source)
         footer.addStretch()

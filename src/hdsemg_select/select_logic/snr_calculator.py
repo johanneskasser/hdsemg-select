@@ -122,7 +122,7 @@ class SNRCalculator:
     ) -> list:
         """Flag channels whose overall peak amplitude >> median peak across all channels.
 
-        No plateau detection required — robust for recordings without a clear rest period.
+        No plateau detection required - robust for recordings without a clear rest period.
         """
         valid = [i for i in emg_indices if i is not None and 0 <= i < data.shape[1]]
         if not valid:

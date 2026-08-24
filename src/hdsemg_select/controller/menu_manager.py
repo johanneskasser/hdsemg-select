@@ -126,7 +126,9 @@ class MenuManager:
         self.density_map_action.setShortcut(QKeySequence("Ctrl+D"))
         self.density_map_action.setStatusTip("Animated ARV heatmap over the physical electrode grid")
         self.density_map_action.setEnabled(False)
-        self.density_map_action.triggered.connect(parent_window.open_density_map_dialog)
+        self.density_map_action.triggered.connect(
+            lambda: parent_window.open_density_map_dialog()
+        )
         signal_menu.addAction(self.density_map_action)
 
         signal_menu.addSeparator()

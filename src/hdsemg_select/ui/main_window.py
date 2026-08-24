@@ -329,7 +329,7 @@ class ChannelSelector(QMainWindow):
             if dialog is not None:
                 dialog.accept()
 
-            # Invalidate cached signal overview dialog — grid context changed
+            # Invalidate cached signal overview dialog - grid context changed
             self.electrode_widget.invalidate_signal_overview()
             self.invalidate_density_map()
 
@@ -501,7 +501,7 @@ class ChannelSelector(QMainWindow):
 
         # Create and add a ChannelWidget for each channel on the page
         for page_pos, channel_idx in enumerate(page_channels):
-            # channel_idx may be None for empty (NaN) electrode positions — skip them
+            # channel_idx may be None for empty (NaN) electrode positions - skip them
             if channel_idx is None:
                 continue
 
@@ -736,13 +736,15 @@ class ChannelSelector(QMainWindow):
         self.electrode_widget.invalidate_signal_overview()
         self.invalidate_density_map()
 
-    def open_density_map_dialog(self):
-        """Open (or reuse the cached) animated ARV density map dialog."""
+    def open_density_map_dialog(self, grid_key: str = None, signal_view: str = None):
+        """Open (or reuse the cached) animated ARV density map dialog.
+
+        With a grid key and derivation it opens on those, which is how the
+        Global Amplitude QC dialog shows an SD map of the grid it measures.
+        """
         if self._density_map_dialog is None:
             self._density_map_dialog = DensityMapDialog(self.grid_setup_handler, parent=self)
-        self._density_map_dialog.show()
-        self._density_map_dialog.raise_()
-        self._density_map_dialog.activateWindow()
+        self._density_map_dialog.show_for(grid_key=grid_key, signal_view=signal_view)
 
     def invalidate_density_map(self):
         """Close and discard the cached density map dialog."""

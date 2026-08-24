@@ -23,7 +23,7 @@ class Settings(Enum):
     DENSITY_DEFAULT_SPEED = "density_default_speed"
     CUSTOM_ELECTRODE_LAYOUTS = "custom_electrode_layouts"
 
-    # Global Amplitude QC — the definition
+    # Global Amplitude QC - the definition
     GA_QC_DERIVATION = "ga_qc_derivation"
     GA_QC_METHOD = "ga_qc_method"
     GA_QC_DIFF_DIRECTION = "ga_qc_diff_direction"
@@ -32,18 +32,18 @@ class Settings(Enum):
     GA_QC_SMOOTH_HZ = "ga_qc_smooth_hz"
     GA_QC_LINE_FREQ_HZ = "ga_qc_line_freq_hz"
 
-    # Global Amplitude QC — windowing
+    # Global Amplitude QC - windowing
     GA_QC_REST_BELOW_PCT = "ga_qc_rest_below_pct"
     GA_QC_MIN_REST_S = "ga_qc_min_rest_s"
     GA_QC_PEAK_WINDOW_MS = "ga_qc_peak_window_ms"
     GA_QC_FALLBACK_S = "ga_qc_fallback_s"
 
-    # Global Amplitude QC — grid verdict
+    # Global Amplitude QC - grid verdict
     GA_QC_GRID_PASS = "ga_qc_grid_pass"
     GA_QC_GRID_BORDERLINE = "ga_qc_grid_borderline"
     GA_QC_MIN_CHANNEL_FRACTION = "ga_qc_min_channel_fraction"
 
-    # Global Amplitude QC — channel checks (bounds, weights, on/off)
+    # Global Amplitude QC - channel checks (bounds, weights, on/off)
     GA_QC_CHANNEL_BOUNDS = "ga_qc_channel_bounds"
     GA_QC_CHANNEL_WEIGHTS = "ga_qc_channel_weights"
     GA_QC_CHANNEL_ENABLED = "ga_qc_channel_enabled"
