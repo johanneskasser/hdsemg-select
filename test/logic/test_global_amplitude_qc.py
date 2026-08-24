@@ -22,6 +22,8 @@ from hdsemg_select.select_logic.global_amplitude_qc import (
     grade_channel,
     analyze,
     resolve_amplitude_unit,
+    FibreDirection,
+    measure_fibre_direction,
 )
 from hdsemg_select.select_logic.global_amplitude_qc import _SHARED_UNITS
 
@@ -567,3 +569,78 @@ def test_the_ratio_is_unaffected_by_the_unit():
     assert micro.verdict == milli.verdict
     assert micro.unit.to_uv(micro.resting_floor) * 1000 == pytest.approx(
         milli.unit.to_uv(milli.resting_floor))
+
+
+# ----------------------------------------------------------------------
+# Fibre direction — advisory, never authoritative
+# ----------------------------------------------------------------------
+
+def _fibre(angle, score=0.8):
+    return FibreDirection(angle_deg=angle, score=score, cv_ms=4.0,
+                          cv_status="ok",
+                          axis="cols" if min(abs(angle), 180 - abs(angle)) <= 45
+                          else "rows")
+
+
+def test_an_angle_near_the_column_axis_points_at_columns():
+    for angle in (0.0, 20.0, -30.0, 170.0, -175.0):
+        assert _fibre(angle).axis == "cols", angle
+
+
+def test_an_angle_near_the_row_axis_points_at_rows():
+    for angle in (90.0, -72.0, 61.0, -110.0):
+        assert _fibre(angle).axis == "rows", angle
+
+
+def test_a_low_propagation_score_is_never_trusted():
+    """The estimate flipped between +61 and -72 degrees on one real trial,
+    at a score near 0.28 — that is noise, not a direction."""
+    weak = _fibre(-72.0, score=0.29)
+
+    assert weak.trustworthy is False
+    assert weak.disagrees_with("cols") is False  # too weak to argue with
+    assert "not reliable" in weak.describe()
+
+
+def test_a_trustworthy_measurement_disagrees_only_with_the_other_axis():
+    strong = _fibre(-72.0, score=0.8)
+
+    assert strong.trustworthy is True
+    assert strong.disagrees_with("cols") is True
+    assert strong.disagrees_with("rows") is False
+
+
+def test_the_measurement_is_reported_but_never_applied():
+    """analyze() must return the axis it was asked for, whatever the fibres
+    measure — the researcher applied the electrodes and knows the layout."""
+    data, time, _ = _trial()
+    grid = _Grid(range(N_CHANNELS))
+
+    result = analyze(data, time, FS, grid, _display_grid(),
+                     [True] * (N_CHANNELS + 1), QCThresholds(),
+                     derivation="DD", diff_direction="cols",
+                     reference_index=N_CHANNELS)
+
+    assert result.diff_direction == "cols"
+
+
+def test_direction_measurement_can_be_switched_off():
+    data, time, _ = _trial()
+    grid = _Grid(range(N_CHANNELS))
+
+    result = analyze(data, time, FS, grid, _display_grid(),
+                     [True] * (N_CHANNELS + 1), QCThresholds(),
+                     derivation="MP", reference_index=N_CHANNELS,
+                     measure_direction=False)
+
+    assert result.fibre is None
+
+
+def test_a_grid_without_an_electrode_distance_yields_no_direction():
+    """Propagation needs the inter-electrode distance; without it, say
+    nothing rather than guess."""
+    data, time, _ = _trial()
+    grid = _Grid(range(N_CHANNELS))
+    grid.ied_mm = None
+
+    assert measure_fibre_direction(data, grid, _display_grid(), FS) is None

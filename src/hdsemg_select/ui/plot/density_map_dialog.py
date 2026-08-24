@@ -363,6 +363,24 @@ class DensityMapDialog(QDialog):
     # Initialisation helpers
     # ------------------------------------------------------------------
 
+    def show_for(self, grid_key: str = None, signal_view: str = None):
+        """Open the map on a given grid and derivation.
+
+        Used by the Global Amplitude QC dialog to show the SD map of the grid
+        it is measuring, so the propagation of the action potentials — and any
+        innervation zone — can be seen rather than inferred from a number.
+        """
+        if grid_key and self._grid_combo.findText(grid_key) >= 0:
+            self._grid_combo.setCurrentText(grid_key)
+        if signal_view:
+            for index in range(self._signal_view_combo.count()):
+                if f"({signal_view})" in self._signal_view_combo.itemText(index):
+                    self._signal_view_combo.setCurrentIndex(index)
+                    break
+        self.show()
+        self.raise_()
+        self.activateWindow()
+
     def _populate_grid_selector(self):
         emg_file = global_state.get_emg_file()
         self._grid_combo.blockSignals(True)

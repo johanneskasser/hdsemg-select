@@ -217,6 +217,12 @@ class GlobalAmplitudeQCDialog(QDialog):
         self._redetect_btn.clicked.connect(self._redetect_windows)
         self._redetect_btn.setEnabled(False)
 
+        self._sd_map_btn = self._outline_button(
+            "SD map…",
+            "Open the density map as a single-differential map of this grid, to "
+            "see the action potentials propagate and spot an innervation zone")
+        self._sd_map_btn.clicked.connect(self._open_sd_map)
+
         self._method_btn = self._outline_button(
             "ⓘ  About the method", "How the global amplitude and the channel "
                                     "grades are defined")
@@ -242,11 +248,16 @@ class GlobalAmplitudeQCDialog(QDialog):
         settings_row.addWidget(self._label("Measure:"))
         settings_row.addWidget(self._scope_combo)
         settings_row.addStretch()
+        self._fibre_lbl = QLabel("")
+        self._fibre_lbl.setStyleSheet(
+            f"font-size: 10px; color: {Colors.TEXT_MUTED};")
+        settings_row.addWidget(self._fibre_lbl)
 
         action_row = QHBoxLayout()
         action_row.setSpacing(6)
         action_row.addWidget(self._status_lbl)
         action_row.addStretch()
+        action_row.addWidget(self._sd_map_btn)
         action_row.addWidget(self._method_btn)
         action_row.addWidget(self._redetect_btn)
         action_row.addWidget(self._run_btn)
@@ -794,6 +805,7 @@ class GlobalAmplitudeQCDialog(QDialog):
             return
 
         self._update_unit_warning(result)
+        self._update_fibre_advice(result)
         self._update_verdict(result)
         self._update_cards(result)
         self._update_grades(result)
@@ -801,6 +813,62 @@ class GlobalAmplitudeQCDialog(QDialog):
         self._draw_plot(result)
         self._draw_heatmap(result)
         self._fill_channel_table(result)
+
+    def _open_sd_map(self):
+        """Show this grid's SD map — the propagation, not just the number."""
+        if self._main_window is None or not hasattr(
+                self._main_window, "open_density_map_dialog"):
+            return
+        self._main_window.open_density_map_dialog(
+            grid_key=self._grid_key, signal_view="SD")
+
+    def _update_fibre_advice(self, result):
+        """Report the measured fibre direction. Never change the axis for it.
+
+        The researcher applied the electrodes and knows how the grid is
+        aligned; a single trial's estimate is evidence, not an instruction,
+        and on a poor trial it is not even that — so it is shown with its
+        score and the decision stays with the user.
+        """
+        fibre = result.fibre
+        if fibre is None:
+            self._fibre_lbl.setText("")
+            self._fibre_lbl.setToolTip("")
+            return
+
+        self._fibre_lbl.setText(fibre.describe())
+        self._fibre_lbl.setToolTip(
+            f"Conduction velocity {fibre.cv_ms:.2f} m/s ({fibre.cv_status}).\n"
+            f"0\u00b0 is the column axis, \u00b190\u00b0 the row axis.\n"
+            f"Advisory only — the difference axis stays your choice."
+        )
+        if fibre.disagrees_with(result.diff_direction):
+            self._fibre_lbl.setStyleSheet(
+                f"font-size: 10px; font-weight: 600; color: {Colors.YELLOW_600};")
+            self._offer_axis_switch(fibre, result.diff_direction)
+        else:
+            self._fibre_lbl.setStyleSheet(
+                f"font-size: 10px; color: {Colors.TEXT_MUTED};")
+
+    def _offer_axis_switch(self, fibre, chosen):
+        """Ask before differencing along a different axis, never assume."""
+        answer = QMessageBox.question(
+            self, "Global Amplitude QC",
+            f"The action potentials measure as travelling at "
+            f"{fibre.angle_deg:.0f}\u00b0 to the grid columns "
+            f"(propagation score {fibre.score:.2f}), which points along the "
+            f"<b>{fibre.axis}</b> axis — but the amplitude was differenced along "
+            f"<b>{chosen}</b>.\n\n"
+            f"Differencing across the fibres cancels the travelling potentials "
+            f"instead of following them, which lowers the ratio.\n\n"
+            f"Switch the difference axis to '{fibre.axis}' and run again? "
+            f"Keep your own setting if you know how this grid was applied.",
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if answer != QMessageBox.Yes:
+            return
+        self._axis_combo.setCurrentText(
+            "columns" if fibre.axis == "cols" else "rows")
+        self._start_analysis()
 
     def _update_unit_warning(self, result):
         """Say so when the amplitudes cannot be what the unit claims."""

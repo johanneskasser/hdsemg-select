@@ -96,6 +96,26 @@ When the grid has no selection yet, **Suggest deselection** becomes **Suggested 
 
 Point the difference axis along the muscle fibres. **Signal → Fiber Trajectory Analysis** measures which way they actually run, which is a better check than whether the orientation box was ticked correctly.
 
+### The difference axis must follow the fibres
+
+Merletti, Vieira & Farina (2016), ch. 5, name all four combinations — **LSD/LDD** (longitudinal, along the fibres) and **TSD/TDD** (transversal, across them) — and define *indexes of longitudinal and transversal selectivity*, because the direction decides what the spatial filter does to a travelling action potential. Differencing **along** the fibres follows the potential as it propagates; differencing **across** them largely cancels it.
+
+So `Difference along` should point along the muscle fibres. QC measures the propagation direction on each run and reports it next to the control:
+
+```
+measured fibre direction 0° → cols, score 0.51 (reliable)
+```
+
+0° is the map's column axis, ±90° the row axis. **The measurement never changes your setting.** You applied the electrodes and know how the grid is aligned; a single trial's estimate is evidence, not an instruction. If the estimate is trustworthy *and* disagrees with your choice, QC asks once whether to switch — and taking your own setting is a valid answer.
+
+> **Treat a single trial's angle with suspicion.** The estimate is only meaningful at a propagation score above 0.5, and it is unstable below that: on one real trial the same grid measured 0° over a 250 ms window and −72° over 4.5 s, both below 0.35. QC therefore measures over 4 s centred on the peak, and hdsemg-shared's own guidance is to pool a session's trials and take the majority before concluding a grid is rotated.
+
+The measurement is stored in the JSON as `fibre_direction`, including the score and whether it agreed with the axis you used.
+
+### Seeing the propagation: the SD map
+
+**SD map…** in the header opens the [Density Map](density_map.md) as a single-differential map of the grid being measured. That is the direct way to check the axis: along the fibres you see the action potentials travel across the grid, and an innervation zone shows as the line they travel away from in both directions.
+
 ### Choosing the derivation — it changes the ratio more than anything else
 
 > **The same grid can pass or fail depending only on the derivation.** Two analyses of the same recording that differ only in derivation are not comparable. Record which one was used — the JSON does this for you — and keep it fixed across a study.
@@ -185,6 +205,12 @@ Per grid, alongside the existing `channels` and `reference_signals`:
     "method": "RMS",
     "diff_direction": "cols",
     "channel_scope": "selected",
+    "fibre_direction": {
+        "angle_deg": 0.0, "propagation_score": 0.51,
+        "conduction_velocity_ms": 4.2, "cv_status": "ok",
+        "suggested_diff_direction": "cols",
+        "trustworthy": true, "agrees_with_chosen": true
+    },
     "amplitude_unit": "mV",
     "amplitude_unit_source": "file",
     "amplitude_unit_warning": null,

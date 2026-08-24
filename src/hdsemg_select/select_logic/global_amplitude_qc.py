@@ -43,6 +43,7 @@ try:  # hdsemg-shared declares the unit from 0.14.3 on (shared#53, #54)
 except ImportError:  # older release: fall back to the table below
     _SHARED_UNITS = False
 from hdsemg_shared.quality import (
+    propagation,
     channel_amplitude,
     channel_spectrum,
     clipping_fraction,
@@ -281,6 +282,89 @@ def _plausible_alternative(resting_floor):
     return None
 
 
+#: Below this propagation score the measured direction means nothing —
+#: hdsemg-shared's own threshold for a trustworthy estimate.
+TRUSTWORTHY_PROPAGATION = 0.5
+
+#: A measured angle within this of the column axis still counts as "columns".
+_AXIS_BOUNDARY_DEG = 45.0
+
+#: Seconds of contraction used to measure the propagation direction. The
+#: 250 ms peak window is far too short for it — on one real trial it read
+#: 0 deg over 250 ms and -72 deg over 4.5 s, both at a score below 0.5.
+#: Capped rather than using the whole contraction, which is slow.
+DIRECTION_WINDOW_S = 4.0
+
+
+@dataclass(frozen=True)
+class FibreDirection:
+    """Which way the action potentials actually travel across this grid.
+
+    Advisory only. The researcher applied the electrodes and knows how the
+    grid is aligned; a single trial's estimate does not overrule that, which
+    is why nothing here changes the difference axis by itself.
+    """
+
+    angle_deg: float
+    score: float
+    cv_ms: float
+    cv_status: str
+    axis: str
+
+    @property
+    def trustworthy(self) -> bool:
+        return bool(np.isfinite(self.score) and self.score >= TRUSTWORTHY_PROPAGATION)
+
+    def disagrees_with(self, chosen_axis: str) -> bool:
+        """True only when the estimate is worth listening to and differs."""
+        return self.trustworthy and self.axis != chosen_axis
+
+    def describe(self) -> str:
+        confidence = ("reliable" if self.trustworthy
+                      else "not reliable on this trial")
+        return (f"measured fibre direction {self.angle_deg:.0f}\u00b0 "
+                f"\u2192 {self.axis}, score {self.score:.2f} ({confidence})")
+
+
+def measure_fibre_direction(data, grid, display_grid, fs, window=None,
+                            ied_mm=None) -> Optional[FibreDirection]:
+    """Measure the propagation direction, or None when it cannot be measured.
+
+    0 degrees is the map's column axis, which is what ``diff_direction`` of
+    'cols' differences along; +-90 is the row axis. Merletti, Vieira &
+    Farina (2016), ch. 5, name the two cases longitudinal (along the fibres)
+    and transversal, and the distinction is what makes an SD/DD channel
+    represent a travelling action potential rather than cancel it.
+    """
+    spacing = ied_mm if ied_mm is not None else getattr(grid, "ied_mm", None)
+    if not spacing:
+        return None
+
+    grid_channels = [ch for ch in grid.emg_indices if ch is not None]
+    if not grid_channels:
+        return None
+    global_to_local = {ch: i for i, ch in enumerate(grid_channels)}
+    sub = np.asarray(data[:, grid_channels], dtype=np.float64).T
+    emg_map = _remap(build_emg_map(grid, display_grid, None), global_to_local)
+
+    try:
+        result = propagation(sub, emg_map, ied_mm=float(spacing), fs=fs,
+                             window=window)
+    except Exception as exc:  # noqa: BLE001 - advisory only, never fatal
+        logger.info("Fibre direction not measurable: %s", exc)
+        return None
+
+    angle = float(result.fiber_angle_deg)
+    from_column_axis = min(abs(angle), 180.0 - abs(angle))
+    return FibreDirection(
+        angle_deg=angle,
+        score=float(result.propagation_score),
+        cv_ms=float(result.cv_reported_ms),
+        cv_status=str(result.cv_status),
+        axis="cols" if from_column_axis <= _AXIS_BOUNDARY_DEG else "rows",
+    )
+
+
 @dataclass(frozen=True)
 class QCWindows:
     """The rest and peak windows every measurement is taken inside.
@@ -352,6 +436,7 @@ class GlobalAmplitudeQCResult:
     channels: list
     thresholds: QCThresholds
     unit: AmplitudeUnit
+    fibre: Optional[FibreDirection] = None
 
     @property
     def grades(self) -> dict:
@@ -551,7 +636,7 @@ def grade_channel(channel_index: int, values: dict, thresholds: QCThresholds) ->
 # ----------------------------------------------------------------------
 
 def analyze(data, time, fs, grid, display_grid, channel_status, thresholds,
-            channel_scope="selected", unit=None,
+            channel_scope="selected", unit=None, measure_direction=True,
             derivation="DD", method="RMS", diff_direction="cols",
             reference_index=None, reference_label="", windows=None,
             rest_below_pct=2.0, min_rest_s=2.0, peak_ms=250.0, fallback_s=3.0,
@@ -647,6 +732,10 @@ def analyze(data, time, fs, grid, display_grid, channel_status, thresholds,
         n_grid_channels=len(grid_channels), channel_scope=channel_scope,
         channels=channels, thresholds=thresholds,
         unit=resolve_amplitude_unit(unit, resting_floor),
+        fibre=(measure_fibre_direction(
+            data, grid, display_grid, fs,
+            window=_direction_window(windows, n_samples, fs))
+            if measure_direction else None),
     )
 
 
@@ -655,6 +744,20 @@ def _check_scope(channel_scope: str) -> str:
         raise ValueError(
             f"channel_scope must be 'selected' or 'all', got {channel_scope!r}.")
     return channel_scope
+
+
+def _direction_window(windows, n_samples, fs) -> slice:
+    """A stretch of contraction long enough to measure propagation in.
+
+    Centred on the peak window and grown to DIRECTION_WINDOW_S, then clipped
+    to the record. Rest is not excluded: at this width the contraction
+    dominates, and a shorter window is the worse error.
+    """
+    half = int(round(0.5 * DIRECTION_WINDOW_S * fs))
+    middle = (windows.peak[0] + windows.peak[1]) // 2
+    start = max(0, middle - half)
+    stop = min(n_samples, max(start + 1, middle + half))
+    return slice(start, stop)
 
 
 def _grid_verdict(ratio, n_selected, n_total, thresholds) -> str:
@@ -731,6 +834,16 @@ def qc_report(result: GlobalAmplitudeQCResult, fs: float) -> dict:
         "derivation": result.derivation,
         "method": result.method,
         "diff_direction": result.diff_direction,
+        "fibre_direction": (None if result.fibre is None else {
+            "angle_deg": _clean(result.fibre.angle_deg),
+            "propagation_score": _clean(result.fibre.score),
+            "conduction_velocity_ms": _clean(result.fibre.cv_ms),
+            "cv_status": result.fibre.cv_status,
+            "suggested_diff_direction": result.fibre.axis,
+            "trustworthy": result.fibre.trustworthy,
+            "agrees_with_chosen": not result.fibre.disagrees_with(
+                result.diff_direction),
+        }),
         "channel_scope": result.channel_scope,
         "rest_windows_s": [[start / fs, stop / fs] for start, stop in result.windows.rest],
         "peak_window_s": [result.windows.peak[0] / fs, result.windows.peak[1] / fs],
