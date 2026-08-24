@@ -14,7 +14,7 @@ class ZeroLineDetector:
       - The longest consecutive run of dead windows exceeds ``min_dead_run_fraction``
 
     A window is "dead" when its RMS is below ``relative_threshold × median_rms_of_grid``.
-    This makes the method self-calibrating — no absolute amplitude threshold is required.
+    This makes the method self-calibrating - no absolute amplitude threshold is required.
     """
 
     def detect(
@@ -60,7 +60,7 @@ class ZeroLineDetector:
         n_windows = n_samples // window_samples
 
         if n_windows == 0:
-            logger.warning("ZeroLineDetector: signal too short for even one window — skipping.")
+            logger.warning("ZeroLineDetector: signal too short for even one window - skipping.")
             return {ch: True for ch in grid_indices}
 
         # --- per-channel window RMS ---

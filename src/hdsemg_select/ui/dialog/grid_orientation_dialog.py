@@ -353,13 +353,13 @@ class GridOrientationDialog(QDialog):
             )
         else:
             status = (
-                f"Detected {angle:.1f}° — fibers are <b>oblique</b>, "
+                f"Detected {angle:.1f}° - fibers are <b>oblique</b>, "
                 f"no standard orientation applies.  "
                 f"<span style='color:{conf_color}'>(R²={r2:.2f}, {confidence} confidence)</span>"
             )
             if r2 < 0.60:
                 status += (
-                    "<br><span style='color:#dc2626'>Low R² — consider using a "
+                    "<br><span style='color:#dc2626'>Low R² - consider using a "
                     "crop range around a clean contraction burst.</span>"
                 )
 

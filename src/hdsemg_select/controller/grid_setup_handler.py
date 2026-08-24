@@ -19,7 +19,7 @@ class GridSetupHandler:
         self.total_pages = 0
         self.selected_grid = None
         self._electrode_display_grid = None   # Optional[np.ndarray] shape (rows, cols)
-        self._electrode_number_map = {}       # dict[data_idx, int] — 1-based electrode number
+        self._electrode_number_map = {}       # dict[data_idx, int] - 1-based electrode number
 
     def apply_selection(self, selected_grid, orientation, parent_window):
         """
@@ -96,7 +96,7 @@ class GridSetupHandler:
         """Extract electrode model code from the description array.
 
         Descriptions may contain full strings like
-        'Novecento+ (147 - 210) HD08MM0513 ch1 [MUSCLE:...]' — we pull out
+        'Novecento+ (147 - 210) HD08MM0513 ch1 [MUSCLE:...]' - we pull out
         the first token matching the OTBiolab model-code pattern (e.g. HD08MM0513).
         """
         import re

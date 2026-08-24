@@ -44,6 +44,8 @@ class State(QObject):
             FiberMode.PERPENDICULAR: LayoutMode.ROWS
         }
         self._fiber_to_layout_user_set = False # dirty flag to check if the layout was set by the user - important for the json metdata
+        # Global amplitude QC reports, keyed by grid_key, ready for the JSON
+        self._ga_qc_reports = {}
 
 
 
@@ -190,6 +192,22 @@ class State(QObject):
     def get_all_rms_quality(self) -> dict:
         """Get all RMS quality data."""
         return self._rms_quality_data
+
+    # Global amplitude QC
+    def set_ga_qc_report(self, grid_key: str, report: dict) -> None:
+        """Store one grid's QC report so the selection JSON can carry it."""
+        self._ga_qc_reports[grid_key] = report
+
+    def get_ga_qc_report(self, grid_key: str):
+        """One grid's QC report, or None if that grid was never measured."""
+        return self._ga_qc_reports.get(grid_key)
+
+    def get_all_ga_qc_reports(self) -> dict:
+        return self._ga_qc_reports
+
+    def clear_ga_qc_reports(self) -> None:
+        """Drop every report - the selection they describe has changed."""
+        self._ga_qc_reports = {}
 
     def set_crop_range(self, crop_range: tuple | None) -> None:
         """Set crop range as (start, end) inclusive sample indices, or None to clear.

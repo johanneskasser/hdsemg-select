@@ -4,5 +4,8 @@ matplotlib>=3.4.0
 numpy>=1.21.0
 scipy>=1.7.0
 requests>=2.30.0
-hdsemg-shared>=0.12.0
+# 0.14.3 is the first release carrying everything the Global Amplitude QC
+# step needs: global_parameters.global_amplitude, quality, and EMGFile.unit
+# (shared#53/#54). Not 0.14.2 -- its tag predates the units merge.
+hdsemg-shared>=0.14.3
 pefile>=2023.2.7 ; sys_platform != 'win32'

@@ -144,12 +144,12 @@ class FiberTrajectoryAnalyzer:
                     continue
                 sig = signals[:, global_ch_idx].astype(np.float64)
                 if np.linalg.norm(sig) < 1e-12:
-                    continue  # zero-line / dead channel — exclude from analysis
+                    continue  # zero-line / dead channel - exclude from analysis
                 mono[(r, c)] = sig
         return mono
 
     # ------------------------------------------------------------------
-    # Angle search — anchor-first regression
+    # Angle search - anchor-first regression
     # ------------------------------------------------------------------
 
     def _anchor_pairs(
@@ -210,7 +210,7 @@ class FiberTrajectoryAnalyzer:
         t_arr = np.array(delays)
 
         if np.ptp(d_arr) < 1e-9:
-            # All distances identical — estimate slope from mean ratio
+            # All distances identical - estimate slope from mean ratio
             mean_d = float(np.mean(d_arr))
             mean_t = float(np.mean(t_arr))
             if abs(mean_t) < 1e-9 or abs(mean_d) < 1e-9:
@@ -246,7 +246,7 @@ class FiberTrajectoryAnalyzer:
         return lag / fs
 
     # ------------------------------------------------------------------
-    # IZ detection — adjacent-bin sign reversal
+    # IZ detection - adjacent-bin sign reversal
     # ------------------------------------------------------------------
 
     def _binned_adj_delays(

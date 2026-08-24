@@ -424,7 +424,7 @@ class AutomaticAmplitudeSelection:
             detail = "\n".join(summary_lines)
             QMessageBox.information(
                 self.parent,
-                "Automatic Selection — All Grids",
+                "Automatic Selection - All Grids",
                 f"{detail}\n\nTotal: {selected_count} selected, {deselected_count} deselected.",
             )
         else:

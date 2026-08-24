@@ -13,7 +13,7 @@ from typing import Optional
 # Each entry: list of columns, each column is a list of row values (top→bottom).
 # base0[col][row] = 0-based local electrode index.
 _LAYOUTS_BASE0: dict[str, list] = {
-    # GR08MM1305 and GR04MM1305 — 13 rows × 5 cols, orientation 180°
+    # GR08MM1305 and GR04MM1305 - 13 rows × 5 cols, orientation 180°
     # NaN at top-left (connector side)
     "GR08MM1305": [
         [np.nan,  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11],
@@ -22,7 +22,7 @@ _LAYOUTS_BASE0: dict[str, list] = {
         [50,     49, 48, 47, 46, 45, 44, 43, 42, 41, 40, 39, 38],
         [51,     52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63],
     ],
-    # GR10MM0808 and HD10MM0808 — 8 rows × 8 cols, orientation 180°
+    # GR10MM0808 and HD10MM0808 - 8 rows × 8 cols, orientation 180°
     "GR10MM0808": [
         [ 7,  6,  5,  4,  3,  2,  1,  0],
         [15, 14, 13, 12, 11, 10,  9,  8],
@@ -33,7 +33,7 @@ _LAYOUTS_BASE0: dict[str, list] = {
         [55, 54, 53, 52, 51, 50, 49, 48],
         [63, 62, 61, 60, 59, 58, 57, 56],
     ],
-    # HD04MM1305 and HD08MM1305 — 13 rows × 5 cols, orientation 180°
+    # HD04MM1305 and HD08MM1305 - 13 rows × 5 cols, orientation 180°
     # NaN at bottom-right (connector side)
     "HD04MM1305": [
         [    51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63],
@@ -42,7 +42,7 @@ _LAYOUTS_BASE0: dict[str, list] = {
         [    12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24],
         [np.nan,  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11],
     ],
-    # HD10MM0804, HD05MM0804, GR10MM0804 — 8 rows × 4 cols, orientation 180°
+    # HD10MM0804, HD05MM0804, GR10MM0804 - 8 rows × 4 cols, orientation 180°
     "HD10MM0804": [
         [ 0,  1,  2,  3,  4,  5,  6,  7],
         [ 8,  9, 10, 11, 12, 13, 14, 15],

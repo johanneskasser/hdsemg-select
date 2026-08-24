@@ -185,9 +185,11 @@ class ChannelSelector(QMainWindow):
         self.crop_signal_action = self.menu_manager.get_crop_signal_action()
         self.density_map_action = self.menu_manager.get_density_map_action()
         self.fiber_trajectory_action = self.menu_manager.get_fiber_trajectory_action()
+        self.global_amplitude_qc_action = self.menu_manager.get_global_amplitude_qc_action()
         self.toggle_signal_overview_action = self.menu_manager.get_toggle_signal_overview_action()
         self._density_map_dialog = None
         self._fiber_trajectory_dialog = None
+        self._global_amplitude_qc_dialog = None
 
     def ref_sig_signal_changed(self):
         """Handles changes in the reference signal checkbox."""
@@ -284,6 +286,8 @@ class ChannelSelector(QMainWindow):
                 self.density_map_action.setEnabled(True)
             if hasattr(self, 'fiber_trajectory_action') and self.fiber_trajectory_action:
                 self.fiber_trajectory_action.setEnabled(True)
+            if hasattr(self, 'global_amplitude_qc_action') and self.global_amplitude_qc_action:
+                self.global_amplitude_qc_action.setEnabled(True)
             if hasattr(self, 'toggle_signal_overview_action') and self.toggle_signal_overview_action:
                 self.toggle_signal_overview_action.setEnabled(True)
             if hasattr(self, 'zero_line_menu') and self.zero_line_menu:
@@ -325,7 +329,7 @@ class ChannelSelector(QMainWindow):
             if dialog is not None:
                 dialog.accept()
 
-            # Invalidate cached signal overview dialog — grid context changed
+            # Invalidate cached signal overview dialog - grid context changed
             self.electrode_widget.invalidate_signal_overview()
             self.invalidate_density_map()
 
@@ -497,7 +501,7 @@ class ChannelSelector(QMainWindow):
 
         # Create and add a ChannelWidget for each channel on the page
         for page_pos, channel_idx in enumerate(page_channels):
-            # channel_idx may be None for empty (NaN) electrode positions — skip them
+            # channel_idx may be None for empty (NaN) electrode positions - skip them
             if channel_idx is None:
                 continue
 
@@ -723,6 +727,8 @@ class ChannelSelector(QMainWindow):
             self.density_map_action.setEnabled(False)
         if hasattr(self, 'fiber_trajectory_action') and self.fiber_trajectory_action:
             self.fiber_trajectory_action.setEnabled(False)
+        if hasattr(self, 'global_amplitude_qc_action') and self.global_amplitude_qc_action:
+            self.global_amplitude_qc_action.setEnabled(False)
         if hasattr(self, 'toggle_signal_overview_action') and self.toggle_signal_overview_action:
             self.toggle_signal_overview_action.setEnabled(False)
         if hasattr(self, 'zero_line_menu') and self.zero_line_menu:
@@ -730,13 +736,15 @@ class ChannelSelector(QMainWindow):
         self.electrode_widget.invalidate_signal_overview()
         self.invalidate_density_map()
 
-    def open_density_map_dialog(self):
-        """Open (or reuse the cached) animated ARV density map dialog."""
+    def open_density_map_dialog(self, grid_key: str = None, signal_view: str = None):
+        """Open (or reuse the cached) animated ARV density map dialog.
+
+        With a grid key and derivation it opens on those, which is how the
+        Global Amplitude QC dialog shows an SD map of the grid it measures.
+        """
         if self._density_map_dialog is None:
             self._density_map_dialog = DensityMapDialog(self.grid_setup_handler, parent=self)
-        self._density_map_dialog.show()
-        self._density_map_dialog.raise_()
-        self._density_map_dialog.activateWindow()
+        self._density_map_dialog.show_for(grid_key=grid_key, signal_view=signal_view)
 
     def invalidate_density_map(self):
         """Close and discard the cached density map dialog."""
@@ -756,6 +764,32 @@ class ChannelSelector(QMainWindow):
         self._fiber_trajectory_dialog.show()
         self._fiber_trajectory_dialog.raise_()
         self._fiber_trajectory_dialog.activateWindow()
+
+    def open_global_amplitude_qc_dialog(self):
+        """Open the global amplitude QC dialog."""
+        if global_state.get_emg_file() is None:
+            return
+        try:
+            from hdsemg_select.ui.dialog.global_amplitude_qc_dialog import (
+                GlobalAmplitudeQCDialog,
+            )
+        except ImportError as exc:
+            # The QC step needs hdsemg-shared's global_parameters and quality
+            # modules. Say so plainly rather than throwing an import traceback.
+            logger.error("Global amplitude QC unavailable: %s", exc)
+            QMessageBox.warning(
+                self, "Global Amplitude QC",
+                "This step needs a newer hdsemg-shared than the one installed.\n\n"
+                f"Install hdsemg-shared >= 0.14.3 and restart.\n\nDetail: {exc}"
+            )
+            return
+        if self._global_amplitude_qc_dialog is None:
+            self._global_amplitude_qc_dialog = GlobalAmplitudeQCDialog(
+                self.grid_setup_handler, parent=self
+            )
+        self._global_amplitude_qc_dialog.show()
+        self._global_amplitude_qc_dialog.raise_()
+        self._global_amplitude_qc_dialog.activateWindow()
 
     def resizeEvent(self, event: QResizeEvent) -> None:
         super().resizeEvent(event)

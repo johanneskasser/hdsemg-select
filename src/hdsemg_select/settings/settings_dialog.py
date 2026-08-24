@@ -8,6 +8,7 @@ from .tabs.custom_flagger_settings_tab import CustomFlaggerSettingsTab
 # Import the new tab classes
 from .tabs.log_setting import LoggingSettingsTab
 from .tabs.auto_flagger_settings_tab import AutoFlaggerSettingsTab
+from .tabs.ga_qc_settings_tab import GaQcSettingsTab
 
 from hdsemg_select.config.config_manager import config
 from hdsemg_select.ui.theme import Colors, Spacing, BorderRadius, Styles, Fonts
@@ -35,7 +36,7 @@ class SettingsDialog(QDialog):
         header_label.setStyleSheet(Styles.label_heading(size="xl"))
         main_layout.addWidget(header_label)
 
-        description_label = QLabel("Configure application behavior, logging, and channel flagging preferences.")
+        description_label = QLabel("Configure application behavior, logging, channel flagging and quality control preferences.")
         description_label.setStyleSheet(Styles.label_secondary())
         description_label.setWordWrap(True)
         main_layout.addWidget(description_label)
@@ -73,11 +74,13 @@ class SettingsDialog(QDialog):
         self.logging_tab_widget = LoggingSettingsTab(self.tab_widget) # Parent is tab_widget
         self.auto_flag_tab_widget = AutoFlaggerSettingsTab(self.tab_widget) # Parent is tab_widget
         self.custom_flag_tab_widget = CustomFlaggerSettingsTab(self.tab_widget)
+        self.ga_qc_tab_widget = GaQcSettingsTab(self.tab_widget)
 
         # Add tab widgets to the tab widget with shorter names
         self.tab_widget.addTab(self.logging_tab_widget, "Logging")
         self.tab_widget.addTab(self.auto_flag_tab_widget, "Auto-Flagging")
         self.tab_widget.addTab(self.custom_flag_tab_widget, "Custom Labels")
+        self.tab_widget.addTab(self.ga_qc_tab_widget, "Global Amplitude QC")
 
         # Add standard dialog buttons (OK and Cancel)
         self.button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
@@ -99,6 +102,7 @@ class SettingsDialog(QDialog):
         self.logging_tab_widget.loadSettings(config)
         self.auto_flag_tab_widget.loadSettings(config)
         self.custom_flag_tab_widget.loadSettings(config)
+        self.ga_qc_tab_widget.loadSettings(config)
 
     def saveSettings(self) -> None:
         """Saves settings from all tab widgets."""
@@ -106,6 +110,7 @@ class SettingsDialog(QDialog):
         self.logging_tab_widget.saveSettings(config)
         self.auto_flag_tab_widget.saveSettings(config)
         self.custom_flag_tab_widget.saveSettings(config)
+        self.ga_qc_tab_widget.saveSettings(config)
 
     def accept(self) -> None:
         """Overrides the accept method to save settings before closing."""

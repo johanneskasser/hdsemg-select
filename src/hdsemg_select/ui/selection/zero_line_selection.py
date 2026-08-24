@@ -17,7 +17,7 @@ class ZeroLineSelection:
     Automatic zero-line (dead channel) detection using sliding-window relative RMS.
 
     A channel is flagged as bad if a significant fraction of its signal windows
-    fall below a threshold relative to the grid's median RMS — catching both
+    fall below a threshold relative to the grid's median RMS - catching both
     fully-dead channels and channels that get cut off mid-recording.
     """
 
@@ -129,14 +129,14 @@ class ZeroLineSelection:
             detail = "\n".join(summary_lines)
             QMessageBox.information(
                 self.parent,
-                "Zero Line Detection — All Grids",
+                "Zero Line Detection - All Grids",
                 f"{detail}\n\nTotal: {total_selected} selected, {total_flagged} flagged as zero-line.",
             )
         else:
             grid_name = self.parent.grid_setup_handler.selected_grid or "current grid"
             QMessageBox.information(
                 self.parent,
-                f"Zero Line Detection — {grid_name}",
+                f"Zero Line Detection - {grid_name}",
                 f"{total_selected} channels selected, {total_flagged} flagged as zero-line.",
             )
 
@@ -160,7 +160,7 @@ class ZeroLineSelection:
 
         description = QLabel(
             "Detects channels that are dead, cut off mid-recording, or intermittently "
-            "silent. Uses a sliding-window RMS approach relative to the grid's median — "
+            "silent. Uses a sliding-window RMS approach relative to the grid's median - "
             "no absolute amplitude threshold needed."
         )
         description.setWordWrap(True)
