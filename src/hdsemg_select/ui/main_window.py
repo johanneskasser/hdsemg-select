@@ -26,6 +26,7 @@ from hdsemg_select.ui.plot.channel_widget import ChannelWidget
 from hdsemg_select.ui.widgets.electrode_widget import ElectrodeWidget
 from hdsemg_select.ui.selection.amplitude_based import AutomaticAmplitudeSelection
 from hdsemg_select.ui.selection.zero_line_selection import ZeroLineSelection
+from hdsemg_select.ui.selection.snr_based import SNRBasedSelection
 from hdsemg_select.config.config_manager import config
 from hdsemg_shared.fileio.file_io import EMGFile
 # noinspection PyUnresolvedReferences
@@ -137,6 +138,7 @@ class ChannelSelector(QMainWindow):
         # Create the menu bar using the MenuManager
         self.automatic_selection = AutomaticAmplitudeSelection(self)
         self.zero_line_selection = ZeroLineSelection(self)
+        self.snr_selection = SNRBasedSelection(self)
         self.create_menus()  # This method now delegates to MenuManager
 
         self.grid_label_widget = ClickableGridInfoWidget(self, width=400, height=60, boarder=False)
@@ -181,6 +183,7 @@ class ChannelSelector(QMainWindow):
         self.change_grid_action = self.menu_manager.get_change_grid_action()
         self.amplidude_menu = self.menu_manager.get_amplitude_menu()
         self.zero_line_menu = self.menu_manager.get_zero_line_menu()
+        self.snr_selection_action = self.menu_manager.get_snr_selection_action()
         self.suggest_flags_action = self.menu_manager.get_suggest_flags_action()
         self.crop_signal_action = self.menu_manager.get_crop_signal_action()
         self.density_map_action = self.menu_manager.get_density_map_action()
@@ -196,8 +199,10 @@ class ChannelSelector(QMainWindow):
         if self.show_ref_signals.isChecked():
             self.select_ref_signal.setEnabled(True)
             selected_signal = self.select_ref_signal.currentData()
-            ref_sig_scaled = ChannelWidget.scale_ref_signal(global_state.get_effective_scaled_data()[:, selected_signal])
-            if selected_signal is not None:
+            data = global_state.get_effective_scaled_data()
+            # Fires while a new file loads (state reset, dropdown cleared): nothing to overlay yet
+            if selected_signal is not None and data is not None:
+                ref_sig_scaled = ChannelWidget.scale_ref_signal(data[:, selected_signal])
                 for channel_widget in self.channel_widgets:
                     channel_widget.set_overlay_signal(ref_sig_scaled)
         else:
@@ -292,6 +297,8 @@ class ChannelSelector(QMainWindow):
                 self.toggle_signal_overview_action.setEnabled(True)
             if hasattr(self, 'zero_line_menu') and self.zero_line_menu:
                 self.zero_line_menu.setEnabled(True)
+            if hasattr(self, 'snr_selection_action') and self.snr_selection_action:
+                self.snr_selection_action.setEnabled(True)
 
             # Trigger grid selection after successful file processing
             self.select_grid_and_orientation()
@@ -557,9 +564,10 @@ class ChannelSelector(QMainWindow):
 
     def get_selected_ref_signal(self):
         selected_ref_signal = self.select_ref_signal.currentData() if self.show_ref_signals.isChecked() else None
-        selected_ref_signal = ChannelWidget.scale_ref_signal(
-            global_state.get_effective_scaled_data()[:, selected_ref_signal]) if selected_ref_signal is not None else None
-        return selected_ref_signal
+        data = global_state.get_effective_scaled_data()
+        if selected_ref_signal is None or data is None:
+            return None
+        return ChannelWidget.scale_ref_signal(data[:, selected_ref_signal])
 
     def handle_single_channel_update(self, idx, state):
         """Handles state change for a single channel checkbox."""
@@ -733,6 +741,8 @@ class ChannelSelector(QMainWindow):
             self.toggle_signal_overview_action.setEnabled(False)
         if hasattr(self, 'zero_line_menu') and self.zero_line_menu:
             self.zero_line_menu.setEnabled(False)
+        if hasattr(self, 'snr_selection_action') and self.snr_selection_action:
+            self.snr_selection_action.setEnabled(False)
         self.electrode_widget.invalidate_signal_overview()
         self.invalidate_density_map()
 

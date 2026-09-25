@@ -8,7 +8,7 @@ from typing import Optional
 import numpy as np
 from PyQt5.QtCore import Qt, QThread, QObject, pyqtSignal, QTimer
 from PyQt5.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QGroupBox,
+    QDialog, QVBoxLayout, QHBoxLayout, QGridLayout, QGroupBox,
     QComboBox, QPushButton, QLabel,
     QFileDialog, QMessageBox, QSizePolicy,
 )
@@ -23,10 +23,25 @@ from hdsemg_select.ui.theme import Colors
 from hdsemg_select.version import __version__
 
 _LITERATURE_TEXT = (
-    "Method: Pairwise XCorr + delay plane fitting  |  "
+    "Method: hdsemg_shared.quality.propagation - adjacent-bin single-differential "
+    "XCorr delays, direction of most consistent delays  |  "
     "Farina & Merletti, J Neurosci Methods 134:199-208, 2004"
 )
 _SPINNER_FRAMES = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+
+
+def _json_float(v) -> Optional[float]:
+    """NaN/None -> None so the export stays valid JSON."""
+    return None if v is None or not np.isfinite(v) else float(v)
+
+
+def _fmt_cv(cv) -> str:
+    return "n/d" if _json_float(cv) is None else f"{cv:.2f} m/s"
+
+
+def _score_quality(score: float) -> str:
+    # ponytail: display thresholds only, the measurement itself returns no verdict
+    return "good" if score >= 0.6 else ("moderate" if score >= 0.3 else "poor")
 
 
 # ------------------------------------------------------------------
@@ -191,17 +206,20 @@ class FiberTrajectoryDialog(QDialog):
         layout.setSpacing(8)
 
         cards_box = QGroupBox("Results")
-        cards_layout = QHBoxLayout(cards_box)
+        cards_layout = QGridLayout(cards_box)
         cards_layout.setSpacing(6)
         self._angle_card = self._make_metric_card("-", "Fiber angle")
         self._cv_card = self._make_metric_card("-", "Conduction velocity")
         self._iz_card = self._make_metric_card("-", "IZ position")
+        self._score_card = self._make_metric_card("-", "Propagation score")
         self._r2_card = self._make_metric_card("-", "Alignment (R²)")
-        for card in (self._angle_card, self._cv_card, self._iz_card, self._r2_card):
-            cards_layout.addWidget(card)
+        cards = (self._angle_card, self._cv_card, self._iz_card,
+                 self._score_card, self._r2_card)
+        for i, card in enumerate(cards):
+            cards_layout.addWidget(card, i // 3, i % 3)
         layout.addWidget(cards_box)
 
-        search_lbl = QLabel("Angle search  (R² vs θ)")
+        search_lbl = QLabel("Angle search  (propagation score vs θ)")
         search_lbl.setStyleSheet(
             f"font-size: 11px; font-weight: 600; text-transform: uppercase; "
             f"letter-spacing: 0.05em; color: {Colors.TEXT_MUTED};"
@@ -401,7 +419,8 @@ class FiberTrajectoryDialog(QDialog):
     def _show_auto_detect_suggestion(self, result: FiberTrajectoryResult):
         angle = result.fiber_angle_deg
         r2 = result.r_squared
-        cv = result.conduction_velocity_ms
+        score = result.propagation_score
+        cv = result.cv_reported_ms
 
         # Determine grid-axis alignment
         # angle is measured from column axis: 0° = parallel to columns, ±90° = parallel to rows
@@ -419,19 +438,19 @@ class FiberTrajectoryDialog(QDialog):
             orient_hint = None
             aligned = False
 
-        quality = "good" if r2 >= 0.80 else ("moderate" if r2 >= 0.60 else "poor")
+        quality = _score_quality(score)
         reliability_note = ""
-        if r2 < 0.60:
+        if quality == "poor":
             reliability_note = (
-                "\n\n⚠️  R²={:.2f} - angle estimate is unreliable. "
+                "\n\n⚠️  Propagation score={:.2f} - angle estimate is unreliable. "
                 "Consider checking signal quality or using a crop range around "
-                "a clean contraction burst.".format(r2)
+                "a clean contraction burst.".format(score)
             )
 
         if aligned:
             msg = (
                 f"Detected fiber angle: <b>{angle:.1f}°</b>  "
-                f"(CV: {cv:.2f} m/s, R²: {r2:.2f} - {quality})<br><br>"
+                f"(CV: {_fmt_cv(cv)}, score: {score:.2f} - {quality}, R²: {r2:.2f})<br><br>"
                 f"Fibers run approximately parallel to the <b>{axis_label}</b>.<br>"
                 f"Suggested grid orientation: <b>{orient_hint}</b>."
                 f"{reliability_note.replace(chr(10), '<br>')}"
@@ -451,7 +470,7 @@ class FiberTrajectoryDialog(QDialog):
         else:
             msg = (
                 f"Detected fiber angle: <b>{angle:.1f}°</b>  "
-                f"(CV: {cv:.2f} m/s, R²: {r2:.2f} - {quality})<br><br>"
+                f"(CV: {_fmt_cv(cv)}, score: {score:.2f} - {quality}, R²: {r2:.2f})<br><br>"
                 f"Fibers run at an <b>oblique angle</b> to the electrode grid. "
                 f"This is normal for muscles like Vastus Medialis Oblique - "
                 f"no axis alignment change is needed."
@@ -469,7 +488,15 @@ class FiberTrajectoryDialog(QDialog):
 
     def _update_metrics(self, r: FiberTrajectoryResult):
         self._set_card(self._angle_card, f"{r.fiber_angle_deg:.1f}°", Colors.GREEN_600)
-        self._set_card(self._cv_card, f"{r.conduction_velocity_ms:.2f} m/s", Colors.BLUE_600)
+        self._set_card(self._cv_card, _fmt_cv(r.cv_reported_ms), Colors.BLUE_600)
+        self._cv_card.setToolTip(
+            f"Status: {r.cv_status}\n"
+            "With an innervation zone ('iz_split') the velocity is taken from\n"
+            "the longer side of the zone only."
+        )
+        score_color = {"good": Colors.GREEN_600, "moderate": "#b45309"}.get(
+            _score_quality(r.propagation_score), "#dc2626")
+        self._set_card(self._score_card, f"{r.propagation_score:.2f}", score_color)
         if r.iz_position_m is not None:
             self._set_card(self._iz_card, f"{r.iz_position_m * 1000:.1f} mm", "#b45309")
             self._iz_card.setToolTip("")
@@ -481,14 +508,12 @@ class FiberTrajectoryDialog(QDialog):
                 "If none is found, the IZ is likely outside the electrode grid -\n"
                 "this is a normal result when the grid covers only one propagation side."
             )
-        color = (Colors.GREEN_600 if r.r_squared >= 0.85
-                 else ("#b45309" if r.r_squared >= 0.70 else "#dc2626"))
-        self._set_card(self._r2_card, f"R²={r.r_squared:.2f}", color)
-        if r.r_squared < 0.70:
-            self._r2_card.setToolTip(
-                "Poor alignment - results may be unreliable. "
-                "Ensure the grid is placed parallel to the muscle fibers."
-            )
+        # R² is secondary: a low R² beside a high score is the IZ signature
+        self._set_card(self._r2_card, f"R²={r.r_squared:.2f}", Colors.TEXT_MUTED)
+        self._r2_card.setToolTip(
+            "R² of delay vs. distance from an anchor electrode (reported only).\n"
+            "Low R² with a high propagation score indicates an innervation zone."
+        )
 
     @staticmethod
     def _set_card(box: QGroupBox, text: str, color: str):
@@ -521,8 +546,11 @@ class FiberTrajectoryDialog(QDialog):
         if r.iz_position_m is not None:
             iz_mm = r.iz_position_m * 1000
             perp_rad = np.radians(r.fiber_angle_deg + 90)
-            iz_cx = cx + iz_mm * np.sin(angle_rad)
-            iz_cy = cy + iz_mm * np.cos(angle_rad)
+            # iz_position_m is measured along (cos, sin) from electrode (0, 0);
+            # step from the centre's own projection to it along the trajectory
+            step = iz_mm - (cx * np.cos(angle_rad) + cy * np.sin(angle_rad))
+            iz_cx = cx + step * np.cos(angle_rad)
+            iz_cy = cy + step * np.sin(angle_rad)
             half = max(rows, cols) * ied / 2 + ied
             ax.plot(
                 [iz_cx - half * np.cos(perp_rad), iz_cx + half * np.cos(perp_rad)],
@@ -560,12 +588,12 @@ class FiberTrajectoryDialog(QDialog):
         ax = self._search_ax
         ax.clear()
         ax.set_facecolor(Colors.BG_PRIMARY)
-        ax.plot(r.search_angles, r.search_r2, color=Colors.BLUE_500, linewidth=1.5)
+        ax.plot(r.search_angles, r.search_score, color=Colors.BLUE_500, linewidth=1.5)
         ax.axvline(r.fiber_angle_deg, color=Colors.GREEN_600, linewidth=1.5,
                    linestyle="--", label=f"θ={r.fiber_angle_deg:.1f}°")
-        ax.scatter([r.fiber_angle_deg], [r.r_squared], color=Colors.GREEN_600, s=40, zorder=5)
+        ax.scatter([r.fiber_angle_deg], [r.propagation_score], color=Colors.GREEN_600, s=40, zorder=5)
         ax.set_xlabel("Angle (°)", fontsize=8)
-        ax.set_ylabel("R²", fontsize=8)
+        ax.set_ylabel("Propagation score", fontsize=8)
         ax.set_ylim(0, 1.05)
         ax.legend(fontsize=8)
         ax.tick_params(labelsize=7)
@@ -619,13 +647,18 @@ class FiberTrajectoryDialog(QDialog):
             },
             "results": {
                 "fiber_angle_deg": r.fiber_angle_deg,
-                "conduction_velocity_ms": r.conduction_velocity_ms,
+                "conduction_velocity_ms": _json_float(r.cv_reported_ms),
+                "cv_whole_grid_ms": _json_float(r.conduction_velocity_ms),
+                "cv_status": r.cv_status,
                 "iz_position_m": r.iz_position_m,
                 "r_squared": r.r_squared,
+                "propagation_score": r.propagation_score,
+                "n_valid_pairs": r.n_valid_pairs,
             },
             "angle_search": {
                 "angles_deg": r.search_angles.tolist(),
-                "r2_values": r.search_r2.tolist(),
+                "score_values": r.search_score.tolist(),
+                "cv_values_ms": [_json_float(v) for v in r.search_cv_ms],
             },
             "pairwise": {
                 "delays_ms": r.pairwise_delays_ms.tolist(),

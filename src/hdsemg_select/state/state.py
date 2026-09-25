@@ -93,9 +93,6 @@ class State(QObject):
     def set_channel_status(self, value: list):
         self._channel_status = value
 
-    def set_grid_info(self, value: dict):
-        self._grid_info = value
-
     def set_file_path(self, value: str):
         self._file_path = value
 

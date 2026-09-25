@@ -66,15 +66,16 @@ class FileManager:
                     parent_window, "Grid Info Missing",
                     "Automatic grid extraction failed. Please provide grid sizes manually."
                 )
-                # Store manual grid info in state
-                manual_grid = manual_grid_input(
-                    global_state.get_emg_file().channel_count,
-                    global_state.get_emg_file().time,
-                    global_state.get_emg_file().data
+                manual_grids = manual_grid_input(
+                    emg.channel_count,
+                    emg.time,
+                    emg.data
                 )
-                global_state.set_grid_info(manual_grid)
+                # ponytail: EMGFile.grids returns _grids once set; swap for a public
+                # setter when hdsemg-shared ships one
+                emg._grids = manual_grids
 
-                if not global_state.get_emg_file().grids:
+                if not emg.grids:
                     QMessageBox.information(
                         parent_window, "File Loading Failed",
                         "Grid information could not be determined."
