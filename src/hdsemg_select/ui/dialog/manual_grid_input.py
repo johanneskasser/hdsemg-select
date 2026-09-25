@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 import numpy as np
+from hdsemg_shared.fileio.file_io import Grid
 
 from hdsemg_select.ui.theme import Colors, Spacing, BorderRadius, Styles
 
@@ -60,7 +61,7 @@ def manual_grid_input(total_channels, time, scaled_data):
     if dialog.exec_() == QDialog.Accepted:
         return collect_manual_grid_info(grid_entries_layout, total_channels)
     else:
-        return {}
+        return []
 
 
 def add_grid_entry(grid_entries_layout):
@@ -89,46 +90,77 @@ def add_grid_entry(grid_entries_layout):
     ref_input = QLineEdit()
     ref_input.setStyleSheet(Styles.input_field())
     ref_input.setPlaceholderText("References")
-    ref_input.setValidator(QIntValidator(1, 100))
-    ref_input.setToolTip("Enter the number of reference signals for the grid")
+    ref_input.setValidator(QIntValidator(0, 100))
+    ref_input.setToolTip("Number of reference/auxiliary channels recorded right after this grid (empty = 0)")
     grid_row.addWidget(ref_input)
+
+    grid_row.addWidget(QLabel("|"))
+
+    ied_input = QLineEdit()
+    ied_input.setStyleSheet(Styles.input_field())
+    ied_input.setPlaceholderText("IED (mm)")
+    ied_input.setValidator(QIntValidator(1, 100))
+    ied_input.setToolTip("Inter-electrode distance of the grid in millimetres")
+    grid_row.addWidget(ied_input)
 
     grid_entries_layout.addLayout(grid_row)
 
 
-def collect_manual_grid_info(grid_entries_layout, total_channels):
-    grids = {}
-    total_channel_count = 0
+def build_manual_grids(specs, total_channels):
+    """Turn (rows, cols, refs, ied_mm) entries into Grid objects.
 
+    Grids are laid out back to back: grid n starts after grid n-1 and its
+    reference channels. Identical specs stay separate grids ("_2" suffix, as
+    hdsemg-shared names repeated grids).
+    Raises ValueError when the grids need more channels than the file has.
+    """
+    grids = []
+    seen = {}
+    offset = 0
+    for rows, cols, refs, ied_mm in specs:
+        electrodes = rows * cols
+        end = offset + electrodes + refs
+        if end > total_channels:
+            raise ValueError(
+                f"The grids need {end} channels, but the file only has {total_channels}."
+            )
+        base_key = f"{ied_mm}mm_{rows}x{cols}"
+        seen[base_key] = seen.get(base_key, 0) + 1
+        grids.append(Grid(
+            emg_indices=list(range(offset, offset + electrodes)),
+            ref_indices=list(range(offset + electrodes, end)),
+            rows=rows,
+            cols=cols,
+            ied_mm=ied_mm,
+            electrodes=electrodes,
+            grid_key=base_key if seen[base_key] == 1 else f"{base_key}_{seen[base_key]}",
+        ))
+        offset = end
+    return grids
+
+
+def collect_manual_grid_info(grid_entries_layout, total_channels):
+    specs = []
     for i in range(grid_entries_layout.count()):
         layout = grid_entries_layout.itemAt(i)
-        if isinstance(layout, QHBoxLayout):
-            rows_input = layout.itemAt(0).widget()
-            cols_input = layout.itemAt(2).widget()
-            ref_input = layout.itemAt(4).widget()
+        if not isinstance(layout, QHBoxLayout):
+            continue
+        texts = [layout.itemAt(j).widget().text().strip() for j in (0, 2, 4, 6)]
+        try:
+            rows, cols, refs, ied = (int(t) if t else None for t in texts)
+        except ValueError:
+            rows = None
+        if rows is None or cols is None or ied is None:
+            QMessageBox.warning(None, "Invalid Input",
+                                "Please enter rows, columns and IED for every grid.")
+            return []
+        specs.append((rows, cols, refs or 0, ied))
 
-            try:
-                rows = int(rows_input.text())
-                cols = int(cols_input.text())
-                refs = int(ref_input.text())
-                grid_key = f"{rows}x{cols}"
-                num_channels = rows * cols + refs
-                electrodes = rows * cols
-
-                total_channel_count += num_channels
-
-                if total_channel_count > total_channels:
-                    QMessageBox.warning(None, "Invalid Input",
-                                        f"The total number of channels ({total_channel_count}) exceeds the total available channels in the file ({total_channels}).")
-                    return {}
-
-                if grid_key not in grids:
-                    grids[grid_key] = {"rows": rows, "cols": cols, "indices": list(range(electrodes)), "reference_signals": refs, "electrodes": electrodes}
-            except ValueError:
-                QMessageBox.warning(None, "Invalid Input", "Please ensure all grid sizes and reference signals per grid are valid.")
-                return {}
-
-    return grids
+    try:
+        return build_manual_grids(specs, total_channels)
+    except ValueError as e:
+        QMessageBox.warning(None, "Invalid Input", str(e))
+        return []
 
 
 class LoadChannelsThread(QThread):

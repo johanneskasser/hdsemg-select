@@ -17,6 +17,7 @@ class MenuManager:
         self.change_grid_action = None
         self.amplitude_menu = None
         self.zero_line_menu = None
+        self.snr_selection_action = None
         self.suggest_flags_action = None  # New action
         self.crop_signal_action = None
         self.toggle_signal_overview_action = None
@@ -101,6 +102,14 @@ class MenuManager:
         zero_line_settings.setStatusTip("Configure zero-line detection parameters")
         zero_line_settings.triggered.connect(parent_window.zero_line_selection.open_settings_dialog)
         self.zero_line_menu.addAction(zero_line_settings)
+
+        self.snr_selection_action = QAction("SNR-based selection...", parent_window)
+        self.snr_selection_action.setStatusTip(
+            "Flag channels with rest-period or amplitude spikes as Artifact"
+        )
+        self.snr_selection_action.setEnabled(False)  # Enabled when data is loaded
+        self.snr_selection_action.triggered.connect(parent_window.snr_selection.open_settings_dialog)
+        auto_select_menu.addAction(self.snr_selection_action)
 
         auto_select_menu.addSeparator()  # Add a separator before the new flag action
 
@@ -231,6 +240,9 @@ class MenuManager:
 
     def get_zero_line_menu(self):
         return self.zero_line_menu
+
+    def get_snr_selection_action(self):
+        return self.snr_selection_action
 
     def get_suggest_flags_action(self):  # New getter
         return self.suggest_flags_action
