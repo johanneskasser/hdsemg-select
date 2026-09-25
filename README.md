@@ -52,7 +52,8 @@ helps identify and exclude faulty channels and automatically flag potential arti
 
 <div align="center">
   <img src="docs/img/dashboard.png" alt="Dashboard" width="100%">
-  <img src="docs/img/signal_overview_plot/signal_overview_plot.png" alt="Signal Overview Plot" width="100%">
+  <img src="docs/img/density_map.png" alt="Density Map" width="49%">
+  <img src="docs/img/fiber_trajectory/fiber_trajectory_iz.png" alt="Fiber Trajectory Analysis" width="49%">
 </div>
 
 ## Requirements

@@ -49,6 +49,8 @@ Once you've loaded HD-sEMG data (see the [Getting Started Guide](getting_started
 
   * You can choose which reference to display via the dropdown next to the checkbox.
 
+  ![Dashboard with reference signal overlay](../img/dashboard_reference_signal.png)
+
 * **Signal Overview Plot**
   Opens a detailed plot of all selected channels to help identify artifacts or abnormal patterns.
   For more information, see [Signal Overview Plot](signal_overview_plot.md).
